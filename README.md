@@ -1,7 +1,7 @@
 # System Interface Extensions
 
 System Interface Extensions (SIE) is an MIT-licensed Rust desktop companion
-for extending how input devices control a Linux computer. Version 0.7.0 is a
+for extending how input devices control a Linux computer. Version 0.7.1 is a
 GNOME/Wayland proof of concept for the **Razer BlackWidow V4 Pro** (`1532:028d`).
 
 - A top-panel tray opens a Czech menu with **O aplikaci** (the running binary's
@@ -21,7 +21,7 @@ GNOME/Wayland proof of concept for the **Razer BlackWidow V4 Pro** (`1532:028d`)
 - Rust generates touch-typing finger zones and sends them directly to OpenRazer.
   The active workspace's **M1–M5 key is green** and other macro keys are white,
   including when switching with the mouse or another shortcut. The established
-  red system key and green main Enter are retained.
+  red system key and green main Enter are retained; Escape is pure red.
 - **M1–M5 → workspaces 1–5** (GNOME indices 0–4), using the live workspace count. Unavailable targets,
   releases, autorepeat and ordinary typing are ignored.
 - On workspace 6 or higher, all five macro keys stay white. The tray uses

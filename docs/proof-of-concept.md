@@ -98,7 +98,8 @@ implementation. Character keys follow the established eight finger zones:
 Remaining keys, modifiers, navigation, numpad, inactive macro keys, media controls
 and ambient LEDs are white. The active workspace's macro key is green
 (`#00FF00`). The existing explicit accents are retained: the left
-system key is Debian red (`#A80030`) and the main Enter is green (`#00FF00`).
+system key is Debian red (`#A80030`), Escape is red (`#FF0000`, row 0/column 2),
+and the main Enter is green (`#00FF00`).
 Numpad Enter stays white.
 
 The macro LED coordinates are `(row, column)`: M1 `(5, 1)`, M2 `(4, 1)`,
