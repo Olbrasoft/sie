@@ -64,6 +64,8 @@ const PINK: Rgb = [0xD0, 0x52, 0x91];
 
 pub fn touch_typing_frame() -> Frame {
     let mut frame = [[WHITE; COLS]; ROWS];
+    // Escape is x2-y0 in the native BlackWidow V4 Pro device map.
+    frame[0][2] = [255, 0, 0];
     for row in &mut frame[1..=3] {
         row[3..=13].copy_from_slice(&[
             RED, ORANGE, YELLOW, GREEN, GREEN, CYAN, CYAN, BLUE, PURPLE, PINK, PINK,
@@ -227,7 +229,7 @@ mod tests {
     #[test]
     fn every_cell_matches_the_finger_zone_specification() {
         let rows = [
-            "WWWWWWWWWWWWWWWWWWWWWWW",
+            "WWXWWWWWWWWWWWWWWWWWWWW",
             "WWRROYGGCCBPMMMWWWWWWWW",
             "WWWROYGGCCBPMMMMWWWWWWW",
             "WWWROYGGCCBPMMWEWWWWWWW",
@@ -253,6 +255,7 @@ mod tests {
                     'M' => PINK,
                     'D' => [0xA8, 0, 0x30],
                     'E' => [0, 255, 0],
+                    'X' => [255, 0, 0],
                     _ => panic!("Unknown color"),
                 };
                 assert_eq!(frame[r][c], expected, "cell ({r}, {c})");
