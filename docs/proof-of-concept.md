@@ -5,7 +5,7 @@ input and control. The first deliverable is a small, visible keyboard companion;
 later iterations can take over selected dictation and control capabilities from
 VirtualAssistant without interrupting the existing service.
 
-## Scope of version 0.3.0
+## Scope of version 0.4.0
 
 The application runs in the logged-in GNOME/Wayland session, displays a tray
 indicator, owns a touch-typing lighting frame, and maps the five dedicated macro
@@ -16,8 +16,10 @@ including after switches made through the mouse or other shortcuts. About displa
 installed binary. Quit and SIGTERM release the process and input subscriptions.
 Starting a second controlling instance fails without replacing the first.
 
-Speech capture, Whisper transcription, text-to-speech, model selection, mouse
-automation, configurable profiles and support for other desktops are future work.
+Local speech capture, Whisper transcription, database corrections and text
+insertion are implemented as described in [the dictation guide](dictation.md).
+Text-to-speech, model selection UI, mouse automation, configurable profiles and
+support for other desktops are future work.
 Whisper is a speech-to-text component; speech synthesis needs a separate engine.
 
 ## Why Rust
@@ -27,7 +29,9 @@ D-Bus by `zbus`, and the standard tray protocol by `ksni`. Tokio handles input,
 periodic device refresh and lifecycle events. The application needs no embedded
 browser, GTK development libraries or Python background process.
 
-The implementation is entirely Rust, apart from the shell installer. OpenRazer,
+Application orchestration and device control are Rust. Whisper inference uses
+native C/C++ bindings; shell handles installation and a Python helper handles
+one-time database import. OpenRazer,
 GNOME and its already installed extensions remain platform dependencies. Rust
 does not bypass Wayland's compositor boundary. Future speech features should
 initially reuse proven native engines through bindings, subprocesses or service
@@ -48,7 +52,7 @@ VirtualAssistant and live D-Bus introspection established these boundaries:
 | GNOME AppIndicator extension | Display the Rust StatusNotifierItem and menu |
 | `focus-tracker@olbrasoft.cz` | Read live workspace count and current index |
 | Mutter RemoteDesktop D-Bus API | Send the configured workspace accelerator |
-| `window-calls@domandoman.xyz` | Existing window control; no new dependency for this PoC |
+| `window-calls@domandoman.xyz` | Identify and verify the dictation target window |
 | `computer-use-linux@avifenesh.dev` | Existing agent window control; no workspace activation method exposed |
 
 The current tracker exposes workspace state but no activation method. The
@@ -60,7 +64,8 @@ local computer-control experiments also use this Mutter interface.
 
 **No new GNOME extension is installed or required for this setup.** SIE does not
 use unrestricted Shell Eval, alter the installed extensions, change keybindings
-or depend on VirtualAssistant being available. Mutter's interface is GNOME
+or require VirtualAssistant in standalone mode. The optional local dictation
+speech-lock bridge coordinates TTS during migration. Mutter's interface is GNOME
 specific; a different compositor needs its own adapter. `--doctor` checks the
 available interfaces and configured shortcuts before hardware testing.
 
@@ -155,14 +160,16 @@ Linux `KEY_MACRO1` through `KEY_MACRO5` are also recognized. The application
 opens only by-id paths for the supported keyboard, verifies its USB IDs and
 monitors relevant keyboard interfaces. GNOME's default XKB map interprets F13
 as `XF86Tools`, which opens Settings. While SIE runs, it temporarily maps only
-the five macro scancodes to Linux `KEY_MACRO1`–`KEY_MACRO5` on each supported
-device. Those codes do not launch the desktop's default actions. A scoped guard
+the five macro scancodes and three side-button scancodes to Linux
+`KEY_MACRO1`–`KEY_MACRO8` on each supported device. The additional mappings avoid
+F20's default microphone-mute action. Those codes do not launch the desktop's default actions. A scoped guard
 restores the exact original mappings on Quit, SIGTERM or partial setup failure.
 This requires write access to the existing input nodes, already granted by the
 workstation's OpenRazer rules. It does not change GNOME's keybindings or
 exclusively grab the device.
-Ordinary typing is immediately ignored and never stored or logged. Releases and
-autorepeat do not trigger actions. Input devices are rescanned every three
+Ordinary typing is immediately ignored and never stored or logged. Macro-key
+releases and autorepeat do not switch workspaces. Side-button releases control
+dictation, with repeats ignored. Input devices are rescanned every three
 seconds so reconnects do not require restarting SIE.
 
 Before a shortcut is sent, SIE reads the current count through D-Bus without
@@ -197,7 +204,7 @@ For a real desktop smoke test:
 
 1. Run `sie --doctor`; all required integrations should report OK.
 2. Start SIE; verify its keyboard tray icon and click it.
-3. Open About and verify version 0.3.0. Close the dialog.
+3. Open About and verify version 0.4.0. Close the dialog.
 4. Visually inspect the keyboard's finger zones, white remaining keys and accents.
 5. Press M1–M5 and verify workspaces 1–5 (indices 0–4). Release and hold keys to
    check repeat behavior. Switch using the mouse or another shortcut: the active
@@ -221,7 +228,7 @@ GraphQL `addSubIssue` relations when work spans multiple tasks. Leave closure to
 the maintainer after review.
 
 The next candidates are configurable profiles and key assignments, a more
-general desktop adapter, and staged migration of push-to-talk from
-VirtualAssistant. Speech work should separate capture, Whisper transcription,
+general desktop adapter, and remaining voice features from VirtualAssistant.
+The initial dictation migration separates capture, Whisper transcription,
 text insertion, command interpretation and text-to-speech. Existing model
 services can continue running while SIE takes over one capability at a time.

@@ -6,7 +6,7 @@ use tokio::{sync::mpsc, task::JoinSet};
 
 use crate::{
     keymap::MacroKeymap,
-    macros::{MACRO1, workspace_for_event},
+    macros::{InputAction, MACRO1, action_for_event},
     openrazer::{PRODUCT_ID, VENDOR_ID},
 };
 
@@ -45,7 +45,7 @@ pub fn discover() -> Result<Vec<(PathBuf, Device)>> {
 }
 
 /// No exclusive grab, replay of ordinary typing, or storage of key events.
-pub async fn monitor(tx: mpsc::Sender<u32>) {
+pub async fn monitor(tx: mpsc::Sender<InputAction>) {
     let mut tasks = JoinSet::new();
     let mut active = HashSet::new();
     let mut scan = tokio::time::interval(Duration::from_secs(3));
@@ -68,15 +68,15 @@ pub async fn monitor(tx: mpsc::Sender<u32>) {
                             match device.into_event_stream() {
                                 Ok(mut stream) => {
                                     active.insert(path.clone());
-                                    tracing::info!(device = %path.display(), "Listening for M1–M5");
+                                    tracing::info!(device = %path.display(), "Listening for workspace and side-button actions");
                                     let tx = tx.clone();
                                     tasks.spawn(async move {
                                         // Keep the guard until disconnect/cancellation so Quit restores the keymap.
                                         let _keymap = keymap;
                                         while let Ok(event) = stream.next_event().await {
-                                            if let Some(index) = workspace_for_event(event) {
+                                            if let Some(action) = action_for_event(event) {
                                                 // Bound pending actions; stale macro presses should not accumulate.
-                                                let _ = tx.try_send(index);
+                                                let _ = tx.try_send(action);
                                             }
                                         }
                                         path

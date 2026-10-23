@@ -1,0 +1,19 @@
+[dictation]
+# Set true after importing the independent database and installing the model.
+enabled = false
+# TOML paths are literal: replace this path with an absolute local model path.
+model_path = "/home/your-user/.local/share/whisper-models/ggml-large-v3-turbo.bin"
+language = "cs"
+database_url = "host=/var/run/postgresql dbname=sie user=your-user"
+use_gpu = true
+max_duration_seconds = 300
+# Omit audio_source to use the default PipeWire microphone.
+# audio_source = "alsa_input.your_microphone"
+# Optional local coordination while VirtualAssistant is still used for TTS.
+# Requires curl and VirtualAssistant's existing localhost:5055 speech-lock API.
+virtual_assistant_speech_lock = false
+
+# Same three nonverbal cues as VirtualAssistant; playback uses PipeWire.
+sound_effects = true
+# Omit sound_sink to use the default audio output.
+# sound_sink = "alsa_output.your_speakers"
