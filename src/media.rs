@@ -3,7 +3,7 @@ use anyhow::{Context, Result, bail};
 use futures_util::StreamExt;
 use std::{
     collections::{HashMap, HashSet},
-    time::Duration,
+    time::{Duration, Instant},
 };
 use tokio::sync::{mpsc, watch};
 use zbus::{Connection, MatchRule, MessageStream, message::Type, zvariant::OwnedValue};
@@ -21,11 +21,18 @@ pub enum Playback {
     Playing,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Transition {
+    pub at: Instant,
+    pub before: Playback,
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Status {
     pub playback: Playback,
     pub player: Option<String>,
     pub target: Option<String>,
+    pub transition: Option<Transition>,
 }
 impl Status {
     pub fn label(&self) -> String {
@@ -48,6 +55,7 @@ struct Player {
     can_control: bool,
     can_play: bool,
     can_pause: bool,
+    transition: Option<Transition>,
 }
 impl Player {
     fn playing(&self) -> bool {
@@ -94,8 +102,18 @@ impl Router {
         self.order.insert(position, player.name.clone());
         self.players.insert(player.name.clone(), player);
     }
-    fn changed(&mut self, player: Player) {
+    fn changed(&mut self, mut player: Player) {
         let name = player.name.clone();
+        if let Some(old) = self.players.get(&name) {
+            player.transition = if old.raw_status != player.raw_status {
+                Some(Transition {
+                    at: Instant::now(),
+                    before: old.indicator(),
+                })
+            } else {
+                old.transition
+            };
+        }
         let promote =
             self.order.first() != Some(&name) && !self.current_playing() && player.playing();
         self.players.insert(name.clone(), player);
@@ -135,6 +153,7 @@ impl Router {
                 playback: player.indicator(),
                 player: Some(player.identity.clone()),
                 target: Some(player.name.clone()),
+                transition: player.transition,
             },
             None => Status::default(),
         }
@@ -181,6 +200,7 @@ async fn read_player(connection: &Connection, name: &str) -> Result<Player> {
             can_control: flag("CanControl"),
             can_play: flag("CanPlay"),
             can_pause: flag("CanPause"),
+            transition: None,
         })
     })
     .await
@@ -392,6 +412,25 @@ mod tests {
             can_control: true,
             can_play: true,
             can_pause: true,
+            transition: None,
+        }
+    }
+    #[test]
+    fn playback_transitions_survive_refresh_and_keep_the_pre_toggle_state() {
+        for initial in ["Paused", "Stopped"] {
+            let mut router = Router::default();
+            router.appeared(player("VLC", initial));
+            assert!(router.status().transition.is_none());
+            router.changed(player("VLC", "Playing"));
+            let resumed = router.status();
+            assert_eq!(resumed.transition.unwrap().before, Playback::Paused);
+            router.changed(player("VLC", "Playing"));
+            assert_eq!(router.status(), resumed);
+            router.changed(player("VLC", "Paused"));
+            assert_eq!(
+                router.status().transition.unwrap().before,
+                Playback::Playing
+            );
         }
     }
     #[test]
