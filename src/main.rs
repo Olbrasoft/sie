@@ -1,12 +1,20 @@
 use std::time::Duration;
+use std::{
+    path::PathBuf,
+    sync::{Arc, atomic::AtomicBool},
+};
 
 use anyhow::{Context, Result};
 use clap::Parser;
 use ksni::TrayMethods;
 use sie::{
+    config::{AppConfig, DictationConfig},
+    corrections::Database,
     desktop::{self, Desktop},
+    dictation::{self, Command as DictationCommand, Phase, Status as DictationStatus},
     input,
     lighting::LightingMode,
+    macros::InputAction,
     openrazer,
     tray::{Action, AppTray},
 };
@@ -19,6 +27,12 @@ use zbus::Connection;
     about = "System Interface Extensions — GNOME/Wayland keyboard proof of concept"
 )]
 struct Args {
+    /// Configuration path (default: XDG_CONFIG_HOME/sie/config.toml).
+    #[arg(long)]
+    config: Option<PathBuf>,
+    /// Transcribe a 16 kHz mono 16-bit WAV locally and print corrected text; never paste.
+    #[arg(long, conflicts_with_all = ["doctor", "apply_lighting", "switch_workspace", "tray_only"])]
+    transcribe_file: Option<PathBuf>,
     /// Check the existing desktop integrations without changing settings or lighting.
     #[arg(long, conflicts_with_all = ["apply_lighting", "switch_workspace", "tray_only"])]
     doctor: bool,
@@ -42,13 +56,25 @@ async fn main() -> Result<()> {
                 .unwrap_or_else(|_| "sie=info".into()),
         )
         .init();
+    let config = AppConfig::load(args.config)?;
+    if let Some(path) = args.transcribe_file {
+        let pcm = sie::speech::read_wav(&path)?;
+        let engine = sie::speech::SpeechEngine::new(config.dictation.clone());
+        let raw = engine.transcribe(&pcm, Arc::new(AtomicBool::new(false)))?;
+        let processor = Database::connect(&config.dictation.database_url)
+            .await?
+            .postprocessor()
+            .await?;
+        println!("{}", processor.apply(&raw).0);
+        return Ok(());
+    }
     let connection = zbus::connection::Builder::session()?
         .method_timeout(Duration::from_secs(3))
         .build()
         .await
         .context("A desktop session D-Bus is required")?;
     if args.doctor {
-        return doctor(&connection).await;
+        return doctor(&connection, &config.dictation).await;
     }
 
     // DoNotQueue prevents a second instance from waiting and later taking ownership.
@@ -79,10 +105,10 @@ async fn main() -> Result<()> {
         );
         return Ok(());
     }
-    run(connection, args.tray_only).await
+    run(connection, args.tray_only, config.dictation).await
 }
 
-async fn doctor(connection: &Connection) -> Result<()> {
+async fn doctor(connection: &Connection, dictation: &DictationConfig) -> Result<()> {
     let mut failures = Vec::new();
     macro_rules! check {
         ($name:expr, $result:expr) => {
@@ -168,6 +194,30 @@ async fn doctor(connection: &Connection) -> Result<()> {
                 }
             })
     );
+    if dictation.enabled {
+        check!(
+            "Whisper model",
+            if dictation.model_path.is_file() {
+                Ok(format!(
+                    "local model; CUDA build: {}",
+                    cfg!(feature = "cuda")
+                ))
+            } else {
+                Err(anyhow::anyhow!("Local model is missing"))
+            }
+        );
+        check!(
+            "Dictation database",
+            async {
+                Database::connect(&dictation.database_url)
+                    .await?
+                    .postprocessor()
+                    .await?;
+                anyhow::Ok("independent correction database available")
+            }
+            .await
+        );
+    }
     anyhow::ensure!(
         failures.is_empty(),
         "Unavailable integrations: {}",
@@ -176,8 +226,22 @@ async fn doctor(connection: &Connection) -> Result<()> {
     Ok(())
 }
 
-async fn run(connection: Connection, tray_only: bool) -> Result<()> {
+async fn run(
+    connection: Connection,
+    tray_only: bool,
+    dictation_config: DictationConfig,
+) -> Result<()> {
     let mut lighting_mode = LightingMode::On;
+    let initial = DictationStatus::new(
+        dictation_config.enabled && !tray_only,
+        if dictation_config.enabled && !tray_only {
+            Phase::Idle
+        } else {
+            Phase::Disabled
+        },
+    );
+    let (dictation_commands, dictation_rx) = mpsc::channel(16);
+    let (dictation_status, mut dictation_status_rx) = tokio::sync::watch::channel(initial.clone());
     let (actions, mut action_rx) = mpsc::channel(8);
     let tray = AppTray {
         actions,
@@ -189,6 +253,8 @@ async fn run(connection: Connection, tray_only: bool) -> Result<()> {
         .into(),
         lighting_mode,
         lighting_controls_available: !tray_only,
+        dictation_status: initial,
+        dictation_controls_available: !tray_only,
         workspace_status: if tray_only {
             "Makroklávesy vypnuty"
         } else {
@@ -205,8 +271,15 @@ async fn run(connection: Connection, tray_only: bool) -> Result<()> {
     let (workspace_changes, mut workspace_rx) = mpsc::channel(1);
     let mut refresh = tokio::time::interval(Duration::from_secs(2));
     refresh.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+    let mut dictation_task = None;
     if !tray_only {
         tasks.spawn(input::monitor(macros));
+        dictation_task = Some(tokio::spawn(dictation::run(
+            dictation_config,
+            connection.clone(),
+            dictation_rx,
+            dictation_status,
+        )));
         tasks.spawn(desktop::watch_workspaces(
             connection.clone(),
             workspace_changes,
@@ -225,12 +298,18 @@ async fn run(connection: Connection, tray_only: bool) -> Result<()> {
                     lighting_mode = mode;
                     refresh_lighting(&connection, &tray, lighting_mode, &mut last_status).await;
                 },
+                Some(Action::Dictation(command)) => if !tray_only { let _ = dictation_commands.try_send(command); },
                 Some(Action::About) => if about.is_empty() {
                     about.spawn(async { if let Err(error) = sie::tray::show_about().await { tracing::warn!(%error, "About dialog failed"); } });
                 },
             },
             Some(_) = about.join_next(), if !about.is_empty() => {},
-            Some(index) = macro_rx.recv(), if !tray_only => {
+            Some(action) = macro_rx.recv(), if !tray_only => {
+                let index = match action {
+                    InputAction::Workspace(index) => index,
+                    InputAction::DictationToggle => { let _ = dictation_commands.try_send(DictationCommand::Toggle); continue; },
+                    InputAction::DictationCancel => { let _ = dictation_commands.try_send(DictationCommand::Cancel); continue; },
+                };
                 // Keep each remote-input session short and release it after the shortcut.
                 let result = async {
                     let desktop = Desktop::connect(&connection).await?;
@@ -246,6 +325,11 @@ async fn run(connection: Connection, tray_only: bool) -> Result<()> {
                     Err(error) => tracing::warn!("Workspace switch failed: {error:#}"),
                 }
             },
+            Ok(()) = dictation_status_rx.changed(), if !tray_only => {
+                let status=dictation_status_rx.borrow_and_update().clone();
+                tracing::info!(phase=?status.phase,"Dictation state changed");
+                tray.update(move |tray| tray.dictation_status=status).await;
+            },
             _ = async {
                 tokio::select! {
                     _ = refresh.tick() => {},
@@ -258,6 +342,15 @@ async fn run(connection: Connection, tray_only: bool) -> Result<()> {
                 if let Err(error) = result { tracing::error!(%error, "Input monitor stopped"); }
             },
         }
+    }
+    drop(dictation_commands);
+    if let Some(mut task) = dictation_task
+        && tokio::time::timeout(Duration::from_secs(4), &mut task)
+            .await
+            .is_err()
+    {
+        task.abort();
+        let _ = task.await;
     }
     tasks.abort_all();
     about.abort_all();

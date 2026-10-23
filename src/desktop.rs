@@ -1,7 +1,14 @@
+use std::process::Stdio;
+use std::sync::{
+    Arc,
+    atomic::{AtomicBool, Ordering},
+};
 use std::time::Duration;
 
 use anyhow::{Context, Result, bail, ensure};
 use futures_util::StreamExt;
+use serde::Deserialize;
+use tokio::io::AsyncWriteExt;
 use tokio::process::Command;
 use zbus::{Connection, Proxy, zvariant::OwnedObjectPath};
 
@@ -205,6 +212,219 @@ impl Desktop {
         self.proxy().await?.call::<_, _, ()>("Stop", &()).await?;
         Ok(())
     }
+
+    pub async fn send_keys(&self, keys: &[u32]) -> Result<()> {
+        let proxy = self.proxy().await?;
+        let mut failure = None;
+        for key in keys {
+            if let Err(error) = proxy
+                .call::<_, _, ()>("NotifyKeyboardKeycode", &(*key, true))
+                .await
+            {
+                failure = Some(error);
+                break;
+            }
+        }
+        tokio::time::sleep(Duration::from_millis(30)).await;
+        for key in keys.iter().rev() {
+            if let Err(error) = proxy
+                .call::<_, _, ()>("NotifyKeyboardKeycode", &(*key, false))
+                .await
+                && failure.is_none()
+            {
+                failure = Some(error);
+            }
+        }
+        if let Some(error) = failure {
+            return Err(error.into());
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct FocusTarget {
+    pub id: u32,
+    pub wm_class: String,
+    #[serde(default)]
+    focus: bool,
+}
+
+impl FocusTarget {
+    pub fn is_terminal(&self) -> bool {
+        let class = self.wm_class.to_lowercase();
+        [
+            "alacritty",
+            "kitty",
+            "terminator",
+            "gnome-terminal",
+            "konsole",
+            "wezterm",
+            "kgx",
+            "org.gnome.console",
+        ]
+        .iter()
+        .any(|name| class.contains(name))
+    }
+}
+
+pub async fn focused_window(connection: &Connection) -> Result<FocusTarget> {
+    let proxy = Proxy::new(
+        connection,
+        "org.gnome.Shell",
+        "/org/gnome/Shell/Extensions/Windows",
+        "org.gnome.Shell.Extensions.Windows",
+    )
+    .await?;
+    let json: String = proxy.call("List", &()).await?;
+    let windows: Vec<FocusTarget> = serde_json::from_str(&json)?;
+    windows
+        .into_iter()
+        .find(|window| window.focus)
+        .context("No focused target window")
+}
+
+async fn clipboard_read(primary: bool) -> Option<(String, Vec<u8>)> {
+    let mut list = Command::new("wl-paste");
+    if primary {
+        list.arg("--primary");
+    }
+    let types = list.arg("--list-types").output().await.ok()?;
+    if !types.status.success() {
+        return None;
+    }
+    let types = String::from_utf8(types.stdout).ok()?;
+    let mime = types
+        .lines()
+        .find(|name| name.starts_with("text/plain"))
+        .or_else(|| types.lines().find(|name| *name == "image/png"))?
+        .to_owned();
+    let mut command = Command::new("wl-paste");
+    if primary {
+        command.arg("--primary");
+    }
+    let output = command
+        .args(["--no-newline", "--type", &mime])
+        .output()
+        .await
+        .ok()?;
+    output.status.success().then_some((mime, output.stdout))
+}
+
+async fn restore_clipboard(primary: bool, snapshot: Option<(String, Vec<u8>)>) -> Result<()> {
+    let mut command = Command::new("wl-copy");
+    if primary {
+        command.arg("--primary");
+    }
+    if let Some((mime, bytes)) = snapshot {
+        let mut child = command
+            .args(["--type", &mime])
+            .stdin(Stdio::piped())
+            .spawn()?;
+        child
+            .stdin
+            .take()
+            .context("Clipboard stdin unavailable")?
+            .write_all(&bytes)
+            .await?;
+        ensure!(child.wait().await?.success(), "Cannot restore clipboard");
+    } else {
+        command.arg("--clear").status().await?;
+    }
+    Ok(())
+}
+
+async fn stage_selection(
+    primary: bool,
+    text: &str,
+    cancelled: &AtomicBool,
+) -> Result<tokio::process::Child> {
+    // Clipboard managers can take ownership while copying the same selection,
+    // or briefly restore the previous contents. Retry a bounded number of times.
+    for _ in 0..4 {
+        ensure!(!cancelled.load(Ordering::SeqCst), "Dictation canceled");
+        let mut command = Command::new("wl-copy");
+        command.args(["--foreground", "--type", "text/plain;charset=utf-8"]);
+        if primary {
+            command.arg("--primary");
+        }
+        let mut owner = command
+            .stdin(Stdio::piped())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .kill_on_drop(true)
+            .spawn()?;
+        let mut stdin = owner.stdin.take().context("Clipboard stdin unavailable")?;
+        stdin.write_all(text.as_bytes()).await?;
+        stdin.shutdown().await?;
+        drop(stdin);
+        for _ in 0..50 {
+            ensure!(!cancelled.load(Ordering::SeqCst), "Dictation canceled");
+            if clipboard_read(primary)
+                .await
+                .is_some_and(|(_, bytes)| bytes == text.as_bytes())
+            {
+                return Ok(owner);
+            }
+            if owner.try_wait()?.is_some() {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+        let _ = owner.kill().await;
+        tokio::time::sleep(Duration::from_millis(40)).await;
+    }
+    anyhow::bail!("Cannot stage dictation text (primary: {primary})")
+}
+
+/// Stage Unicode text, verify focus again, paste, and restore the previous selection.
+pub async fn paste_text(
+    connection: &Connection,
+    target: &FocusTarget,
+    text: &str,
+    cancelled: Arc<AtomicBool>,
+) -> Result<()> {
+    ensure!(!cancelled.load(Ordering::SeqCst), "Dictation canceled");
+    ensure!(
+        focused_window(connection).await?.id == target.id,
+        "Target window changed; transcription was not pasted"
+    );
+    let primary = target.is_terminal();
+    let previous = clipboard_read(primary).await;
+    // Complete compositor setup before staging so other clipboard owners have
+    // the smallest possible interval in which to replace the selection.
+    let desktop = Desktop::connect(connection).await?;
+    let mut owner = None;
+    let result: Result<()> = async {
+        owner = Some(stage_selection(primary, text, &cancelled).await?);
+        ensure!(!cancelled.load(Ordering::SeqCst), "Dictation canceled");
+        ensure!(
+            focused_window(connection).await?.id == target.id,
+            "Target window changed; transcription was not pasted"
+        );
+        ensure!(!cancelled.load(Ordering::SeqCst), "Dictation canceled");
+        desktop
+            .send_keys(if primary { &[42, 110] } else { &[29, 47] })
+            .await?;
+        tokio::time::sleep(Duration::from_millis(200)).await;
+        Ok(())
+    }
+    .await;
+    let stopped = desktop.stop().await;
+    // Do not overwrite a newer clipboard selection made by the user meanwhile.
+    if owner.is_some()
+        && clipboard_read(primary)
+            .await
+            .is_some_and(|(_, bytes)| bytes == text.as_bytes())
+        && let Err(error) = restore_clipboard(primary, previous).await
+    {
+        tracing::warn!(%error, "Clipboard restoration failed");
+    }
+    if let Some(mut owner) = owner {
+        let _ = owner.kill().await;
+    }
+    result?;
+    stopped
 }
 
 #[cfg(test)]

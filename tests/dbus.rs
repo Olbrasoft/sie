@@ -57,6 +57,7 @@ struct State {
     starts: usize,
     stops: usize,
     fail_press: bool,
+    fail_key: Option<u32>,
 }
 type Shared = Arc<Mutex<State>>;
 
@@ -95,6 +96,9 @@ impl Session {
     fn notify_keyboard_keycode(&self, key: u32, pressed: bool) -> zbus::fdo::Result<()> {
         let mut state = self.0.lock().unwrap();
         state.keys.push((key, pressed));
+        if pressed && state.fail_key == Some(key) {
+            return Err(zbus::fdo::Error::Failed("Injected key failure".into()));
+        }
         if let Some(index) = [79, 80, 81, 75, 76]
             .iter()
             .position(|code| *code == key)
@@ -503,4 +507,43 @@ async fn lighting_toggle_stays_dark_during_workspace_control_and_restores_the_cu
         [(125, true), (75, true), (75, false), (125, false)]
     );
     assert_eq!((state.starts, state.stops), (1, 1));
+}
+
+#[tokio::test]
+async fn paste_shortcut_failure_still_releases_the_character_and_modifier() {
+    let bus = Bus::start();
+    let state = Arc::new(Mutex::new(State {
+        fail_key: Some(47),
+        ..Default::default()
+    }));
+    let _server = services(&bus, state.clone(), vec![8, 23]).await;
+    let desktop = Desktop::connect(&bus.connection().await).await.unwrap();
+    assert!(desktop.send_keys(&[29, 47]).await.is_err());
+    desktop.stop().await.unwrap();
+    assert_eq!(
+        state.lock().unwrap().keys,
+        [(29, true), (47, true), (47, false), (29, false)]
+    );
+}
+
+#[tokio::test]
+async fn canceled_dictation_cannot_touch_the_clipboard_or_start_an_input_session() {
+    use std::sync::atomic::AtomicBool;
+    let bus = Bus::start();
+    let state = Shared::default();
+    let _server = services(&bus, state.clone(), vec![8, 23]).await;
+    let target: sie::desktop::FocusTarget =
+        serde_json::from_value(serde_json::json!({"id":1,"wm_class":"Alacritty","focus":true}))
+            .unwrap();
+    let result = sie::desktop::paste_text(
+        &bus.connection().await,
+        &target,
+        "Do not paste",
+        Arc::new(AtomicBool::new(true)),
+    )
+    .await;
+    assert!(result.unwrap_err().to_string().contains("canceled"));
+    let state = state.lock().unwrap();
+    assert!(state.keys.is_empty());
+    assert_eq!(state.starts, 0);
 }

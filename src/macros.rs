@@ -4,6 +4,31 @@ use evdev::{EventType, InputEvent, KeyCode};
 pub const MACRO1: u16 = 0x290;
 const MACRO5: u16 = 0x294;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InputAction {
+    Workspace(u32),
+    DictationToggle,
+    DictationCancel,
+}
+
+pub fn action_for_event(event: InputEvent) -> Option<InputAction> {
+    if let Some(index) = workspace_for_event(event) {
+        return Some(InputAction::Workspace(index));
+    }
+    if event.event_type() != EventType::KEY || event.value() != 0 {
+        return None;
+    }
+    match event.code() {
+        code if code == KeyCode::KEY_F19.code() || code == MACRO1 + 6 => {
+            Some(InputAction::DictationCancel)
+        }
+        code if code == KeyCode::KEY_F20.code() || code == MACRO1 + 7 => {
+            Some(InputAction::DictationToggle)
+        }
+        _ => None,
+    }
+}
+
 /// OpenRazer emits F13–F17; newer input mappings may emit KEY_MACRO1–5.
 pub fn workspace_for_event(event: InputEvent) -> Option<u32> {
     if event.event_type() != EventType::KEY || event.value() != 1 {
@@ -25,6 +50,32 @@ pub fn workspace_exists(index: u32, count: i32) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn side_buttons_use_release_events_without_reusing_system_mute_or_legacy_keys() {
+        for code in [KeyCode::KEY_F20.code(), MACRO1 + 7] {
+            assert_eq!(
+                action_for_event(InputEvent::new(1, code, 0)),
+                Some(InputAction::DictationToggle)
+            );
+            assert_eq!(action_for_event(InputEvent::new(1, code, 1)), None);
+            assert_eq!(action_for_event(InputEvent::new(1, code, 2)), None);
+        }
+        for code in [KeyCode::KEY_F19.code(), MACRO1 + 6] {
+            assert_eq!(
+                action_for_event(InputEvent::new(1, code, 0)),
+                Some(InputAction::DictationCancel)
+            );
+        }
+        for code in [
+            KeyCode::KEY_F18,
+            KeyCode::KEY_SCROLLLOCK,
+            KeyCode::KEY_PAUSE,
+            KeyCode::KEY_A,
+        ] {
+            assert_eq!(action_for_event(InputEvent::new(1, code.code(), 0)), None);
+        }
+    }
 
     #[test]
     fn both_driver_mappings_cover_all_five_macro_keys() {

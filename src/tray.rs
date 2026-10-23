@@ -1,7 +1,12 @@
 use ksni::{MenuItem, Tray, menu::StandardItem};
 use tokio::sync::mpsc;
 
-use crate::{APP_NAME, VERSION, desktop::WorkspaceState, lighting::LightingMode};
+use crate::{
+    APP_NAME, VERSION,
+    desktop::WorkspaceState,
+    dictation::{Command as DictationCommand, Phase, Status as DictationStatus},
+    lighting::LightingMode,
+};
 
 pub fn workspace_label(state: WorkspaceState) -> String {
     if state.index < 0 || state.index >= state.count {
@@ -18,6 +23,7 @@ pub fn workspace_label(state: WorkspaceState) -> String {
 #[derive(Debug, PartialEq, Eq)]
 pub enum Action {
     SetLightingMode(LightingMode),
+    Dictation(DictationCommand),
     About,
     Quit,
 }
@@ -28,6 +34,8 @@ pub struct AppTray {
     pub lighting_mode: LightingMode,
     pub lighting_controls_available: bool,
     pub workspace_status: String,
+    pub dictation_status: DictationStatus,
+    pub dictation_controls_available: bool,
 }
 
 impl Tray for AppTray {
@@ -40,7 +48,12 @@ impl Tray for AppTray {
         APP_NAME.into()
     }
     fn icon_name(&self) -> String {
-        "input-keyboard-symbolic".into()
+        if self.dictation_status.phase == Phase::Recording {
+            "audio-input-microphone-symbolic"
+        } else {
+            "input-keyboard-symbolic"
+        }
+        .into()
     }
 
     fn menu(&self) -> Vec<MenuItem<Self>> {
@@ -57,6 +70,12 @@ impl Tray for AppTray {
                 ..Default::default()
             }
             .into(),
+            StandardItem {
+                label: self.dictation_status.message.clone(),
+                enabled: false,
+                ..Default::default()
+            }
+            .into(),
             MenuItem::Separator,
             StandardItem {
                 label: match self.lighting_mode {
@@ -69,6 +88,58 @@ impl Tray for AppTray {
                     let _ = this
                         .actions
                         .try_send(Action::SetLightingMode(this.lighting_mode.toggled()));
+                }),
+                ..Default::default()
+            }
+            .into(),
+            MenuItem::Separator,
+            StandardItem {
+                label: if self.dictation_status.enabled {
+                    "✅ Diktování — Vypnout"
+                } else {
+                    "❌ Diktování — Zapnout"
+                }
+                .into(),
+                enabled: self.dictation_controls_available,
+                activate: Box::new(|this: &mut Self| {
+                    let _ = this
+                        .actions
+                        .try_send(Action::Dictation(DictationCommand::SetEnabled(
+                            !this.dictation_status.enabled,
+                        )));
+                }),
+                ..Default::default()
+            }
+            .into(),
+            StandardItem {
+                label: if self.dictation_status.phase == Phase::Recording {
+                    "Ukončit a přepsat diktování"
+                } else {
+                    "Zahájit diktování"
+                }
+                .into(),
+                enabled: self.dictation_controls_available
+                    && self.dictation_status.enabled
+                    && self.dictation_status.phase != Phase::Transcribing,
+                activate: Box::new(|this: &mut Self| {
+                    let _ = this
+                        .actions
+                        .try_send(Action::Dictation(DictationCommand::Toggle));
+                }),
+                ..Default::default()
+            }
+            .into(),
+            StandardItem {
+                label: "Zrušit diktování".into(),
+                enabled: self.dictation_controls_available
+                    && matches!(
+                        self.dictation_status.phase,
+                        Phase::Recording | Phase::Transcribing
+                    ),
+                activate: Box::new(|this: &mut Self| {
+                    let _ = this
+                        .actions
+                        .try_send(Action::Dictation(DictationCommand::Cancel));
                 }),
                 ..Default::default()
             }
@@ -109,6 +180,16 @@ pub async fn show_about() -> anyhow::Result<()> {
 mod tests {
     use super::*;
 
+    fn item<'a>(items: &'a [MenuItem<AppTray>], label: &str) -> &'a StandardItem<AppTray> {
+        items
+            .iter()
+            .find_map(|item| match item {
+                MenuItem::Standard(item) if item.label.contains(label) => Some(item),
+                _ => None,
+            })
+            .expect("Menu item must exist")
+    }
+
     #[test]
     fn workspace_labels_use_human_numbering_and_only_name_existing_macro_keys() {
         assert_eq!(
@@ -137,17 +218,15 @@ mod tests {
             lighting_mode: LightingMode::On,
             lighting_controls_available: true,
             workspace_status: "Ready".into(),
+            dictation_status: DictationStatus::new(false, Phase::Disabled),
+            dictation_controls_available: true,
         };
         let menu = tray.menu();
-        let MenuItem::Standard(about) = &menu[5] else {
-            panic!("About must be an action")
-        };
+        let about = item(&menu, "O aplikaci");
         assert!(about.label.contains(VERSION));
         (about.activate)(&mut tray);
         assert_eq!(rx.recv().await, Some(Action::About));
-        let MenuItem::Standard(quit) = &menu[6] else {
-            panic!("Quit must be an action")
-        };
+        let quit = item(&menu, "Ukončit");
         (quit.activate)(&mut tray);
         assert_eq!(rx.recv().await, Some(Action::Quit));
     }
@@ -161,11 +240,11 @@ mod tests {
             lighting_mode: LightingMode::On,
             lighting_controls_available: true,
             workspace_status: "Ready".into(),
+            dictation_status: DictationStatus::new(false, Phase::Disabled),
+            dictation_controls_available: true,
         };
         let menu = tray.menu();
-        let MenuItem::Standard(toggle) = &menu[3] else {
-            panic!("Lighting must be an action")
-        };
+        let toggle = item(&menu, "osvětlení klávesnice");
         assert_eq!(toggle.label, "✅ Vypnout osvětlení klávesnice");
         assert!(toggle.enabled);
         (toggle.activate)(&mut tray);
@@ -177,9 +256,7 @@ mod tests {
         // The main loop confirms the requested mode and publishes the new menu.
         tray.lighting_mode = LightingMode::Off;
         let menu = tray.menu();
-        let MenuItem::Standard(toggle) = &menu[3] else {
-            panic!("Lighting must remain an action")
-        };
+        let toggle = item(&menu, "osvětlení klávesnice");
         assert_eq!(toggle.label, "❌ Zapnout osvětlení klávesnice");
         assert!(
             toggle.enabled,
@@ -189,6 +266,39 @@ mod tests {
         assert_eq!(
             rx.recv().await,
             Some(Action::SetLightingMode(LightingMode::On))
+        );
+    }
+
+    #[tokio::test]
+    async fn recording_and_transcription_menu_states_offer_cancel_without_starting_another_session()
+    {
+        let (tx, mut rx) = mpsc::channel(4);
+        let mut tray = AppTray {
+            actions: tx,
+            lighting_status: "Ready".into(),
+            lighting_mode: LightingMode::On,
+            lighting_controls_available: true,
+            workspace_status: "Ready".into(),
+            dictation_status: DictationStatus::new(true, Phase::Recording),
+            dictation_controls_available: true,
+        };
+        let menu = tray.menu();
+        let stop = item(&menu, "Ukončit a přepsat");
+        assert!(stop.enabled);
+        (stop.activate)(&mut tray);
+        assert_eq!(
+            rx.recv().await,
+            Some(Action::Dictation(DictationCommand::Toggle))
+        );
+        tray.dictation_status = DictationStatus::new(true, Phase::Transcribing);
+        let menu = tray.menu();
+        assert!(!item(&menu, "Zahájit diktování").enabled);
+        let cancel = item(&menu, "Zrušit diktování");
+        assert!(cancel.enabled);
+        (cancel.activate)(&mut tray);
+        assert_eq!(
+            rx.recv().await,
+            Some(Action::Dictation(DictationCommand::Cancel))
         );
     }
 }

@@ -1,0 +1,3 @@
+[env]
+# Use the bindings shipped with the pinned whisper-rs-sys source package.
+WHISPER_DONT_GENERATE_BINDINGS = "1"

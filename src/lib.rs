@@ -1,11 +1,18 @@
 //! Linux desktop adapters and independently testable keyboard behavior.
 
+pub mod audio;
+pub mod config;
+pub mod corrections;
 pub mod desktop;
+pub mod dictation;
 pub mod input;
 mod keymap;
 pub mod lighting;
 pub mod macros;
 pub mod openrazer;
+mod sounds;
+pub mod speech;
+mod speech_lock;
 pub mod tray;
 
 pub const APP_NAME: &str = "System Interface Extensions";
