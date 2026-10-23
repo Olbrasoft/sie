@@ -1,5 +1,5 @@
 //! Resolve only the focused terminal's tmux client; never pick an unrelated pane.
-use crate::desktop::FocusTarget;
+use crate::desktop::{DeliveryMode, FocusTarget};
 use anyhow::{Context, Result, ensure};
 use std::{
     collections::HashSet,
@@ -130,9 +130,10 @@ pub async fn paste(
     target: &FocusTarget,
     pane: &str,
     text: &str,
+    mode: DeliveryMode,
     cancelled: Arc<AtomicBool>,
 ) -> Result<()> {
-    paste_checked(None, pane, text, cancelled, async {
+    paste_checked(None, pane, text, mode, cancelled, || async {
         let current = crate::desktop::focused_window(connection).await?;
         ensure!(
             current.id == target.id && resolve(&current).await.pane.as_deref() == Some(pane),
@@ -143,14 +144,18 @@ pub async fn paste(
     .await
 }
 
-async fn paste_checked(
+async fn paste_checked<F: std::future::Future<Output = Result<()>>>(
     socket: Option<&Path>,
     pane: &str,
     text: &str,
+    mode: DeliveryMode,
     cancelled: Arc<AtomicBool>,
-    verify: impl std::future::Future<Output = Result<()>>,
+    mut verify: impl FnMut() -> F,
 ) -> Result<()> {
     ensure!(!cancelled.load(Ordering::SeqCst), "Dictation canceled");
+    if text.trim().is_empty() {
+        return Ok(());
+    }
     if query_on(
         socket,
         &["display-message", "-p", "-t", pane, "#{pane_in_mode}"],
@@ -185,15 +190,28 @@ async fn paste_checked(
                 .success(),
             "Cannot stage tmux dictation"
         );
-        verify.await?;
+        verify().await?;
         ensure!(!cancelled.load(Ordering::SeqCst), "Dictation canceled");
         // -p preserves bracketed paste; -d removes only our private buffer.
-        // No keypress or Enter is generated, and the shared clipboard is untouched.
+        // The shared clipboard is untouched; submission is a separate key.
         query_on(
             socket,
             &["paste-buffer", "-p", "-d", "-b", &name, "-t", pane],
         )
         .await?;
+        if mode == DeliveryMode::Submit {
+            // Let terminal UIs finish their bracketed-paste event before Enter.
+            tokio::time::sleep(Duration::from_millis(200)).await;
+            let submitted: Result<()> = async {
+                ensure!(!cancelled.load(Ordering::SeqCst), "Dictation canceled");
+                verify().await?;
+                ensure!(!cancelled.load(Ordering::SeqCst), "Dictation canceled");
+                query_on(socket, &["send-keys", "-t", pane, "Enter"]).await?;
+                Ok(())
+            }
+            .await;
+            submitted.context("Text pasted; submission was not sent")?;
+        }
         Ok(())
     }
     .await;
@@ -248,8 +266,9 @@ mod tests {
             socket,
             "%0",
             phrase,
+            DeliveryMode::PasteOnly,
             Arc::new(AtomicBool::new(false)),
-            async { Ok(()) },
+            || async { Ok(()) },
         )
         .await
         .unwrap();
@@ -291,8 +310,9 @@ mod tests {
                 socket,
                 "%0",
                 "CANCELED",
+                DeliveryMode::PasteOnly,
                 Arc::new(AtomicBool::new(true)),
-                async { Ok(()) }
+                || async { Ok(()) }
             )
             .await
             .is_err()
@@ -302,8 +322,9 @@ mod tests {
                 socket,
                 "%0",
                 "WRONG TARGET",
+                DeliveryMode::PasteOnly,
                 Arc::new(AtomicBool::new(false)),
-                async { anyhow::bail!("focus changed") }
+                || async { anyhow::bail!("focus changed") }
             )
             .await
             .is_err()
@@ -318,6 +339,111 @@ mod tests {
                 .unwrap()
                 .contains("sie-dictation-")
         );
+    }
+
+    #[tokio::test]
+    async fn private_tmux_submits_once_and_rechecks_cancel_and_target_after_paste() {
+        for scenario in [
+            "submit",
+            "paste-only",
+            "refocus-after",
+            "cancel-after",
+            "empty",
+            "cancel-before",
+        ] {
+            let server = PrivateTmux {
+                directory: tempfile::tempdir().unwrap(),
+            };
+            let socket = server.socket();
+            let socket = Some(socket.as_path());
+            query_on(
+                socket,
+                &[
+                    "-f",
+                    "/dev/null",
+                    "new-session",
+                    "-d",
+                    "-s",
+                    "probe",
+                    "stty -echo; printf 'READY\\n'; cat -n",
+                ],
+            )
+            .await
+            .unwrap();
+            tokio::time::timeout(Duration::from_secs(2), async {
+                loop {
+                    if query_on(socket, &["capture-pane", "-p", "-t", "%0"])
+                        .await
+                        .unwrap()
+                        .contains("READY")
+                    {
+                        break;
+                    }
+                    tokio::time::sleep(Duration::from_millis(10)).await;
+                }
+            })
+            .await
+            .unwrap();
+            let cancelled = Arc::new(AtomicBool::new(scenario == "cancel-before"));
+            let text = if scenario == "empty" {
+                " \n\t"
+            } else {
+                "Příliš žluťoučký kůň."
+            };
+            let mode = if scenario == "paste-only" {
+                DeliveryMode::PasteOnly
+            } else {
+                DeliveryMode::Submit
+            };
+            let mut checks = 0;
+            let result = paste_checked(socket, "%0", text, mode, cancelled.clone(), || {
+                checks += 1;
+                let check = checks;
+                let cancelled = cancelled.clone();
+                async move {
+                    if check == 2 {
+                        ensure!(scenario != "refocus-after", "Target pane changed");
+                        if scenario == "cancel-after" {
+                            cancelled.store(true, Ordering::SeqCst);
+                        }
+                    }
+                    Ok(())
+                }
+            })
+            .await;
+            assert_eq!(
+                result.is_ok(),
+                ["submit", "paste-only", "empty"].contains(&scenario),
+                "{scenario}"
+            );
+            tokio::time::sleep(Duration::from_millis(80)).await;
+            let captured = query_on(socket, &["capture-pane", "-p", "-t", "%0"])
+                .await
+                .unwrap();
+            let lines: Vec<_> = captured
+                .lines()
+                .filter(|line| !line.trim().is_empty())
+                .collect();
+            if scenario == "submit" {
+                assert_eq!(
+                    lines.len(),
+                    2,
+                    "One Enter must submit exactly one numbered line"
+                );
+                assert_eq!(lines[0], "READY");
+                let (number, delivered) = lines[1].trim().split_once(char::is_whitespace).unwrap();
+                assert_eq!(number, "1");
+                assert_eq!(delivered.trim_start(), text);
+            } else {
+                assert_eq!(lines, ["READY"], "{scenario} must not submit any input");
+            }
+            assert!(
+                !query_on(socket, &["list-buffers", "-F", "#{buffer_name}"])
+                    .await
+                    .unwrap()
+                    .contains("sie-dictation-")
+            );
+        }
     }
 
     #[test]

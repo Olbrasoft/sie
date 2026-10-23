@@ -9,10 +9,16 @@ async fn main() -> anyhow::Result<()> {
         ["cz.olbrasoft.SieDictationProbe", "AlacrittySIEProbe"].contains(&target.wm_class.as_str()),
         "Focus a dedicated SIE dictation/PRIMARY probe first"
     );
-    sie::desktop::paste_text(
+    let mode = if std::env::args().any(|arg| arg == "--submit") {
+        sie::desktop::DeliveryMode::Submit
+    } else {
+        sie::desktop::DeliveryMode::PasteOnly
+    };
+    sie::desktop::paste_text_with_mode(
         &connection,
         &target,
         "Příliš žluťoučký kůň úpěl ďábelské ódy.",
+        mode,
         Arc::new(AtomicBool::new(false)),
     )
     .await?;

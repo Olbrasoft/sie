@@ -21,6 +21,12 @@ const SESSION: &str = "org.gnome.Mutter.RemoteDesktop.Session";
 const SUPER_L: u32 = 125;
 const WORKSPACE_KEYS: [u32; 5] = [79, 80, 81, 75, 76];
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DeliveryMode {
+    PasteOnly,
+    Submit,
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct WorkspaceState {
     pub index: i32,
@@ -240,6 +246,40 @@ impl Desktop {
         }
         Ok(())
     }
+
+    /// The selection is already staged; Enter is a separate, guarded action.
+    pub async fn paste_shortcut(
+        &self,
+        keys: &[u32],
+        target: &FocusTarget,
+        mode: DeliveryMode,
+        cancelled: &AtomicBool,
+    ) -> Result<()> {
+        ensure!(!cancelled.load(Ordering::SeqCst), "Dictation canceled");
+        ensure!(
+            focused_window(&self.connection).await?.id == target.id,
+            "Target window changed; transcription was not pasted"
+        );
+        ensure!(!cancelled.load(Ordering::SeqCst), "Dictation canceled");
+        self.send_keys(keys).await?;
+        tokio::time::sleep(Duration::from_millis(200)).await;
+        if mode == DeliveryMode::Submit {
+            let submitted: Result<()> = async {
+                ensure!(!cancelled.load(Ordering::SeqCst), "Dictation canceled");
+                ensure!(
+                    focused_window(&self.connection).await?.id == target.id,
+                    "Target window changed before submission"
+                );
+                ensure!(!cancelled.load(Ordering::SeqCst), "Dictation canceled");
+                self.send_keys(&[28]).await?;
+                tokio::time::sleep(Duration::from_millis(50)).await;
+                Ok(())
+            }
+            .await;
+            submitted.context("Text pasted; submission was not sent")?;
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -408,7 +448,20 @@ pub async fn paste_text(
     text: &str,
     cancelled: Arc<AtomicBool>,
 ) -> Result<()> {
+    paste_text_with_mode(connection, target, text, DeliveryMode::PasteOnly, cancelled).await
+}
+
+pub async fn paste_text_with_mode(
+    connection: &Connection,
+    target: &FocusTarget,
+    text: &str,
+    mode: DeliveryMode,
+    cancelled: Arc<AtomicBool>,
+) -> Result<()> {
     ensure!(!cancelled.load(Ordering::SeqCst), "Dictation canceled");
+    if text.trim().is_empty() {
+        return Ok(());
+    }
     let current = focused_window(connection).await?;
     ensure!(
         current.id == target.id,
@@ -423,7 +476,7 @@ pub async fn paste_text(
         .as_ref()
         .and_then(|context| context.pane.as_deref())
     {
-        return crate::terminal::paste(connection, &current, pane, text, cancelled).await;
+        return crate::terminal::paste(connection, &current, pane, text, mode, cancelled).await;
     }
     let primary = terminal.as_ref().is_some_and(|context| context.agent);
     let keys: &[u32] = if primary {
@@ -440,14 +493,9 @@ pub async fn paste_text(
     let mut owner = None;
     let result: Result<()> = async {
         owner = Some(stage_selection(primary, text, &cancelled).await?);
-        ensure!(!cancelled.load(Ordering::SeqCst), "Dictation canceled");
-        ensure!(
-            focused_window(connection).await?.id == target.id,
-            "Target window changed; transcription was not pasted"
-        );
-        ensure!(!cancelled.load(Ordering::SeqCst), "Dictation canceled");
-        desktop.send_keys(keys).await?;
-        tokio::time::sleep(Duration::from_millis(200)).await;
+        desktop
+            .paste_shortcut(keys, target, mode, &cancelled)
+            .await?;
         Ok(())
     }
     .await;

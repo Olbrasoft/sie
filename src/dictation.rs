@@ -28,6 +28,7 @@ use crate::{
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Command {
     Toggle,
+    FinishAndSubmit,
     Cancel,
     SetEnabled(bool),
 }
@@ -89,13 +90,18 @@ pub fn completion_is_current(active: Option<u64>, completed: u64, cancelled: boo
     active == Some(completed) && !cancelled
 }
 
+struct Delivery {
+    target: FocusTarget,
+    mode: desktop::DeliveryMode,
+}
+
 async fn complete(
     config: DictationConfig,
     connection: Connection,
     engine: Arc<SpeechEngine>,
     pcm: Vec<i16>,
     duration: i64,
-    target: FocusTarget,
+    delivery: Delivery,
     cancelled: Arc<AtomicBool>,
 ) -> Result<usize> {
     let abort = cancelled.clone();
@@ -108,7 +114,14 @@ async fn complete(
     if corrected.trim().is_empty() {
         return Ok(0);
     }
-    let pasted = desktop::paste_text(&connection, &target, &corrected, cancelled.clone()).await;
+    let pasted = desktop::paste_text_with_mode(
+        &connection,
+        &delivery.target,
+        &corrected,
+        delivery.mode,
+        cancelled.clone(),
+    )
+    .await;
     ensure!(!cancelled.load(Ordering::SeqCst), "Dictation canceled");
     if let Err(error) = database
         .save(
@@ -185,6 +198,9 @@ pub async fn run(
                     continue;
                 }
                 if active.is_some() { continue; }
+                // Submission belongs only to the recording explicitly finished
+                // with this command; it cannot arm a future or running job.
+                if command == Command::FinishAndSubmit && recording.is_none() { continue; }
                 if let Some((capture, target)) = recording.take() {
                     deadline = None;
                     match capture.stop().await {
@@ -196,11 +212,15 @@ pub async fn run(
                             let config = config.clone();
                             let connection = connection.clone();
                             let engine = engine.clone();
+                            let delivery = Delivery {
+                                target,
+                                mode: if command == Command::FinishAndSubmit { desktop::DeliveryMode::Submit } else { desktop::DeliveryMode::PasteOnly },
+                            };
                             feedback.transition(Phase::Transcribing, false);
                             status.send_replace(Status::new(true, Phase::Transcribing));
                             jobs.spawn(async move {
                                 let mut abort = AbortOnDrop::new(cancelled.clone());
-                                let result = complete(config, connection, engine, pcm, duration, target, cancelled).await;
+                                let result = complete(config, connection, engine, pcm, duration, delivery, cancelled).await;
                                 abort.disarm();
                                 (id, result)
                             });
@@ -246,7 +266,8 @@ pub async fn run(
                             status.send_replace(Status::new(true,Phase::Transcribing));
                             jobs.spawn(async move {
                                 let mut abort=AbortOnDrop::new(cancelled.clone());
-                                let result=complete(config,connection,engine,pcm,duration,target,cancelled).await;
+                                let delivery=Delivery{target,mode:desktop::DeliveryMode::PasteOnly};
+                                let result=complete(config,connection,engine,pcm,duration,delivery,cancelled).await;
                                 abort.disarm();
                                 (id,result)
                             });
@@ -301,7 +322,9 @@ fn publish_error(
     status.send_replace(Status {
         enabled,
         phase: Phase::Error,
-        message: if error.to_string().contains("Microphone is muted") {
+        message: if error.to_string().contains("submission was not sent") {
+            "Text je vložený, ale odeslání se nezdařilo".into()
+        } else if error.to_string().contains("Microphone is muted") {
             "Mikrofon je ztlumený".into()
         } else if error.to_string().contains("microphone state") {
             "Nastavený mikrofon není dostupný".into()

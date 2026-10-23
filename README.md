@@ -1,7 +1,7 @@
 # System Interface Extensions
 
 System Interface Extensions (SIE) is an MIT-licensed Rust desktop companion
-for extending how input devices control a Linux computer. Version 0.6.1 is a
+for extending how input devices control a Linux computer. Version 0.7.0 is a
 GNOME/Wayland proof of concept for the **Razer BlackWidow V4 Pro** (`1532:028d`).
 
 - A top-panel tray opens a Czech menu with **O aplikaci** (the running binary's
@@ -29,7 +29,9 @@ GNOME/Wayland proof of concept for the **Razer BlackWidow V4 Pro** (`1532:028d`)
 - Local Czech dictation uses Whisper large-v3-turbo, with CUDA or CPU inference.
   The **bottom side button** starts recording, then stops and transcribes.
   The **middle side button** cancels recording or transcription without delivery;
-  the top side button stays unassigned. The tray offers the same actions.
+  the **top side button** finishes an active recording, transcribes, pastes and
+  sends one Enter. It does nothing while idle or already transcribing.
+  The tray offers normal start/stop and cancellation.
   Original VirtualAssistant sound cues mark recording start, transcription
   (looping typing) and cancellation (paper rip).
 - An independent PostgreSQL database holds a one-time copy of VirtualAssistant's
@@ -146,7 +148,10 @@ GUI apps, ordinary terminals and CLI agents use their appropriate paste paths;
 attached tmux terminals receive text through a private buffer into the focused
 pane. `audio_source` and `sound_sink` select SIE's microphone and speakers without
 changing system audio defaults. The enable/disable menu choice applies to the current run. A recording is limited
-to five minutes by default. Output is pasted without an automatic Enter.
+to five minutes by default. Bottom-button/tray/automatic completion pastes
+without Enter; only finishing an active recording with the top side button
+submits it. Cancellation, empty output, failed paste or a changed target never
+sends Enter.
 
 ```sh
 sie --doctor

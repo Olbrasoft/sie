@@ -408,6 +408,7 @@ async fn run(
                     },
                     InputAction::DictationToggle => { let _ = dictation_commands.try_send(DictationCommand::Toggle); continue; },
                     InputAction::DictationCancel => { let _ = dictation_commands.try_send(DictationCommand::Cancel); continue; },
+                    InputAction::DictationSubmit => { let _ = dictation_commands.try_send(DictationCommand::FinishAndSubmit); continue; },
                 };
                 // Keep each remote-input session short and release it after the shortcut.
                 let result = async {

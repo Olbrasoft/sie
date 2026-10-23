@@ -2,7 +2,10 @@
 use std::{
     io::{BufRead, BufReader},
     process::{Child, Command, Stdio},
-    sync::{Arc, Mutex},
+    sync::{
+        Arc, Mutex,
+        atomic::{AtomicBool, Ordering},
+    },
 };
 
 use sie::{
@@ -60,6 +63,9 @@ struct State {
     fail_key: Option<u32>,
     active_application: String,
     active_window: String,
+    focused_window: u32,
+    switch_on_paste: bool,
+    cancel_on_paste: Option<Arc<AtomicBool>>,
 }
 type Shared = Arc<Mutex<State>>;
 
@@ -106,6 +112,14 @@ impl Session {
     fn notify_keyboard_keycode(&self, key: u32, pressed: bool) -> zbus::fdo::Result<()> {
         let mut state = self.0.lock().unwrap();
         state.keys.push((key, pressed));
+        if key == 47 && pressed {
+            if state.switch_on_paste {
+                state.focused_window = 2;
+            }
+            if let Some(cancelled) = &state.cancel_on_paste {
+                cancelled.store(true, Ordering::SeqCst);
+            }
+        }
         if pressed && state.fail_key == Some(key) {
             return Err(zbus::fdo::Error::Failed("Injected key failure".into()));
         }
@@ -120,6 +134,19 @@ impl Session {
             state.current = index as i32;
         }
         Ok(())
+    }
+}
+
+struct Windows(Shared);
+#[zbus::interface(name = "org.gnome.Shell.Extensions.Windows")]
+impl Windows {
+    fn list(&self) -> String {
+        let focus = self.0.lock().unwrap().focused_window;
+        serde_json::json!([
+            {"id":1,"wm_class":"org.gnome.TextEditor","focus":focus==1},
+            {"id":2,"wm_class":"OtherApplication","focus":focus==2}
+        ])
+        .to_string()
     }
 }
 
@@ -164,6 +191,11 @@ async fn services(bus: &Bus, state: Shared, dimensions: Vec<i32>) -> Connection 
         .unwrap()
         .serve_at("/org/olbrasoft/Desktop", Tracker(state.clone()))
         .unwrap()
+        .serve_at(
+            "/org/gnome/Shell/Extensions/Windows",
+            Windows(state.clone()),
+        )
+        .unwrap()
         .serve_at("/org/gnome/Mutter/RemoteDesktop", Mutter)
         .unwrap()
         .serve_at(
@@ -197,6 +229,8 @@ async fn services(bus: &Bus, state: Shared, dimensions: Vec<i32>) -> Connection 
         .name("org.gnome.Mutter.RemoteDesktop")
         .unwrap()
         .name("org.razer")
+        .unwrap()
+        .name("org.gnome.Shell")
         .unwrap()
         .build()
         .await
@@ -580,4 +614,119 @@ async fn desktop_monitor_context_uses_fresh_focus_tracker_values() {
     let second = sie::context::snapshot(&connection).await.unwrap();
     assert_eq!(second.application, "org.gnome.TextEditor.desktop");
     assert_eq!(second.window_title, "Český dokument");
+}
+
+#[tokio::test]
+async fn submit_sends_one_enter_after_each_successful_clipboard_paste_path() {
+    use sie::desktop::{DeliveryMode, FocusTarget};
+    for keys in [&[29, 47][..], &[29, 42, 47][..], &[42, 110][..]] {
+        let bus = Bus::start();
+        let state = Arc::new(Mutex::new(State {
+            focused_window: 1,
+            ..Default::default()
+        }));
+        let _server = services(&bus, state.clone(), vec![8, 23]).await;
+        let connection = bus.connection().await;
+        let target: FocusTarget =
+            serde_json::from_value(serde_json::json!({"id":1,"wm_class":"org.gnome.TextEditor"}))
+                .unwrap();
+        let desktop = Desktop::connect(&connection).await.unwrap();
+        desktop
+            .paste_shortcut(keys, &target, DeliveryMode::Submit, &AtomicBool::new(false))
+            .await
+            .unwrap();
+        desktop.stop().await.unwrap();
+        let mut expected: Vec<_> = keys.iter().map(|key| (*key, true)).collect();
+        expected.extend(keys.iter().rev().map(|key| (*key, false)));
+        expected.extend([(28, true), (28, false)]);
+        let state = state.lock().unwrap();
+        assert_eq!(state.keys, expected);
+        assert_eq!((state.starts, state.stops), (1, 1));
+    }
+}
+
+#[tokio::test]
+async fn failed_canceled_refocused_and_paste_only_deliveries_never_send_enter() {
+    use sie::desktop::{DeliveryMode, FocusTarget};
+    for scenario in [
+        "paste-only",
+        "paste-failure",
+        "cancel-before",
+        "cancel-after",
+        "refocus-before",
+        "refocus-after",
+    ] {
+        let bus = Bus::start();
+        let cancelled = Arc::new(AtomicBool::new(scenario == "cancel-before"));
+        let state = Arc::new(Mutex::new(State {
+            focused_window: if scenario == "refocus-before" { 2 } else { 1 },
+            fail_key: (scenario == "paste-failure").then_some(47),
+            switch_on_paste: scenario == "refocus-after",
+            cancel_on_paste: (scenario == "cancel-after").then_some(cancelled.clone()),
+            ..Default::default()
+        }));
+        let _server = services(&bus, state.clone(), vec![8, 23]).await;
+        let connection = bus.connection().await;
+        let target: FocusTarget =
+            serde_json::from_value(serde_json::json!({"id":1,"wm_class":"org.gnome.TextEditor"}))
+                .unwrap();
+        let desktop = Desktop::connect(&connection).await.unwrap();
+        let mode = if scenario == "paste-only" {
+            DeliveryMode::PasteOnly
+        } else {
+            DeliveryMode::Submit
+        };
+        let result = desktop
+            .paste_shortcut(&[29, 47], &target, mode, &cancelled)
+            .await;
+        assert_eq!(result.is_ok(), scenario == "paste-only", "{scenario}");
+        desktop.stop().await.unwrap();
+        let state = state.lock().unwrap();
+        assert!(!state.keys.iter().any(|(key, _)| *key == 28), "{scenario}");
+        if ["cancel-before", "refocus-before"].contains(&scenario) {
+            assert!(state.keys.is_empty());
+        } else {
+            assert_eq!(
+                state.keys,
+                [(29, true), (47, true), (47, false), (29, false)]
+            );
+        }
+    }
+}
+
+#[tokio::test]
+async fn empty_or_canceled_submit_cannot_stage_text_or_start_input() {
+    use sie::desktop::{DeliveryMode, FocusTarget};
+    let bus = Bus::start();
+    let state = Shared::default();
+    let _server = services(&bus, state.clone(), vec![8, 23]).await;
+    let connection = bus.connection().await;
+    let target: FocusTarget =
+        serde_json::from_value(serde_json::json!({"id":1,"wm_class":"org.gnome.TextEditor"}))
+            .unwrap();
+    for text in ["", " \n\t"] {
+        sie::desktop::paste_text_with_mode(
+            &connection,
+            &target,
+            text,
+            DeliveryMode::Submit,
+            Arc::new(AtomicBool::new(false)),
+        )
+        .await
+        .unwrap();
+    }
+    assert!(
+        sie::desktop::paste_text_with_mode(
+            &connection,
+            &target,
+            "Canceled",
+            DeliveryMode::Submit,
+            Arc::new(AtomicBool::new(true))
+        )
+        .await
+        .is_err()
+    );
+    let state = state.lock().unwrap();
+    assert!(state.keys.is_empty());
+    assert_eq!(state.starts, 0);
 }
