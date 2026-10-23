@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.gnome.desktop.wm.keybindings" path="/org/gnome/desktop/wm/keybindings/">
+    <key name="switch-to-workspace-1" type="as"><default>['&lt;Super&gt;KP_1']</default></key>
+    <key name="switch-to-workspace-2" type="as"><default>['&lt;Super&gt;KP_2']</default></key>
+    <key name="switch-to-workspace-3" type="as"><default>['&lt;Super&gt;KP_3']</default></key>
+    <key name="switch-to-workspace-4" type="as"><default>['&lt;Super&gt;KP_4']</default></key>
+    <key name="switch-to-workspace-5" type="as"><default>['&lt;Super&gt;KP_5']</default></key>
+  </schema>
+</schemalist>
