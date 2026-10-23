@@ -1,13 +1,13 @@
 # Reveal the controlled media player
 
-Starting with SIE 0.6.0, pressing the BlackWidow V4 Pro Play/Pause button also
-activates the controlled player's existing window on its existing GNOME
+Starting with SIE 0.6.1, starting/resuming playback with the BlackWidow V4 Pro
+Play/Pause button activates the controlled player's existing window on its existing GNOME
 workspace. For example, a press in the terminal on workspace 1 reveals the
 browser on workspace 5 and its existing video tab. Playback toggles once through
-GNOME's native handler; SIE never sends a second playback command.
+GNOME's native handler; SIE never sends a second playback command. Pausing a
+background video keeps the current workspace, window and browser tab focused.
 
-Only a nonrepeating press of this supported keyboard's Play/Pause key requests
-focus. Space, mouse controls, playback property changes and other media buttons
+Only a nonrepeating press that starts/resumes playback requests focus. Space, mouse controls, playback property changes and other media buttons
 keep their existing focus behavior. Their playback changes still update the
 Play/Pause LED. Turning keyboard lighting off does not disable media controls.
 
@@ -18,7 +18,16 @@ the optional D-Bus observer is unavailable, it uses the same remembered target
 as the playback indicator. It reads the target process, title and URL from
 MPRIS and uses the installed Window Calls extension's
 `org.gnome.Shell.Extensions.Windows` interface to activate an existing window.
-That interface switches to the window's workspace; SIE does not create
+The media watcher preserves each player's previous playback state and the time
+of its last transition, including when the state signal arrives just before
+the queued input action. The action retains the kernel's physical press time,
+so a recent mouse start before a pause press is not mistaken for that press
+starting playback. A resume request waits up to 1.2 seconds for actual Playing
+confirmation from that same target. Pausing and unknown/unconfirmed states do
+not request browser activation or window focus. State tracking and LED updates
+continue independently.
+
+The window interface switches to the window's workspace; SIE does not create
 workspaces, move windows or assume a fixed workspace number.
 
 Native players can expose MPRIS `Raise`; SIE also resolves and activates their

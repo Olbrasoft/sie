@@ -332,6 +332,7 @@ async fn run(
             broker,
             focus_rx,
             native_hint_rx,
+            media_rx.clone(),
             focus_status,
         ));
         tasks.spawn(media::watch(
@@ -393,13 +394,13 @@ async fn run(
                 },
             },
             Some(_) = about.join_next(), if !about.is_empty() => {},
-            Some(action) = macro_rx.recv(), if !tray_only => {
+            Some((action, at)) = macro_rx.recv(), if !tray_only => {
                 let index = match action {
                     InputAction::Workspace(index) => index,
                     InputAction::MediaReveal => {
                         if let Some(fallback) = media_rx.borrow().target.clone() {
                             let _ = focus_requests.try_send(media_focus::Request {
-                                at: std::time::Instant::now(),
+                                at,
                                 fallback,
                             });
                         }

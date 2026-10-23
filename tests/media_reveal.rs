@@ -4,9 +4,10 @@ use std::{
     io::{BufRead, BufReader},
     process::{Child, Command, Stdio},
     sync::{Arc, Mutex},
-    time::Duration,
+    time::{Duration, Instant},
 };
 use tokio::process::Command as AsyncCommand;
+use tokio::sync::{mpsc, watch};
 use zbus::{
     Connection,
     connection::Builder,
@@ -100,6 +101,222 @@ impl Windows {
         assert_eq!(id, 2);
         s.activated = Some(id);
         s.workspace = 4;
+    }
+}
+
+async fn serve_player(bus: &Bus, state: &Arc<Mutex<State>>) -> Connection {
+    Builder::address(bus.address.as_str())
+        .unwrap()
+        .name("org.mpris.MediaPlayer2.vlc")
+        .unwrap()
+        .name("org.gnome.Shell")
+        .unwrap()
+        .serve_at(media::PLAYER_PATH, Root(state.clone()))
+        .unwrap()
+        .serve_at(media::PLAYER_PATH, Player(state.clone()))
+        .unwrap()
+        .serve_at(
+            "/org/gnome/Shell/Extensions/Windows",
+            Windows(state.clone()),
+        )
+        .unwrap()
+        .build()
+        .await
+        .unwrap()
+}
+
+fn playback(value: media::Playback, before: Option<media::Playback>) -> media::Status {
+    media::Status {
+        playback: value,
+        player: Some("VLC".into()),
+        target: Some("org.mpris.MediaPlayer2.vlc".into()),
+        transition: before.map(|before| media::Transition {
+            at: Instant::now(),
+            before,
+        }),
+    }
+}
+
+async fn run_press(
+    bus: &Bus,
+    initial: media::Status,
+    destination: &str,
+) -> (
+    tokio::task::JoinHandle<()>,
+    watch::Sender<media::Status>,
+    watch::Receiver<Option<String>>,
+    mpsc::Sender<media_focus::Request>,
+) {
+    run_press_at(bus, initial, destination, Instant::now()).await
+}
+
+async fn run_press_at(
+    bus: &Bus,
+    initial: media::Status,
+    destination: &str,
+    pressed: Instant,
+) -> (
+    tokio::task::JoinHandle<()>,
+    watch::Sender<media::Status>,
+    watch::Receiver<Option<String>>,
+    mpsc::Sender<media_focus::Request>,
+) {
+    let (requests, receiver) = mpsc::channel(8);
+    let (hints, hint_rx) = watch::channel(Some(media_focus::NativeHint {
+        at: pressed,
+        destination: destination.into(),
+    }));
+    let (states, state_rx) = watch::channel(initial);
+    let (status, status_rx) = watch::channel(Some("Awaiting action".into()));
+    let task = tokio::spawn(media_focus::run(
+        bus.connection().await,
+        Arc::new(browser::Broker::default()),
+        receiver,
+        hint_rx,
+        state_rx,
+        status,
+    ));
+    requests
+        .send(media_focus::Request {
+            at: pressed,
+            fallback: "org.mpris.MediaPlayer2.vlc".into(),
+        })
+        .await
+        .unwrap();
+    // Keep the hint available; closing the request channel only ends the actor
+    // after its current request completes.
+    drop(hints);
+    (task, states, status_rx, requests)
+}
+
+async fn finished(status: &mut watch::Receiver<Option<String>>) {
+    tokio::time::timeout(Duration::from_secs(3), status.changed())
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(*status.borrow_and_update(), None);
+}
+
+#[tokio::test]
+async fn resuming_waits_for_actual_playback_then_reveals_the_existing_workspace() {
+    let bus = Bus::new();
+    let state = Arc::new(Mutex::new(State::default()));
+    let server = serve_player(&bus, &state).await;
+    let (task, states, mut status, requests) = run_press(
+        &bus,
+        playback(media::Playback::Paused, None),
+        server.unique_name().unwrap().as_str(),
+    )
+    .await;
+    tokio::time::sleep(Duration::from_millis(100)).await;
+    assert!(state.lock().unwrap().activated.is_none());
+    assert!(!status.has_changed().unwrap());
+    states.send_replace(playback(
+        media::Playback::Playing,
+        Some(media::Playback::Paused),
+    ));
+    finished(&mut status).await;
+    drop(requests);
+    task.await.unwrap();
+    let state = state.lock().unwrap();
+    assert_eq!(state.activated, Some(2));
+    assert_eq!(state.workspace, 4);
+    assert_eq!(state.raises, 1);
+    assert_eq!(state.toggles, 0);
+}
+
+#[tokio::test]
+async fn pausing_keeps_focus_even_with_a_delayed_update_and_later_mouse_resume() {
+    let bus = Bus::new();
+    let state = Arc::new(Mutex::new(State::default()));
+    let _server = serve_player(&bus, &state).await;
+    let (task, states, mut status, requests) = run_press(
+        &bus,
+        playback(media::Playback::Playing, None),
+        "org.mpris.MediaPlayer2.vlc",
+    )
+    .await;
+    finished(&mut status).await;
+    tokio::time::sleep(Duration::from_millis(100)).await;
+    states.send_replace(playback(
+        media::Playback::Paused,
+        Some(media::Playback::Playing),
+    ));
+    states.send_replace(playback(
+        media::Playback::Playing,
+        Some(media::Playback::Paused),
+    ));
+    tokio::time::sleep(Duration::from_millis(50)).await;
+    drop(requests);
+    task.await.unwrap();
+    let state = state.lock().unwrap();
+    assert!(state.activated.is_none());
+    assert_eq!(state.workspace, 0);
+    assert_eq!(state.raises, 0);
+    assert_eq!(state.toggles, 0);
+}
+
+#[tokio::test]
+async fn state_changes_received_just_before_the_input_action_keep_the_toggle_direction() {
+    for (now, before, reveal) in [
+        (media::Playback::Paused, media::Playback::Playing, false),
+        (media::Playback::Playing, media::Playback::Paused, true),
+    ] {
+        let bus = Bus::new();
+        let state = Arc::new(Mutex::new(State::default()));
+        let _server = serve_player(&bus, &state).await;
+        let pressed = Instant::now();
+        let initial = playback(now, Some(before));
+        // Model an input action queued behind other main-loop work while the
+        // independent media watcher has already received the state signal.
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        let (task, _states, mut status, requests) =
+            run_press_at(&bus, initial, "org.mpris.MediaPlayer2.vlc", pressed).await;
+        finished(&mut status).await;
+        drop(requests);
+        task.await.unwrap();
+        let state = state.lock().unwrap();
+        assert_eq!(state.activated.is_some(), reveal);
+        assert_eq!(state.raises, usize::from(reveal));
+        assert_eq!(state.toggles, 0);
+    }
+}
+
+#[tokio::test]
+async fn pausing_just_after_a_mouse_start_does_not_reveal_the_video() {
+    let bus = Bus::new();
+    let state = Arc::new(Mutex::new(State::default()));
+    let _server = serve_player(&bus, &state).await;
+    let (task, _states, mut status, requests) = run_press(
+        &bus,
+        playback(media::Playback::Playing, Some(media::Playback::Paused)),
+        "org.mpris.MediaPlayer2.vlc",
+    )
+    .await;
+    finished(&mut status).await;
+    drop(requests);
+    task.await.unwrap();
+    let state = state.lock().unwrap();
+    assert!(state.activated.is_none());
+    assert_eq!(state.raises, 0);
+    assert_eq!(state.toggles, 0);
+}
+
+#[tokio::test]
+async fn unknown_or_unconfirmed_playback_never_moves_focus() {
+    for initial in [media::Playback::Unavailable, media::Playback::Paused] {
+        let bus = Bus::new();
+        let state = Arc::new(Mutex::new(State::default()));
+        let _server = serve_player(&bus, &state).await;
+        let (task, _states, mut status, requests) =
+            run_press(&bus, playback(initial, None), "org.mpris.MediaPlayer2.vlc").await;
+        finished(&mut status).await;
+        drop(requests);
+        task.await.unwrap();
+        let state = state.lock().unwrap();
+        assert!(state.activated.is_none());
+        assert_eq!(state.raises, 0);
+        assert_eq!(state.toggles, 0);
     }
 }
 #[tokio::test]

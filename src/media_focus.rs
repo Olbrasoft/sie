@@ -195,11 +195,75 @@ pub async fn reveal(connection: &Connection, broker: &Broker, name: &str) -> Res
         .or_else(|_| choose_window(&current, target.pid, &target.desktop, None))?;
     activate(connection, id).await
 }
+
+async fn matches_destination(connection: &Connection, state: &media::Status, name: &str) -> bool {
+    let Some(target) = &state.target else {
+        return false;
+    };
+    if target == name {
+        return true;
+    }
+    // The native observer may report the unique owner rather than its MPRIS name.
+    let Ok(daemon) = zbus::fdo::DBusProxy::new(connection).await else {
+        return false;
+    };
+    let Ok(target) = target.as_str().try_into() else {
+        return false;
+    };
+    daemon
+        .get_name_owner(target)
+        .await
+        .is_ok_and(|owner| owner.as_str() == name)
+}
+
+async fn playback_started(
+    connection: &Connection,
+    states: &mut watch::Receiver<media::Status>,
+    name: &str,
+    pressed: Instant,
+) -> bool {
+    // The input action retains the kernel's physical press time, so a signal
+    // processed before the queued action still follows the actual press.
+    let earliest = pressed;
+    let initial = states.borrow_and_update().clone();
+    if !matches_destination(connection, &initial, name).await {
+        return false;
+    }
+    let before = match initial.transition {
+        Some(transition) if transition.at >= earliest => transition.before,
+        _ => initial.playback,
+    };
+    if before != media::Playback::Paused {
+        // Pausing a playing target must never request focus, even if its
+        // PlaybackStatus update is delayed or a later Space press resumes it.
+        return false;
+    }
+    tokio::time::timeout(Duration::from_millis(1200), async {
+        loop {
+            let state = states.borrow_and_update().clone();
+            if matches_destination(connection, &state, name).await
+                && state.playback == media::Playback::Playing
+                && state.transition.is_some_and(|transition| {
+                    transition.at >= earliest && transition.before == media::Playback::Paused
+                })
+            {
+                return true;
+            }
+            if states.changed().await.is_err() {
+                return false;
+            }
+        }
+    })
+    .await
+    .unwrap_or(false)
+}
+
 pub async fn run(
     connection: Connection,
     broker: Arc<Broker>,
     mut requests: mpsc::Receiver<Request>,
     mut hints: watch::Receiver<Option<NativeHint>>,
+    mut states: watch::Receiver<media::Status>,
     status: watch::Sender<Option<String>>,
 ) {
     while let Some(mut request) = requests.recv().await {
@@ -231,6 +295,10 @@ pub async fn run(
         } else {
             request.fallback
         };
+        if !playback_started(&connection, &mut states, &destination, request.at).await {
+            status.send_replace(None);
+            continue;
+        }
         match tokio::time::timeout(
             Duration::from_secs(6),
             reveal(&connection, &broker, &destination),

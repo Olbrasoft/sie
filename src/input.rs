@@ -1,4 +1,8 @@
-use std::{collections::HashSet, path::PathBuf, time::Duration};
+use std::{
+    collections::HashSet,
+    path::PathBuf,
+    time::{Duration, Instant},
+};
 
 use anyhow::{Context, Result};
 use evdev::{Device, KeyCode};
@@ -45,7 +49,7 @@ pub fn discover() -> Result<Vec<(PathBuf, Device)>> {
 }
 
 /// No exclusive grab, replay of ordinary typing, or storage of key events.
-pub async fn monitor(tx: mpsc::Sender<InputAction>) {
+pub async fn monitor(tx: mpsc::Sender<(InputAction, Instant)>) {
     let mut tasks = JoinSet::new();
     let mut active = HashSet::new();
     let mut scan = tokio::time::interval(Duration::from_secs(3));
@@ -75,8 +79,18 @@ pub async fn monitor(tx: mpsc::Sender<InputAction>) {
                                         let _keymap = keymap;
                                         while let Ok(event) = stream.next_event().await {
                                             if let Some(action) = action_for_event(event) {
+                                                let now = Instant::now();
+                                                let at = if action == InputAction::MediaReveal {
+                                                    // Linux evdev timestamps use CLOCK_REALTIME by default.
+                                                    // Preserve the physical press time across queue delays;
+                                                    // ordinary typing is never timestamped or retained.
+                                                    let Some(at) = event.timestamp().elapsed().ok()
+                                                        .filter(|age| *age < Duration::from_secs(2))
+                                                        .and_then(|age| now.checked_sub(age)) else { continue; };
+                                                    at
+                                                } else { now };
                                                 // Bound pending actions; stale macro presses should not accumulate.
-                                                let _ = tx.try_send(action);
+                                                let _ = tx.try_send((action, at));
                                             }
                                         }
                                         path

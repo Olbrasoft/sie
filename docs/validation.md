@@ -3,6 +3,21 @@
 Validated on 2026-10-23 with GNOME Shell 48.7 on Wayland, OpenRazer 3.12.4,
 the connected Razer BlackWidow V4 Pro (`1532:028d`), and Rust 1.99.0.
 
+## Resume-only media reveal in version 0.6.1
+
+- The user reported that version 0.6.0 reveals the player even when pausing a
+  background video. The requested behavior now keeps the current workspace,
+  window and tab focused on pause, and reveals only when starting/resuming.
+- Formatting, Clippy and 65 isolated Rust tests passed. New private D-Bus actor
+  checks cover delayed playback confirmation, pause without activation/Raise,
+  unique native destinations, delayed input processing, a very recent mouse
+  start, unknown/unconfirmed states and zero additional playback commands.
+- The media watcher retains the pre-transition state and its timestamp across
+  unchanged refreshes. Media actions retain their physical evdev timestamp;
+  input-queue delays cannot reverse the interpreted toggle direction.
+- Physical start-versus-pause verification of this patch remains separate from
+  automated checks in the deployment issue.
+
 ## Media reveal in version 0.6.0
 
 - Formatting, Clippy with warnings denied, 59 isolated Rust tests and four
