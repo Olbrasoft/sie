@@ -118,12 +118,6 @@ pub fn choose_window(
     if let Some(title) = title {
         candidates.retain(|w| title_matches(&w.title, title));
     }
-    if candidates.len() > 1 {
-        let focused: Vec<_> = candidates.iter().filter(|w| w.focus).collect();
-        if focused.len() == 1 {
-            return Ok(focused[0].id);
-        }
-    }
     ensure!(
         candidates.len() == 1,
         "Player window is missing or ambiguous"
@@ -287,5 +281,9 @@ mod tests {
         assert!(choose_window(&windows, 10, "", Some("Missing")).is_err());
         assert!(choose_window(&windows, 10, "", None).is_err());
         assert!(choose_window(&windows, 0, "", None).is_err());
+        let mut duplicate = windows[1].clone();
+        duplicate.id = 4;
+        duplicate.focus = true;
+        assert!(choose_window(&[windows[1].clone(), duplicate], 10, "", Some("Video")).is_err());
     }
 }

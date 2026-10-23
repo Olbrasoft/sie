@@ -29,6 +29,15 @@ struct Pending {
     session: u64,
     reply: oneshot::Sender<Value>,
 }
+struct PendingGuard<'a> {
+    entries: &'a Mutex<HashMap<u64, Pending>>,
+    id: u64,
+}
+impl Drop for PendingGuard<'_> {
+    fn drop(&mut self) {
+        self.entries.lock().unwrap().remove(&self.id);
+    }
+}
 pub struct Broker {
     sessions: Mutex<HashMap<u64, Arc<Session>>>,
     pending: Mutex<HashMap<u64, Pending>>,
@@ -117,7 +126,12 @@ impl Broker {
                 reply: tx,
             },
         );
-        let result = async {
+        // Outer reveal timeouts can cancel this future before its own timeout.
+        let _pending = PendingGuard {
+            entries: &self.pending,
+            id,
+        };
+        async {
             session
                 .tx
                 .try_send(serde_json::to_string(&command)?)
@@ -131,9 +145,7 @@ impl Broker {
             );
             Ok(reply)
         }
-        .await;
-        self.pending.lock().unwrap().remove(&id);
-        result
+        .await
     }
     pub async fn activate(&self, pid: u32, title: &str, url: &str) -> Result<Tab> {
         let sessions: Vec<_> = self
@@ -363,6 +375,12 @@ mod tests {
         assert!(!request.is_finished());
         broker.reply(session, id, json!({"ok":true,"tabs":[]}));
         assert!(request.await.unwrap().is_ok());
+        assert!(broker.pending.lock().unwrap().is_empty());
+        let b = broker.clone();
+        let canceled = tokio::spawn(async move { b.request(session, json!({"op":"find"})).await });
+        let _ = broker.next_command(session).await;
+        canceled.abort();
+        let _ = canceled.await;
         assert!(broker.pending.lock().unwrap().is_empty());
         broker.disconnect(session);
         assert!(broker.request(session, json!({})).await.is_err());
