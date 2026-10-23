@@ -58,12 +58,22 @@ struct State {
     stops: usize,
     fail_press: bool,
     fail_key: Option<u32>,
+    active_application: String,
+    active_window: String,
 }
 type Shared = Arc<Mutex<State>>;
 
 struct Tracker(Shared);
 #[zbus::interface(name = "org.olbrasoft.Desktop")]
 impl Tracker {
+    #[zbus(property)]
+    fn active_application(&self) -> String {
+        self.0.lock().unwrap().active_application.clone()
+    }
+    #[zbus(property)]
+    fn active_window(&self) -> String {
+        self.0.lock().unwrap().active_window.clone()
+    }
     #[zbus(property)]
     fn total_workspaces(&self) -> i32 {
         self.0.lock().unwrap().count
@@ -546,4 +556,28 @@ async fn canceled_dictation_cannot_touch_the_clipboard_or_start_an_input_session
     let state = state.lock().unwrap();
     assert!(state.keys.is_empty());
     assert_eq!(state.starts, 0);
+}
+
+#[tokio::test]
+async fn desktop_monitor_context_uses_fresh_focus_tracker_values() {
+    let bus = Bus::start();
+    let state = Shared::default();
+    let _server = services(&bus, state.clone(), vec![8, 23]).await;
+    let connection = bus.connection().await;
+    {
+        let mut state = state.lock().unwrap();
+        state.active_application = "Alacritty.desktop".into();
+        state.active_window = "Codex".into();
+    }
+    let first = sie::context::snapshot(&connection).await.unwrap();
+    assert_eq!(first.application, "Alacritty.desktop");
+    assert_eq!(first.window_title, "Codex");
+    {
+        let mut state = state.lock().unwrap();
+        state.active_application = "org.gnome.TextEditor.desktop".into();
+        state.active_window = "Český dokument".into();
+    }
+    let second = sie::context::snapshot(&connection).await.unwrap();
+    assert_eq!(second.application, "org.gnome.TextEditor.desktop");
+    assert_eq!(second.window_title, "Český dokument");
 }

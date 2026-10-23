@@ -23,7 +23,7 @@ pub struct Recording {
 impl Recording {
     pub async fn start(source: Option<&str>, max_seconds: u64) -> Result<Self> {
         let mute = Command::new("pactl")
-            .args(["get-source-mute", "@DEFAULT_SOURCE@"])
+            .args(["get-source-mute", source.unwrap_or("@DEFAULT_SOURCE@")])
             .env("LC_ALL", "C")
             .output()
             .await

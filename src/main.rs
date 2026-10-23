@@ -207,6 +207,48 @@ async fn doctor(connection: &Connection, dictation: &DictationConfig) -> Result<
             }
         );
         check!(
+            "Desktop context",
+            sie::context::snapshot(connection)
+                .await
+                .map(|context| context.application)
+        );
+        for (label, operation, device) in [
+            (
+                "Dictation microphone",
+                "get-source-mute",
+                dictation
+                    .audio_source
+                    .as_deref()
+                    .unwrap_or("@DEFAULT_SOURCE@"),
+            ),
+            (
+                "Dictation sound output",
+                "get-sink-mute",
+                dictation.sound_sink.as_deref().unwrap_or("@DEFAULT_SINK@"),
+            ),
+        ] {
+            check!(
+                label,
+                async {
+                    let output = tokio::process::Command::new("pactl")
+                        .args([operation, device])
+                        .env("LC_ALL", "C")
+                        .output()
+                        .await?;
+                    anyhow::ensure!(
+                        output.status.success(),
+                        "Configured audio device is unavailable"
+                    );
+                    anyhow::Ok(format!(
+                        "{} ({})",
+                        device,
+                        String::from_utf8_lossy(&output.stdout).trim()
+                    ))
+                }
+                .await
+            );
+        }
+        check!(
             "Dictation database",
             async {
                 Database::connect(&dictation.database_url)

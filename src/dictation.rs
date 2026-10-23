@@ -303,6 +303,8 @@ fn publish_error(
         phase: Phase::Error,
         message: if error.to_string().contains("Microphone is muted") {
             "Mikrofon je ztlumený".into()
+        } else if error.to_string().contains("microphone state") {
+            "Nastavený mikrofon není dostupný".into()
         } else if error.to_string().contains("model is missing") {
             "Chybí model pro diktování".into()
         } else if error.to_string().contains("focus")

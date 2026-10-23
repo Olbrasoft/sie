@@ -98,8 +98,8 @@ stopping each short input session. No new GNOME extension was installed.
 
 ## Local dictation in version 0.4.0
 
-- Formatting and Clippy with warnings denied passed. The isolated suite has 30
-  unit tests and 11 private D-Bus integration tests. The additional PostgreSQL
+- Formatting and Clippy with warnings denied passed. The isolated suite has 33
+  unit tests and 12 private D-Bus integration tests. The additional PostgreSQL
   test passed against a dedicated `test_sie_dictation` database, including a
   repeated migration, synthetic corrections, filters, history and usage counts.
 - The one-time import copied 191 correction rows (190 active) into the new `sie`
@@ -155,3 +155,24 @@ microphone is used by default CI tests.
   repeat was safely refused after focus moved away from the test window; it is
   not counted as successful delivery. The competing owner was not identified;
   no clipboard-manager configuration was changed.
+
+### Terminal routing and explicit audio devices
+
+- The user reported that real terminal dictation still failed despite a successful
+  dedicated probe. This was treated as an unresolved terminal regression, not
+  generalized from the earlier GUI/terminal smoke results.
+- Reviewed VirtualAssistant's DesktopMonitorBackgroundService, DesktopContextService,
+  WaylandTerminalDetector, TerminalAgentIdentifier, paste routing and tmux guard.
+  SIE now reads the same focus tracker, combines window ID/title/PID, distinguishes
+  GUI/ordinary-terminal/CLI targets and resolves only the actual attached tmux
+  client pane. Tmux delivery uses a private buffer, bypassing PRIMARY races.
+- A private tmux server test passed: Czech Unicode reached exactly its target,
+  no Enter was sent, only that pane left copy-mode, a different pane remained in
+  copy-mode, canceled/refocused output was suppressed and private buffers were
+  removed. No real tmux pane or logged-in desktop is touched by this test.
+- The StreamCam audio card was initially off. Its analog input profile was enabled,
+  and SIE config now explicitly selects that camera capture node and the existing
+  monitor HDMI sink. Their mute states were checked independently. System defaults
+  remain TONOR capture and the analog speaker output.
+- Final user verification of actual terminal delivery and monitor/camera routing
+  after these changes is pending.

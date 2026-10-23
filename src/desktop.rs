@@ -247,6 +247,10 @@ pub struct FocusTarget {
     pub id: u32,
     pub wm_class: String,
     #[serde(default)]
+    pub title: String,
+    #[serde(default)]
+    pub pid: u32,
+    #[serde(default)]
     focus: bool,
 }
 
@@ -262,6 +266,15 @@ impl FocusTarget {
             "wezterm",
             "kgx",
             "org.gnome.console",
+            "org.gnome.terminal",
+            "xfce4-terminal",
+            "mate-terminal",
+            "tilix",
+            "foot",
+            "xterm",
+            "urxvt",
+            "terminology",
+            "opencode",
         ]
         .iter()
         .any(|name| class.contains(name))
@@ -278,10 +291,21 @@ pub async fn focused_window(connection: &Connection) -> Result<FocusTarget> {
     .await?;
     let json: String = proxy.call("List", &()).await?;
     let windows: Vec<FocusTarget> = serde_json::from_str(&json)?;
-    windows
+    let mut target = windows
         .into_iter()
         .find(|window| window.focus)
-        .context("No focused target window")
+        .context("No focused target window")?;
+    // The Shell extension continuously tracks focus; read its current snapshot
+    // rather than inferring the input target from the mouse position.
+    if let Ok(context) = crate::context::snapshot(connection).await
+        && context
+            .application
+            .trim_end_matches(".desktop")
+            .eq_ignore_ascii_case(&target.wm_class)
+    {
+        target.title = context.window_title;
+    }
+    Ok(target)
 }
 
 async fn clipboard_read(primary: bool) -> Option<(String, Vec<u8>)> {
@@ -385,11 +409,30 @@ pub async fn paste_text(
     cancelled: Arc<AtomicBool>,
 ) -> Result<()> {
     ensure!(!cancelled.load(Ordering::SeqCst), "Dictation canceled");
+    let current = focused_window(connection).await?;
     ensure!(
-        focused_window(connection).await?.id == target.id,
+        current.id == target.id,
         "Target window changed; transcription was not pasted"
     );
-    let primary = target.is_terminal();
+    let terminal = if current.is_terminal() {
+        Some(crate::terminal::resolve(&current).await)
+    } else {
+        None
+    };
+    if let Some(pane) = terminal
+        .as_ref()
+        .and_then(|context| context.pane.as_deref())
+    {
+        return crate::terminal::paste(connection, &current, pane, text, cancelled).await;
+    }
+    let primary = terminal.as_ref().is_some_and(|context| context.agent);
+    let keys: &[u32] = if primary {
+        &[42, 110]
+    } else if terminal.is_some() {
+        &[29, 42, 47]
+    } else {
+        &[29, 47]
+    };
     let previous = clipboard_read(primary).await;
     // Complete compositor setup before staging so other clipboard owners have
     // the smallest possible interval in which to replace the selection.
@@ -403,9 +446,7 @@ pub async fn paste_text(
             "Target window changed; transcription was not pasted"
         );
         ensure!(!cancelled.load(Ordering::SeqCst), "Dictation canceled");
-        desktop
-            .send_keys(if primary { &[42, 110] } else { &[29, 47] })
-            .await?;
+        desktop.send_keys(keys).await?;
         tokio::time::sleep(Duration::from_millis(200)).await;
         Ok(())
     }

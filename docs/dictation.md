@@ -46,6 +46,11 @@ Playback runs asynchronously via `pw-play`, with only that child killed on
 cancellation. The recording-start cue can be audible to the microphone, matching
 the source behavior; start speaking after it ends.
 
+On the development workstation, SIE explicitly uses the StreamCam analog-stereo
+capture node and the NVIDIA HDMI monitor sink. The camera audio card was initially
+in the off profile; enabling its analog input profile exposed the microphone.
+The system-wide TONOR input/Bose analog output defaults were left unchanged.
+
 `sound_effects = false` disables feedback. `sound_sink` can select a PipeWire
 output; by default SIE uses the current system output. Missing playback support
 is logged without preventing dictation. Sound tests select cues with playback
@@ -80,6 +85,9 @@ priority/case sensitivity/notes/timestamps, and imports hallucination filters.
 It does not copy source history, secrets, LLM/provider configuration or unrelated
 VirtualAssistant tables. Do not rerun it over the deployed database. The local
 configuration is created with mode 0600; actual rules/config are not committed.
+The input selection is validated against its own mute/availability state, not
+against the unrelated default microphone. `--doctor` reports the configured
+input/output nodes and desktop context.
 The application also refuses a connection to the `virtual_assistant` database.
 
 The schema contains correction rules, JSON postprocessing settings, rule usage
@@ -104,14 +112,30 @@ not dictated text. History retention and a rule editor are future work.
 
 ## Wayland output and coexistence
 
-The existing GNOME Windows extension identifies the focused target when recording
-starts. SIE rechecks that window before delivery. Ordinary applications use
-clipboard + Ctrl+V; terminals use PRIMARY + Shift+Insert, matching the source
-pipeline's terminal output. No Enter is generated. Clipboard text or PNG contents
-are restored if the user has not replaced the selection meanwhile. Arbitrary
-multi-format clipboard bundles are not preserved. Window identity does not
-identify a tmux pane or a field inside the same application; keep the intended
-input field focused until delivery.
+The same GNOME focus tracker used by VirtualAssistant's DesktopMonitor supplies
+live active-application/window context. The Windows extension adds a stable
+window ID and terminal process ID. SIE refreshes this context at delivery and
+refuses to paste into a different window. The actual focused input field in a
+GUI receives Ctrl+V; no mouse-coordinate guessing is involved.
+
+Routing distinguishes GUI applications, ordinary terminals (clipboard +
+Ctrl+Shift+V) and non-tmux CLI agents such as Codex/Claude (PRIMARY + Shift+Insert),
+matching VirtualAssistant's three-way decision. Agent detection uses terminal
+title/process metadata. No ordinary keystrokes are read or recorded.
+
+For a terminal attached to the default local tmux server, SIE associates the
+terminal process tree with its actual tmux client and active pane. It refuses
+ambiguous matches. A private named tmux buffer delivers UTF-8 directly into that
+pane with bracketed paste; no Enter is generated and the clipboard stays untouched.
+Only the target pane's copy-mode is canceled, and focus/pane identity and
+cancellation are rechecked before paste. Each private buffer is removed after
+success or failure. Separate/custom tmux sockets are not auto-discovered.
+
+Non-tmux clipboard staging retries transient ownership loss up to four times,
+with compositor setup completed first. Prior text or PNG contents are restored
+if still owned by the dictation; newer user selections are preserved. Arbitrary
+multi-format bundles are not preserved. Keep the intended input field focused
+until delivery; SIE does not automatically submit dictated text.
 
 The existing focus tracker, Windows extension, AppIndicator and Mutter input API
 are sufficient here. No additional GNOME extension was needed. No direct typed

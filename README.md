@@ -47,7 +47,7 @@ supported keyboard, and:
 - `gsettings` for shortcut inspection and `zenity` for the About dialog.
 
 Tests additionally need `dbus-daemon` and `glib-compile-schemas` (Debian packages
-`dbus-daemon` and `libglib2.0-bin`), CMake and a C/C++ compiler for whisper.cpp.
+`dbus-daemon` and `libglib2.0-bin`), `tmux`, CMake and a C/C++ compiler for whisper.cpp.
 There is no GTK development dependency. Pinned upstream bindings are used during
 native builds, so generating bindings with a local libclang is unnecessary.
 
@@ -117,7 +117,10 @@ installed on the development workstation.
 After one-time database import, restart SIE. Bottom button release toggles
 recording; middle button release discards it. While transcribing, another bottom
 press is ignored. The menu shows recording/transcription and offers cancel.
-The enable/disable menu choice applies to the current run. A recording is limited
+GUI apps, ordinary terminals and CLI agents use their appropriate paste paths;
+attached tmux terminals receive text through a private buffer into the focused
+pane. `audio_source` and `sound_sink` select SIE's microphone and speakers without
+changing system audio defaults. The enable/disable menu choice applies to the current run. A recording is limited
 to five minutes by default. Output is pasted without an automatic Enter.
 
 ```sh

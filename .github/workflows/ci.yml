@@ -28,7 +28,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install integration test tools
-        run: sudo apt-get update && sudo apt-get install -y dbus-daemon libglib2.0-bin cmake build-essential
+        run: sudo apt-get update && sudo apt-get install -y dbus-daemon libglib2.0-bin cmake build-essential tmux
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ matrix.toolchain }}
