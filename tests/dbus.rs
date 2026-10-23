@@ -440,3 +440,67 @@ async fn losing_workspace_state_clears_the_old_highlight() {
         &encode_frame(&touch_typing_frame())
     );
 }
+
+#[tokio::test]
+async fn lighting_toggle_stays_dark_during_workspace_control_and_restores_the_current_profile() {
+    use sie::lighting::{LightingMode, workspace_frame};
+
+    let bus = Bus::start();
+    let state = Arc::new(Mutex::new(State {
+        count: 5,
+        current: 2,
+        ..Default::default()
+    }));
+    let _server = services(&bus, state.clone(), vec![8, 23]).await;
+    let connection = bus.connection().await;
+    let mut mode = LightingMode::On;
+    openrazer::apply_mode(&connection, Some(2), mode)
+        .await
+        .unwrap();
+
+    mode = mode.toggled();
+    openrazer::apply_mode(&connection, Some(2), mode)
+        .await
+        .unwrap();
+    let output = switch(&bus, &schemas(), 3).await;
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let active = sie::desktop::workspace_state(&connection)
+        .await
+        .unwrap()
+        .active_macro();
+    assert_eq!(active, Some(3));
+    // The workspace event and a subsequent periodic refresh must both stay dark.
+    openrazer::apply_mode(&connection, active, mode)
+        .await
+        .unwrap();
+    openrazer::apply_mode(&connection, active, mode)
+        .await
+        .unwrap();
+
+    mode = mode.toggled();
+    openrazer::apply_mode(&connection, active, mode)
+        .await
+        .unwrap();
+    let state = state.lock().unwrap();
+    assert_eq!(state.frames.len(), 5);
+    for frame in &state.frames[1..=3] {
+        assert_eq!(frame.len(), 576);
+        for row in frame.as_chunks::<72>().0 {
+            assert!(
+                row[3..].iter().all(|byte| *byte == 0),
+                "Every RGB cell must stay black"
+            );
+        }
+    }
+    assert_eq!(state.frames[0], encode_frame(&workspace_frame(Some(2))));
+    assert_eq!(state.frames[4], encode_frame(&workspace_frame(Some(3))));
+    assert_eq!(
+        state.keys,
+        [(125, true), (75, true), (75, false), (125, false)]
+    );
+    assert_eq!((state.starts, state.stops), (1, 1));
+}

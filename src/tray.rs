@@ -1,7 +1,7 @@
 use ksni::{MenuItem, Tray, menu::StandardItem};
 use tokio::sync::mpsc;
 
-use crate::{APP_NAME, VERSION, desktop::WorkspaceState};
+use crate::{APP_NAME, VERSION, desktop::WorkspaceState, lighting::LightingMode};
 
 pub fn workspace_label(state: WorkspaceState) -> String {
     if state.index < 0 || state.index >= state.count {
@@ -17,6 +17,7 @@ pub fn workspace_label(state: WorkspaceState) -> String {
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Action {
+    SetLightingMode(LightingMode),
     About,
     Quit,
 }
@@ -24,6 +25,8 @@ pub enum Action {
 pub struct AppTray {
     pub actions: mpsc::Sender<Action>,
     pub lighting_status: String,
+    pub lighting_mode: LightingMode,
+    pub lighting_controls_available: bool,
     pub workspace_status: String,
 }
 
@@ -51,6 +54,22 @@ impl Tray for AppTray {
             StandardItem {
                 label: self.workspace_status.clone(),
                 enabled: false,
+                ..Default::default()
+            }
+            .into(),
+            MenuItem::Separator,
+            StandardItem {
+                label: match self.lighting_mode {
+                    LightingMode::On => "✅ Vypnout osvětlení klávesnice",
+                    LightingMode::Off => "❌ Zapnout osvětlení klávesnice",
+                }
+                .into(),
+                enabled: self.lighting_controls_available,
+                activate: Box::new(|this: &mut Self| {
+                    let _ = this
+                        .actions
+                        .try_send(Action::SetLightingMode(this.lighting_mode.toggled()));
+                }),
                 ..Default::default()
             }
             .into(),
@@ -115,19 +134,61 @@ mod tests {
         let mut tray = AppTray {
             actions: tx,
             lighting_status: "Ready".into(),
+            lighting_mode: LightingMode::On,
+            lighting_controls_available: true,
             workspace_status: "Ready".into(),
         };
         let menu = tray.menu();
-        let MenuItem::Standard(about) = &menu[3] else {
+        let MenuItem::Standard(about) = &menu[5] else {
             panic!("About must be an action")
         };
         assert!(about.label.contains(VERSION));
         (about.activate)(&mut tray);
         assert_eq!(rx.recv().await, Some(Action::About));
-        let MenuItem::Standard(quit) = &menu[4] else {
+        let MenuItem::Standard(quit) = &menu[6] else {
             panic!("Quit must be an action")
         };
         (quit.activate)(&mut tray);
         assert_eq!(rx.recv().await, Some(Action::Quit));
+    }
+
+    #[tokio::test]
+    async fn lighting_menu_shows_state_and_requests_the_displayed_opposite_action() {
+        let (tx, mut rx) = mpsc::channel(4);
+        let mut tray = AppTray {
+            actions: tx,
+            lighting_status: "Ready".into(),
+            lighting_mode: LightingMode::On,
+            lighting_controls_available: true,
+            workspace_status: "Ready".into(),
+        };
+        let menu = tray.menu();
+        let MenuItem::Standard(toggle) = &menu[3] else {
+            panic!("Lighting must be an action")
+        };
+        assert_eq!(toggle.label, "✅ Vypnout osvětlení klávesnice");
+        assert!(toggle.enabled);
+        (toggle.activate)(&mut tray);
+        assert_eq!(
+            rx.recv().await,
+            Some(Action::SetLightingMode(LightingMode::Off))
+        );
+
+        // The main loop confirms the requested mode and publishes the new menu.
+        tray.lighting_mode = LightingMode::Off;
+        let menu = tray.menu();
+        let MenuItem::Standard(toggle) = &menu[3] else {
+            panic!("Lighting must remain an action")
+        };
+        assert_eq!(toggle.label, "❌ Zapnout osvětlení klávesnice");
+        assert!(
+            toggle.enabled,
+            "Off must remain clickable to enable lighting again"
+        );
+        (toggle.activate)(&mut tray);
+        assert_eq!(
+            rx.recv().await,
+            Some(Action::SetLightingMode(LightingMode::On))
+        );
     }
 }

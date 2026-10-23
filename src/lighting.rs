@@ -8,6 +8,31 @@ pub const WHITE: Rgb = [255, 255, 255];
 pub const ACTIVE_WORKSPACE_GREEN: Rgb = [0, 255, 0];
 // The device's macro LED rows run in reverse physical key order: M1 → M5.
 pub const MACRO_KEYS: [(usize, usize); 5] = [(5, 1), (4, 1), (3, 1), (2, 1), (1, 1)];
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum LightingMode {
+    #[default]
+    On,
+    Off,
+}
+
+impl LightingMode {
+    pub fn toggled(self) -> Self {
+        match self {
+            Self::On => Self::Off,
+            Self::Off => Self::On,
+        }
+    }
+
+    /// Off takes precedence over every profile color and workspace indicator.
+    pub fn frame(self, active_workspace: Option<i32>) -> Frame {
+        match self {
+            Self::On => workspace_frame(active_workspace),
+            Self::Off => [[[0, 0, 0]; COLS]; ROWS],
+        }
+    }
+}
+
 const RED: Rgb = [0xF0, 0x44, 0x5A];
 const ORANGE: Rgb = [0xFF, 0x8A, 0x3D];
 const YELLOW: Rgb = [0xF6, 0xC4, 0x53];
@@ -61,6 +86,41 @@ pub fn encode_frame(frame: &Frame) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn off_mode_keeps_keys_and_ambient_rows_black_across_workspace_changes() {
+        let off = LightingMode::On.toggled();
+        for workspace in [None, Some(0), Some(2), Some(3), Some(4), Some(8)] {
+            let frame = off.frame(workspace);
+            for (row, colors) in frame.iter().enumerate() {
+                for (column, rgb) in colors.iter().enumerate() {
+                    assert_eq!(*rgb, [0, 0, 0], "cell ({row}, {column}) must stay dark");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn enabling_again_restores_the_profile_with_the_current_workspace() {
+        let mode = LightingMode::On.toggled();
+        assert_eq!(mode.frame(Some(2))[3][1], [0, 0, 0]);
+        let restored = mode.toggled().frame(Some(3));
+        assert_eq!(restored, workspace_frame(Some(3)));
+        assert_eq!(
+            restored[3][1], WHITE,
+            "The previously active M3 stays white"
+        );
+        assert_eq!(
+            restored[2][1],
+            [0, 255, 0],
+            "The currently active M4 is green"
+        );
+        assert_eq!(
+            restored[5][3],
+            [0xA8, 0, 0x30],
+            "Restore the system key accent"
+        );
+    }
 
     #[test]
     fn each_workspace_lights_only_its_physical_macro_key_and_preserves_all_other_cells() {
