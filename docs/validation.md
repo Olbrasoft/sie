@@ -6,7 +6,7 @@ the connected Razer BlackWidow V4 Pro (`1532:028d`), and Rust 1.99.0.
 ## Automated checks
 
 - Formatting and Clippy with warnings denied passed.
-- All 14 tests passed: eight unit tests and six private D-Bus integration tests.
+- All 17 tests passed: eleven unit tests and six private D-Bus integration tests.
 - The release build, shell installer syntax, systemd unit and desktop launcher
   validation passed.
 - The private bus tests confirm that M5 emits no input when only four workspaces
@@ -32,6 +32,10 @@ the connected Razer BlackWidow V4 Pro (`1532:028d`), and Rust 1.99.0.
   and D-Bus ownership.
 - Runtime logs recorded actual Razer macro input activating workspace indices
   1 and 0 while the service was running.
+- The reported M1 conflict was traced to XKB's F13 → XF86Tools mapping. After
+  the fix, both real keyboard interfaces expose M1–M5 as keycodes 656–660 while
+  SIE runs. Stopping the service restored all ten original mappings to 183–187;
+  restarting reapplied the isolation. GNOME shortcut settings were untouched.
 
 ## Physical checks still required
 

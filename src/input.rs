@@ -5,6 +5,7 @@ use evdev::{Device, KeyCode};
 use tokio::{sync::mpsc, task::JoinSet};
 
 use crate::{
+    keymap::MacroKeymap,
     macros::{MACRO1, workspace_for_event},
     openrazer::{PRODUCT_ID, VENDOR_ID},
 };
@@ -57,12 +58,21 @@ pub async fn monitor(tx: mpsc::Sender<u32>) {
                         previous_error.clear();
                         for (path, device) in devices {
                             if active.contains(&path) { continue; }
+                            let keymap = match Device::open(&path).and_then(MacroKeymap::install) {
+                                Ok(keymap) => keymap,
+                                Err(error) => {
+                                    tracing::warn!(%error, device = %path.display(), "Cannot isolate macro keys; input control disabled for this interface");
+                                    continue;
+                                }
+                            };
                             match device.into_event_stream() {
                                 Ok(mut stream) => {
                                     active.insert(path.clone());
                                     tracing::info!(device = %path.display(), "Listening for M1–M5");
                                     let tx = tx.clone();
                                     tasks.spawn(async move {
+                                        // Keep the guard until disconnect/cancellation so Quit restores the keymap.
+                                        let _keymap = keymap;
                                         while let Ok(event) = stream.next_event().await {
                                             if let Some(index) = workspace_for_event(event) {
                                                 // Bound pending actions; stale macro presses should not accumulate.

@@ -26,7 +26,7 @@ supported keyboard, and:
   `org.olbrasoft.Desktop.TotalWorkspaces` and `CurrentWorkspace`.
 - The existing GNOME shortcuts `switch-to-workspace-1` through `-5` set to
   `<Super>KP_1` through `<Super>KP_5`. SIE checks these and does not modify them.
-- Read access to the keyboard's input nodes, provided here by OpenRazer's
+- Read/write access to the keyboard's input nodes, provided here by OpenRazer's
   `plugdev` rules. Run as your desktop user, not root.
 - `gsettings` for shortcut inspection and `zenity` for the About dialog.
 
@@ -42,7 +42,10 @@ cargo run --locked
 ```
 
 The default command runs the tray, maintains the lighting every two seconds,
-and monitors the supported keyboard. Avoid playing a competing Polychromatic
+and monitors the supported keyboard. While running, it maps just M1–M5 to native
+Linux macro codes so GNOME does not also open Settings for M1. The original
+device keymap returns on Quit or SIGTERM; ordinary keys and GNOME shortcuts are
+unchanged. Avoid playing a competing Polychromatic
 software effect while SIE owns the lighting. The old experimental profile is
 neither loaded nor required. Quit stops monitoring and refreshing; the hardware
 may retain its last frame until another controller changes it.

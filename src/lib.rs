@@ -2,6 +2,7 @@
 
 pub mod desktop;
 pub mod input;
+mod keymap;
 pub mod lighting;
 pub mod macros;
 pub mod openrazer;

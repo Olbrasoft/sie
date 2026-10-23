@@ -103,7 +103,7 @@ Reference: [OpenRazer lighting API implementation](https://github.com/openrazer/
 
 ## Macro keys and workspaces
 
-| Physical key | OpenRazer event | Workspace index | Existing GNOME accelerator |
+| Physical key | OpenRazer default event | Workspace index | Existing GNOME accelerator |
 | --- | --- | --- | --- |
 | M1 | F13 | 0 | Super + KP 1 |
 | M2 | F14 | 1 | Super + KP 2 |
@@ -113,7 +113,14 @@ Reference: [OpenRazer lighting API implementation](https://github.com/openrazer/
 
 Linux `KEY_MACRO1` through `KEY_MACRO5` are also recognized. The application
 opens only by-id paths for the supported keyboard, verifies its USB IDs and
-monitors relevant keyboard interfaces. It does not exclusively grab the device.
+monitors relevant keyboard interfaces. GNOME's default XKB map interprets F13
+as `XF86Tools`, which opens Settings. While SIE runs, it temporarily maps only
+the five macro scancodes to Linux `KEY_MACRO1`–`KEY_MACRO5` on each supported
+device. Those codes do not launch the desktop's default actions. A scoped guard
+restores the exact original mappings on Quit, SIGTERM or partial setup failure.
+This requires write access to the existing input nodes, already granted by the
+workstation's OpenRazer rules. It does not change GNOME's keybindings or
+exclusively grab the device.
 Ordinary typing is immediately ignored and never stored or logged. Releases and
 autorepeat do not trigger actions. Input devices are rescanned every three
 seconds so reconnects do not require restarting SIE.
