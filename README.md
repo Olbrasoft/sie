@@ -1,7 +1,7 @@
 # System Interface Extensions
 
 System Interface Extensions (SIE) is an MIT-licensed Rust desktop companion
-for extending how input devices control a Linux computer. Version 0.4.0 is a
+for extending how input devices control a Linux computer. Version 0.5.0 is a
 GNOME/Wayland proof of concept for the **Razer BlackWidow V4 Pro** (`1532:028d`).
 
 - A top-panel tray opens a Czech menu with **O aplikaci** (the running binary's
@@ -10,6 +10,10 @@ GNOME/Wayland proof of concept for the **Razer BlackWidow V4 Pro** (`1532:028d`)
   The item then becomes **Zapnout osvětlení klávesnice**. A green check marks
   lighting on; a red cross marks lighting off. Workspace switching keeps working
   while the keyboard stays dark.
+- The **Play/Pause media key** is green while the globally controlled player is
+  playing, red while paused/stopped and white without a controllable target.
+  It follows Space, mouse and external playback changes across applications and
+  workspaces. Lighting off overrides this indicator too.
 - Rust generates touch-typing finger zones and sends them directly to OpenRazer.
   The active workspace's **M1–M5 key is green** and other macro keys are white,
   including when switching with the mouse or another shortcut. The established
@@ -104,6 +108,13 @@ systemctl --user enable sie.service
 
 **Ukončit** exits successfully and the service does not restart it. To start it
 again, use the desktop launcher or `systemctl --user start sie.service`.
+
+## Media playback indicator
+
+See [media target selection and validation](docs/media-lighting.md). This uses the
+existing GNOME/MPRIS interfaces without a new extension. SIE observes playback;
+the hardware media keys keep their native behavior. The tray reports the selected
+player and state. Keyboard focus does not limit background media control.
 
 ## Local dictation
 

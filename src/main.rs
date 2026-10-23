@@ -15,6 +15,7 @@ use sie::{
     input,
     lighting::LightingMode,
     macros::InputAction,
+    media::{self, Status as MediaStatus},
     openrazer,
     tray::{Action, AppTray},
 };
@@ -285,6 +286,8 @@ async fn run(
     let (dictation_commands, dictation_rx) = mpsc::channel(16);
     let (dictation_status, mut dictation_status_rx) = tokio::sync::watch::channel(initial.clone());
     let (actions, mut action_rx) = mpsc::channel(8);
+    let (media_status, mut media_rx) = tokio::sync::watch::channel(MediaStatus::default());
+    let (media_targets, media_target_rx) = mpsc::channel(8);
     let tray = AppTray {
         actions,
         lighting_status: if tray_only {
@@ -294,6 +297,7 @@ async fn run(
         }
         .into(),
         lighting_mode,
+        media_status: MediaStatus::default().label(),
         lighting_controls_available: !tray_only,
         dictation_status: initial,
         dictation_controls_available: !tray_only,
@@ -316,6 +320,27 @@ async fn run(
     let mut dictation_task = None;
     if !tray_only {
         tasks.spawn(input::monitor(macros));
+        tasks.spawn(media::watch(
+            connection.clone(),
+            media_status,
+            media_target_rx,
+        ));
+        // A separate, optional read-only observer cannot interfere with the
+        // normal D-Bus connection used by the application.
+        match zbus::connection::Builder::session()?
+            .method_timeout(Duration::from_secs(1))
+            .build()
+            .await
+        {
+            Ok(observer) => {
+                tasks.spawn(async move {
+                if let Err(error)=media::observe_native_target(observer,media_targets).await {
+                    tracing::debug!(%error,"Native media target observer unavailable; using MPRIS events");
+                }
+            });
+            }
+            Err(error) => tracing::debug!(%error,"Native media target observer unavailable"),
+        }
         dictation_task = Some(tokio::spawn(dictation::run(
             dictation_config,
             connection.clone(),
@@ -338,7 +363,8 @@ async fn run(
                 Some(Action::Quit) | None => break,
                 Some(Action::SetLightingMode(mode)) => if !tray_only {
                     lighting_mode = mode;
-                    refresh_lighting(&connection, &tray, lighting_mode, &mut last_status).await;
+                    let media=media_rx.borrow_and_update().clone();
+                    refresh_lighting(&connection, &tray, lighting_mode, &media, &mut last_status).await;
                 },
                 Some(Action::Dictation(command)) => if !tray_only { let _ = dictation_commands.try_send(command); },
                 Some(Action::About) => if about.is_empty() {
@@ -376,9 +402,11 @@ async fn run(
                 tokio::select! {
                     _ = refresh.tick() => {},
                     Some(()) = workspace_rx.recv() => {},
+                    Ok(()) = media_rx.changed() => {},
                 }
             }, if !tray_only => {
-                refresh_lighting(&connection, &tray, lighting_mode, &mut last_status).await;
+                let media=media_rx.borrow_and_update().clone();
+                refresh_lighting(&connection, &tray, lighting_mode, &media, &mut last_status).await;
             },
             Some(result) = tasks.join_next(), if !tasks.is_empty() => {
                 if let Err(error) = result { tracing::error!(%error, "Input monitor stopped"); }
@@ -407,11 +435,12 @@ async fn refresh_lighting(
     connection: &Connection,
     tray: &ksni::Handle<AppTray>,
     mode: LightingMode,
+    media: &MediaStatus,
     last_status: &mut String,
 ) {
     let state = desktop::workspace_state(connection).await.ok();
     let active = state.and_then(|state| state.active_macro());
-    let lighting = match openrazer::apply_mode(connection, active, mode).await {
+    let lighting = match openrazer::apply_status(connection, active, mode, media.playback).await {
         Ok(0) => "Klávesnice není připojena".to_owned(),
         Ok(_) => match mode {
             LightingMode::On => "Podsvícení aktivní",
@@ -426,7 +455,8 @@ async fn refresh_lighting(
     let workspace = state
         .map(sie::tray::workspace_label)
         .unwrap_or_else(|| "Ovládání ploch nedostupné".into());
-    let status = format!("{mode:?}: {lighting}; {workspace}");
+    let media = media.label();
+    let status = format!("{mode:?}: {lighting}; {workspace}; {media}");
     if status != *last_status {
         tracing::info!("{status}");
         *last_status = status;
@@ -434,6 +464,7 @@ async fn refresh_lighting(
             tray.lighting_status = lighting;
             tray.lighting_mode = mode;
             tray.workspace_status = workspace;
+            tray.media_status = media;
         })
         .await;
     }

@@ -10,6 +10,7 @@ pub mod input;
 mod keymap;
 pub mod lighting;
 pub mod macros;
+pub mod media;
 pub mod openrazer;
 mod sounds;
 pub mod speech;

@@ -4,6 +4,9 @@ pub const ROWS: usize = 8;
 pub const COLS: usize = 23;
 pub type Rgb = [u8; 3];
 pub type Frame = [[Rgb; COLS]; ROWS];
+pub const PLAY_PAUSE_KEY: (usize, usize) = (0, 20);
+pub const MEDIA_PLAYING_GREEN: Rgb = [0, 255, 0];
+pub const MEDIA_PAUSED_RED: Rgb = [255, 0, 0];
 pub const WHITE: Rgb = [255, 255, 255];
 pub const ACTIVE_WORKSPACE_GREEN: Rgb = [0, 255, 0];
 // The device's macro LED rows run in reverse physical key order: M1 → M5.
@@ -26,8 +29,25 @@ impl LightingMode {
 
     /// Off takes precedence over every profile color and workspace indicator.
     pub fn frame(self, active_workspace: Option<i32>) -> Frame {
+        self.frame_with_media(active_workspace, crate::media::Playback::Unavailable)
+    }
+
+    pub fn frame_with_media(
+        self,
+        active_workspace: Option<i32>,
+        playback: crate::media::Playback,
+    ) -> Frame {
         match self {
-            Self::On => workspace_frame(active_workspace),
+            Self::On => {
+                let mut frame = workspace_frame(active_workspace);
+                let (row, column) = PLAY_PAUSE_KEY;
+                frame[row][column] = match playback {
+                    crate::media::Playback::Unavailable => WHITE,
+                    crate::media::Playback::Paused => MEDIA_PAUSED_RED,
+                    crate::media::Playback::Playing => MEDIA_PLAYING_GREEN,
+                };
+                frame
+            }
             Self::Off => [[[0, 0, 0]; COLS]; ROWS],
         }
     }
@@ -86,6 +106,50 @@ pub fn encode_frame(frame: &Frame) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn media_overlay_changes_only_the_second_physical_media_key() {
+        for workspace in [None, Some(0), Some(2), Some(4), Some(7)] {
+            let base = workspace_frame(workspace);
+            for (playback, color) in [
+                (crate::media::Playback::Unavailable, WHITE),
+                (crate::media::Playback::Paused, [255, 0, 0]),
+                (crate::media::Playback::Playing, [0, 255, 0]),
+            ] {
+                let frame = LightingMode::On.frame_with_media(workspace, playback);
+                for row in 0..ROWS {
+                    for column in 0..COLS {
+                        assert_eq!(
+                            frame[row][column],
+                            if (row, column) == (0, 20) {
+                                color
+                            } else {
+                                base[row][column]
+                            },
+                            "cell ({row},{column})"
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn lighting_off_overrides_media_status_and_enabling_restores_current_playback() {
+        for playback in [
+            crate::media::Playback::Unavailable,
+            crate::media::Playback::Paused,
+            crate::media::Playback::Playing,
+        ] {
+            let off = LightingMode::Off.frame_with_media(Some(3), playback);
+            assert!(off.iter().flatten().all(|cell| *cell == [0, 0, 0]));
+        }
+        let restored = LightingMode::Off
+            .toggled()
+            .frame_with_media(Some(3), crate::media::Playback::Playing);
+        assert_eq!(restored[0][20], [0, 255, 0]);
+        assert_eq!(restored[2][1], [0, 255, 0]);
+    }
 
     #[test]
     fn off_mode_keeps_keys_and_ambient_rows_black_across_workspace_changes() {
