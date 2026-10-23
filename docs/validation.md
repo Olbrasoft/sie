@@ -3,6 +3,23 @@
 Validated on 2026-10-23 with GNOME Shell 48.7 on Wayland, OpenRazer 3.12.4,
 the connected Razer BlackWidow V4 Pro (`1532:028d`), and Rust 1.99.0.
 
+## Explicit dictation submission in version 0.7.0
+
+- The top side-button release now finishes only an active recording and passes
+  a per-session submit mode to delivery. Bottom/tray/recording-limit completion
+  remain paste-only; idle/transcribing top presses do not arm submission.
+- Formatting, Clippy and 69 isolated Rust tests passed. Private compositor tests
+  cover the three clipboard shortcut paths followed by exactly one Enter,
+  failed paste, cancellation before/after paste, focus changes and empty text.
+  A private tmux terminal with numbered canonical input confirms exactly one
+  submitted line and no submission for paste-only/canceled/refocused output.
+- A real dedicated GTK probe received the Czech Unicode phrase through the
+  ordinary path with Enter count zero, then through submit mode with Enter count
+  exactly one. No unrelated application received test text or Enter; the original
+  terminal focus was restored. This probe checks delivery independently of speech.
+- Physical top-button/microphone confirmation is tracked separately in the
+  deployment issue. Database schema/rules and audio routing are unchanged.
+
 ## Resume-only media reveal in version 0.6.1
 
 - The user reported that version 0.6.0 reveals the player even when pausing a

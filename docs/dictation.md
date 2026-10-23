@@ -13,10 +13,15 @@ and F20 (bottom). The user physically verified middle then bottom during
 calibration. XKB maps F20 to microphone mute. SIE temporarily maps all eight
 macro/side buttons to Linux codes 656–663 on the supported device only, avoiding
 that collision without grabbing or replaying normal typing. Quit and SIGTERM
-restore the original map. The top side button has no assigned action.
+restore the original map. Version 0.7.0 assigns the top side button to explicit
+finish-and-submit.
 
 - Bottom release: idle → recording → local transcription → paste → idle.
 - Middle release: cancel recording or transcription; discard pending output.
+- Top release while recording: stop → local transcription → paste → one Enter.
+  Idle, disabled and transcribing states ignore it; it cannot arm a future session.
+- Automatic recording-limit completion and bottom/tray completion remain
+  paste-only. Submission belongs only to the recording finished with the top button.
 - Repeats and presses are ignored for side buttons. Bottom during transcription
   is ignored. M1–M5 continue to use presses for workspace switching.
 - Tray actions provide start/stop, cancel, module enable/disable and phase status.
@@ -126,7 +131,9 @@ title/process metadata. No ordinary keystrokes are read or recorded.
 For a terminal attached to the default local tmux server, SIE associates the
 terminal process tree with its actual tmux client and active pane. It refuses
 ambiguous matches. A private named tmux buffer delivers UTF-8 directly into that
-pane with bracketed paste; no Enter is generated and the clipboard stays untouched.
+pane with bracketed paste; the clipboard stays untouched. Default completion
+sends no Enter. Explicit top-button completion waits for the paste event, rechecks
+cancellation and the same focused window/pane, and sends Enter to that exact pane.
 Only the target pane's copy-mode is canceled, and focus/pane identity and
 cancellation are rechecked before paste. Each private buffer is removed after
 success or failure. Separate/custom tmux sockets are not auto-discovered.
@@ -135,7 +142,12 @@ Non-tmux clipboard staging retries transient ownership loss up to four times,
 with compositor setup completed first. Prior text or PNG contents are restored
 if still owned by the dictation; newer user selections are preserved. Arbitrary
 multi-format bundles are not preserved. Keep the intended input field focused
-until delivery; SIE does not automatically submit dictated text.
+until delivery. Default completion does not submit; explicit top-button
+completion waits for paste, rechecks focus/cancellation, and sends a separate
+Enter. The transcript and clipboard text do not get a synthetic newline. Empty
+output, cancellation, paste failure or changed focus/pane suppress Enter. If
+text was inserted but submission fails, the tray says so; it does not retry
+Enter automatically.
 
 The existing focus tracker, Windows extension, AppIndicator and Mutter input API
 are sufficient here. No additional GNOME extension was needed. No direct typed
@@ -148,7 +160,8 @@ or transcribing. Start fails visibly if this explicitly configured bridge is
 unavailable. Cancel, completion and normal shutdown release it; after a crash it
 expires automatically. The default is false for standalone installations.
 VirtualAssistant remains running for existing features and legacy hotkeys.
-LLM processing and automatic agent-window focusing/submission were not ported.
+LLM processing and automatic agent-window focusing were not ported. Submission
+is an explicit per-recording top-button action.
 
 ## Reproducible checks
 
@@ -163,8 +176,10 @@ then the Rust example while that fixture is focused:
 ```sh
 /usr/bin/python3 tests/fixtures/dictation-window.py /tmp/sie-dictation-probe.json
 cargo run --example paste_probe
+cargo run --example paste_probe -- --submit  # Also verify one Enter in the probe
 ```
 
+The fixture records the resulting text and an Enter count in its JSON file.
 The example refuses other target applications. The GTK dependency is solely for
 this manual fixture, not the SIE application. Physical buttons and real audio
 must be verified separately; see [validation results](validation.md).

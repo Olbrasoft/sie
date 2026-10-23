@@ -9,6 +9,7 @@ pub enum InputAction {
     Workspace(u32),
     DictationToggle,
     DictationCancel,
+    DictationSubmit,
     MediaReveal,
 }
 
@@ -26,6 +27,9 @@ pub fn action_for_event(event: InputEvent) -> Option<InputAction> {
         return None;
     }
     match event.code() {
+        code if code == KeyCode::KEY_F18.code() || code == MACRO1 + 5 => {
+            Some(InputAction::DictationSubmit)
+        }
         code if code == KeyCode::KEY_F19.code() || code == MACRO1 + 6 => {
             Some(InputAction::DictationCancel)
         }
@@ -81,6 +85,15 @@ mod tests {
 
     #[test]
     fn side_buttons_use_release_events_without_reusing_system_mute_or_legacy_keys() {
+        for code in [KeyCode::KEY_F18.code(), MACRO1 + 5] {
+            assert_eq!(
+                action_for_event(InputEvent::new(1, code, 0)),
+                Some(InputAction::DictationSubmit)
+            );
+            for value in [1, 2] {
+                assert_eq!(action_for_event(InputEvent::new(1, code, value)), None);
+            }
+        }
         for code in [KeyCode::KEY_F20.code(), MACRO1 + 7] {
             assert_eq!(
                 action_for_event(InputEvent::new(1, code, 0)),
@@ -95,12 +108,7 @@ mod tests {
                 Some(InputAction::DictationCancel)
             );
         }
-        for code in [
-            KeyCode::KEY_F18,
-            KeyCode::KEY_SCROLLLOCK,
-            KeyCode::KEY_PAUSE,
-            KeyCode::KEY_A,
-        ] {
+        for code in [KeyCode::KEY_SCROLLLOCK, KeyCode::KEY_PAUSE, KeyCode::KEY_A] {
             assert_eq!(action_for_event(InputEvent::new(1, code.code(), 0)), None);
         }
     }
