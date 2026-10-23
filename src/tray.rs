@@ -34,6 +34,7 @@ pub struct AppTray {
     pub lighting_mode: LightingMode,
     pub lighting_controls_available: bool,
     pub workspace_status: String,
+    pub media_status: String,
     pub dictation_status: DictationStatus,
     pub dictation_controls_available: bool,
 }
@@ -66,6 +67,12 @@ impl Tray for AppTray {
             .into(),
             StandardItem {
                 label: self.workspace_status.clone(),
+                enabled: false,
+                ..Default::default()
+            }
+            .into(),
+            StandardItem {
+                label: self.media_status.clone(),
                 enabled: false,
                 ..Default::default()
             }
@@ -218,6 +225,7 @@ mod tests {
             lighting_mode: LightingMode::On,
             lighting_controls_available: true,
             workspace_status: "Ready".into(),
+            media_status: "Média nedostupná".into(),
             dictation_status: DictationStatus::new(false, Phase::Disabled),
             dictation_controls_available: true,
         };
@@ -240,6 +248,7 @@ mod tests {
             lighting_mode: LightingMode::On,
             lighting_controls_available: true,
             workspace_status: "Ready".into(),
+            media_status: "Média nedostupná".into(),
             dictation_status: DictationStatus::new(false, Phase::Disabled),
             dictation_controls_available: true,
         };
@@ -279,6 +288,7 @@ mod tests {
             lighting_mode: LightingMode::On,
             lighting_controls_available: true,
             workspace_status: "Ready".into(),
+            media_status: "Média nedostupná".into(),
             dictation_status: DictationStatus::new(true, Phase::Recording),
             dictation_controls_available: true,
         };

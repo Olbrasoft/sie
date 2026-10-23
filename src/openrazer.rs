@@ -41,12 +41,27 @@ pub async fn apply_mode(
     active_workspace: Option<i32>,
     mode: LightingMode,
 ) -> Result<usize> {
+    apply_status(
+        connection,
+        active_workspace,
+        mode,
+        crate::media::Playback::Unavailable,
+    )
+    .await
+}
+
+pub async fn apply_status(
+    connection: &Connection,
+    active_workspace: Option<i32>,
+    mode: LightingMode,
+    playback: crate::media::Playback,
+) -> Result<usize> {
     let paths = devices(connection)
         .await
         .context("OpenRazer discovery failed")?;
     // A complete black custom frame also covers macro and ambient LEDs without
     // changing the user's saved brightness or disabling keyboard input.
-    let payload = encode_frame(&mode.frame(active_workspace));
+    let payload = encode_frame(&mode.frame_with_media(active_workspace, playback));
     for path in &paths {
         let lighting = Proxy::new(
             connection,
