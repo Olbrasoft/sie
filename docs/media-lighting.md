@@ -17,6 +17,10 @@ SIE does not recolor Space, create a new media binding, inject playback input or
 send any playback methods. Focusing another application does not clear a target
 that the hardware button still controls.
 
+SIE 0.6.0 additionally [reveals the controlled window and video tab](media-reveal.md)
+on a physical Play/Pause press. The playback observer described here remains
+passive; focus changes do not send another playback command.
+
 ## Existing interfaces
 
 Players expose `PlaybackStatus`, `CanControl`, `CanPlay` and `CanPause` through

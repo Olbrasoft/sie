@@ -1,7 +1,7 @@
 # System Interface Extensions
 
 System Interface Extensions (SIE) is an MIT-licensed Rust desktop companion
-for extending how input devices control a Linux computer. Version 0.5.0 is a
+for extending how input devices control a Linux computer. Version 0.6.0 is a
 GNOME/Wayland proof of concept for the **Razer BlackWidow V4 Pro** (`1532:028d`).
 
 - A top-panel tray opens a Czech menu with **O aplikaci** (the running binary's
@@ -14,6 +14,9 @@ GNOME/Wayland proof of concept for the **Razer BlackWidow V4 Pro** (`1532:028d`)
   playing, red while paused/stopped and white without a controllable target.
   It follows Space, mouse and external playback changes across applications and
   workspaces. Lighting off overrides this indicator too.
+- Pressing the physical **Play/Pause button** also reveals the controlled
+  player's existing window and workspace. A small local browser bridge selects
+  the existing video tab in Chrome when another tab is active.
 - Rust generates touch-typing finger zones and sends them directly to OpenRazer.
   The active workspace's **M1–M5 key is green** and other macro keys are white,
   including when switching with the mouse or another shortcut. The established
@@ -49,6 +52,8 @@ supported keyboard, and:
 - Read/write access to the keyboard's input nodes, provided here by OpenRazer's
   `plugdev` rules. Run as your desktop user, not root.
 - `gsettings` for shortcut inspection and `zenity` for the About dialog.
+- The installed Window Calls GNOME extension for revealing player windows;
+  browser tab selection additionally needs the [local SIE browser bridge](docs/media-reveal.md).
 
 Tests additionally need `dbus-daemon` and `glib-compile-schemas` (Debian packages
 `dbus-daemon` and `libglib2.0-bin`), `tmux`, CMake and a C/C++ compiler for whisper.cpp.
@@ -100,7 +105,9 @@ journalctl --user -u sie.service -f
 The installer builds with CUDA when `/usr/local/cuda/bin/nvcc` and an NVIDIA GPU
 are available; `SIE_CPU_ONLY=1 ./scripts/install.sh` builds the CPU version.
 A CUDA build also requires the matching runtime libraries. The installer installs
-a desktop launcher and user service. Installation does not enable automatic startup. If wanted:
+a desktop launcher, user service and browser bridge assets. Load the unpacked
+extension once as described in [media reveal setup](docs/media-reveal.md).
+Installation does not enable automatic startup. If wanted:
 
 ```sh
 systemctl --user enable sie.service
@@ -115,6 +122,11 @@ See [media target selection and validation](docs/media-lighting.md). This uses t
 existing GNOME/MPRIS interfaces without a new extension. SIE observes playback;
 the hardware media keys keep their native behavior. The tray reports the selected
 player and state. Keyboard focus does not limit background media control.
+
+Pressing the supported keyboard's Play/Pause button additionally reveals that
+player on its existing workspace and selects its existing video tab. Native
+playback still toggles once. Space and mouse playback changes update the LED
+without moving focus. See [media reveal setup and limitations](docs/media-reveal.md).
 
 ## Local dictation
 
@@ -156,6 +168,7 @@ documentation, tray, lighting and macro-key tasks. CI runs:
 cargo fmt --all -- --check
 cargo clippy --locked --all-targets -- -D warnings
 cargo test --locked --all-targets
+node --test browser-extension/background.test.mjs
 ```
 
 Integration tests launch a private D-Bus and mock the device and compositor.

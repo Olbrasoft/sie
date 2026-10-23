@@ -8,6 +8,7 @@ use anyhow::{Context, Result};
 use clap::Parser;
 use ksni::TrayMethods;
 use sie::{
+    browser,
     config::{AppConfig, DictationConfig},
     corrections::Database,
     desktop::{self, Desktop},
@@ -16,7 +17,7 @@ use sie::{
     lighting::LightingMode,
     macros::InputAction,
     media::{self, Status as MediaStatus},
-    openrazer,
+    media_focus, openrazer,
     tray::{Action, AppTray},
 };
 use tokio::{sync::mpsc, task::JoinSet};
@@ -275,6 +276,11 @@ async fn run(
     dictation_config: DictationConfig,
 ) -> Result<()> {
     let mut lighting_mode = LightingMode::On;
+    let broker = Arc::new(browser::Broker::default());
+    browser::export(&connection, broker.clone()).await?;
+    let (focus_requests, focus_rx) = mpsc::channel(8);
+    let (native_hints, native_hint_rx) = tokio::sync::watch::channel(None);
+    let (focus_status, mut focus_status_rx) = tokio::sync::watch::channel(None);
     let initial = DictationStatus::new(
         dictation_config.enabled && !tray_only,
         if dictation_config.enabled && !tray_only {
@@ -298,6 +304,7 @@ async fn run(
         .into(),
         lighting_mode,
         media_status: MediaStatus::default().label(),
+        focus_status: None,
         lighting_controls_available: !tray_only,
         dictation_status: initial,
         dictation_controls_available: !tray_only,
@@ -320,6 +327,13 @@ async fn run(
     let mut dictation_task = None;
     if !tray_only {
         tasks.spawn(input::monitor(macros));
+        tasks.spawn(media_focus::run(
+            connection.clone(),
+            broker,
+            focus_rx,
+            native_hint_rx,
+            focus_status,
+        ));
         tasks.spawn(media::watch(
             connection.clone(),
             media_status,
@@ -334,10 +348,17 @@ async fn run(
         {
             Ok(observer) => {
                 tasks.spawn(async move {
-                if let Err(error)=media::observe_native_target(observer,media_targets).await {
-                    tracing::debug!(%error,"Native media target observer unavailable; using MPRIS events");
-                }
-            });
+                    let result = async {
+                        media::NativeObserver::new(observer)
+                            .await?
+                            .run_with_hint(media_targets, Some(native_hints))
+                            .await
+                    }
+                    .await;
+                    if let Err(error) = result {
+                        tracing::debug!(%error,"Native media target observer unavailable; using MPRIS events");
+                    }
+                });
             }
             Err(error) => tracing::debug!(%error,"Native media target observer unavailable"),
         }
@@ -375,6 +396,15 @@ async fn run(
             Some(action) = macro_rx.recv(), if !tray_only => {
                 let index = match action {
                     InputAction::Workspace(index) => index,
+                    InputAction::MediaReveal => {
+                        if let Some(fallback) = media_rx.borrow().target.clone() {
+                            let _ = focus_requests.try_send(media_focus::Request {
+                                at: std::time::Instant::now(),
+                                fallback,
+                            });
+                        }
+                        continue;
+                    },
                     InputAction::DictationToggle => { let _ = dictation_commands.try_send(DictationCommand::Toggle); continue; },
                     InputAction::DictationCancel => { let _ = dictation_commands.try_send(DictationCommand::Cancel); continue; },
                 };
@@ -392,6 +422,10 @@ async fn run(
                     Ok(false) => tracing::debug!(workspace = index, "Unavailable workspace ignored"),
                     Err(error) => tracing::warn!("Workspace switch failed: {error:#}"),
                 }
+            },
+            Ok(()) = focus_status_rx.changed(), if !tray_only => {
+                let status = focus_status_rx.borrow_and_update().clone();
+                tray.update(move |tray| tray.focus_status = status).await;
             },
             Ok(()) = dictation_status_rx.changed(), if !tray_only => {
                 let status=dictation_status_rx.borrow_and_update().clone();

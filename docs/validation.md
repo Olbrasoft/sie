@@ -3,6 +3,19 @@
 Validated on 2026-10-23 with GNOME Shell 48.7 on Wayland, OpenRazer 3.12.4,
 the connected Razer BlackWidow V4 Pro (`1532:028d`), and Rust 1.99.0.
 
+## Media reveal in version 0.6.0
+
+- Formatting, Clippy with warnings denied, 59 isolated Rust tests and four
+  JavaScript tests passed. The additional tests exercise native framing,
+  a spawned Rust host over pipes/private D-Bus, ambiguous tabs, existing-window
+  activation and the absence of extra playback commands.
+- A CUDA release and both Rust binaries were installed. SIE 0.6.0 is running;
+  the unpacked SIE Media Tab Bridge was loaded into the existing Chrome profile
+  without restarting Chrome. Its native host registered the same process ID as
+  Chrome's MPRIS service.
+- Real physical workspace/tab activation is tracked separately in the deployment
+  issue; automated checks do not claim physical verification.
+
 ## Automated checks
 
 The initial version 0.1.0 checks were:

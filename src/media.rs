@@ -25,6 +25,7 @@ pub enum Playback {
 pub struct Status {
     pub playback: Playback,
     pub player: Option<String>,
+    pub target: Option<String>,
 }
 impl Status {
     pub fn label(&self) -> String {
@@ -133,6 +134,7 @@ impl Router {
             Some(player) => Status {
                 playback: player.indicator(),
                 player: Some(player.identity.clone()),
+                target: Some(player.name.clone()),
             },
             None => Status::default(),
         }
@@ -337,7 +339,14 @@ impl NativeObserver {
             _connection: connection,
         })
     }
-    pub async fn run(mut self, targets: mpsc::Sender<String>) -> Result<()> {
+    pub async fn run(self, targets: mpsc::Sender<String>) -> Result<()> {
+        self.run_with_hint(targets, None).await
+    }
+    pub async fn run_with_hint(
+        mut self,
+        targets: mpsc::Sender<String>,
+        hints: Option<watch::Sender<Option<crate::media_focus::NativeHint>>>,
+    ) -> Result<()> {
         while let Some(message) = self.messages.next().await {
             let message = message?;
             let header = message.header();
@@ -348,6 +357,12 @@ impl NativeObserver {
                 continue;
             }
             if let Some(destination) = header.destination() {
+                if let Some(hints) = &hints {
+                    hints.send_replace(Some(crate::media_focus::NativeHint {
+                        at: std::time::Instant::now(),
+                        destination: destination.to_string(),
+                    }));
+                }
                 let _ = targets.try_send(destination.to_string());
             }
             if targets.is_closed() {

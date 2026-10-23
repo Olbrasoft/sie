@@ -1,6 +1,7 @@
 //! Linux desktop adapters and independently testable keyboard behavior.
 
 pub mod audio;
+pub mod browser;
 pub mod config;
 pub mod context;
 pub mod corrections;
@@ -11,6 +12,7 @@ mod keymap;
 pub mod lighting;
 pub mod macros;
 pub mod media;
+pub mod media_focus;
 pub mod openrazer;
 mod sounds;
 pub mod speech;
