@@ -51,7 +51,7 @@ impl<T: Keymap> MacroKeymap<T> {
             changed: Vec::new(),
         };
         for (keycode, scancode) in entries {
-            if (u32::from(KeyCode::KEY_F13.code())..=u32::from(KeyCode::KEY_F17.code()))
+            if (u32::from(KeyCode::KEY_F13.code())..=u32::from(KeyCode::KEY_F20.code()))
                 .contains(&keycode)
             {
                 let replacement = MACRO1 + (keycode as u16 - KeyCode::KEY_F13.code());
@@ -110,7 +110,7 @@ mod tests {
 
     fn fixture() -> FakeKeymap {
         let mut entries = vec![(30, 0x70004u32.to_ne_bytes().to_vec())];
-        entries.extend((0..5).map(|i| (183 + i, (0x70068u32 + i).to_ne_bytes().to_vec())));
+        entries.extend((0..8).map(|i| (183 + i, (0x70068u32 + i).to_ne_bytes().to_vec())));
         FakeKeymap {
             entries: Arc::new(Mutex::new(entries)),
             fail_code: None,
@@ -130,7 +130,7 @@ mod tests {
                 .skip(1)
                 .map(|entry| entry.0)
                 .collect::<Vec<_>>(),
-            [656, 657, 658, 659, 660]
+            [656, 657, 658, 659, 660, 661, 662, 663]
         );
         assert!(
             !mapped.iter().any(|entry| entry.0 == 183),

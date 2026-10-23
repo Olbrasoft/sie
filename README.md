@@ -1,7 +1,7 @@
 # System Interface Extensions
 
 System Interface Extensions (SIE) is an MIT-licensed Rust desktop companion
-for extending how input devices control a Linux computer. Version 0.3.0 is a
+for extending how input devices control a Linux computer. Version 0.4.0 is a
 GNOME/Wayland proof of concept for the **Razer BlackWidow V4 Pro** (`1532:028d`).
 
 - A top-panel tray opens a Czech menu with **O aplikaci** (the running binary's
@@ -18,8 +18,16 @@ GNOME/Wayland proof of concept for the **Razer BlackWidow V4 Pro** (`1532:028d`)
   releases, autorepeat and ordinary typing are ignored.
 - On workspace 6 or higher, all five macro keys stay white. The tray uses
   workspace numbers starting at one; the diagnostic CLI explicitly uses indices.
+- Local Czech dictation uses Whisper large-v3-turbo, with CUDA or CPU inference.
+  The **bottom side button** starts recording, then stops and transcribes.
+  The **middle side button** cancels recording or transcription without delivery;
+  the top side button stays unassigned. The tray offers the same actions.
+  Original VirtualAssistant sound cues mark recording start, transcription
+  (looping typing) and cancellation (paper rip).
+- An independent PostgreSQL database holds a one-time copy of VirtualAssistant's
+  text corrections. No audio or transcript is sent to an LLM or remote API.
 - Existing GNOME integrations are reused; no additional Shell extension is needed
-  on the development workstation. VirtualAssistant remains independent.
+  on the development workstation. Legacy VirtualAssistant shortcuts remain independent.
 
 See [the proof of concept and architecture](docs/proof-of-concept.md) for scope,
 the Rust decision, integration boundaries and the future voice roadmap.
@@ -39,7 +47,9 @@ supported keyboard, and:
 - `gsettings` for shortcut inspection and `zenity` for the About dialog.
 
 Tests additionally need `dbus-daemon` and `glib-compile-schemas` (Debian packages
-`dbus-daemon` and `libglib2.0-bin`). There is no GTK development dependency.
+`dbus-daemon` and `libglib2.0-bin`), `tmux`, CMake and a C/C++ compiler for whisper.cpp.
+There is no GTK development dependency. Pinned upstream bindings are used during
+native builds, so generating bindings with a local libclang is unnecessary.
 
 ## Build and run
 
@@ -50,8 +60,8 @@ cargo run --locked
 ```
 
 The default command runs the tray, maintains the lighting every two seconds,
-and monitors the supported keyboard. While running, it maps just M1–M5 to native
-Linux macro codes so GNOME does not also open Settings for M1. The original
+and monitors the supported keyboard. While running, it maps M1–M5 and the three side buttons to native Linux macro codes so GNOME
+does not also open Settings or toggle microphone mute. The original
 device keymap returns on Quit or SIGTERM; ordinary keys and GNOME shortcuts are
 unchanged. Avoid playing a competing Polychromatic
 software effect while SIE owns the lighting. The old experimental profile is
@@ -83,8 +93,10 @@ systemctl --user start sie.service
 journalctl --user -u sie.service -f
 ```
 
-The installer builds the release binary and installs a desktop launcher and
-user service. Installation does not enable automatic startup. If wanted:
+The installer builds with CUDA when `/usr/local/cuda/bin/nvcc` and an NVIDIA GPU
+are available; `SIE_CPU_ONLY=1 ./scripts/install.sh` builds the CPU version.
+A CUDA build also requires the matching runtime libraries. The installer installs
+a desktop launcher and user service. Installation does not enable automatic startup. If wanted:
 
 ```sh
 systemctl --user enable sie.service
@@ -92,6 +104,36 @@ systemctl --user enable sie.service
 
 **Ukončit** exits successfully and the service does not restart it. To start it
 again, use the desktop launcher or `systemctl --user start sie.service`.
+
+## Local dictation
+
+See [the migration and setup guide](docs/dictation.md) and
+[example configuration](packaging/config.example.toml). Dictation is disabled
+without explicit configuration. It reuses the installed local model,
+`pw-record`, `pw-play`, `pactl`, `wl-copy`, `wl-paste`, PostgreSQL and the existing window
+tracking/Mutter interfaces. No new GNOME extension or inference service was
+installed on the development workstation.
+
+After one-time database import, restart SIE. Bottom button release toggles
+recording; middle button release discards it. While transcribing, another bottom
+press is ignored. The menu shows recording/transcription and offers cancel.
+GUI apps, ordinary terminals and CLI agents use their appropriate paste paths;
+attached tmux terminals receive text through a private buffer into the focused
+pane. `audio_source` and `sound_sink` select SIE's microphone and speakers without
+changing system audio defaults. The enable/disable menu choice applies to the current run. A recording is limited
+to five minutes by default. Output is pasted without an automatic Enter.
+
+```sh
+sie --doctor
+sie --config /absolute/path/config.toml
+sie --transcribe-file /absolute/path/16khz-mono-s16.wav
+```
+
+The file command prints corrected text and never pastes. Microphone audio stays
+in memory; completed raw/corrected text is stored in the independent SIE history.
+Cancel discards the current recording or pending output. During migration,
+VirtualAssistant's Scroll Lock/Pause behavior remains available; use one
+recorder at a time.
 
 ## Development
 
@@ -106,7 +148,15 @@ cargo test --locked --all-targets
 ```
 
 Integration tests launch a private D-Bus and mock the device and compositor.
-They do not read typing, write real lighting, change desktop settings or switch
+The PostgreSQL test is opt-in and refuses databases whose name does not start
+with `test_sie_`; CI uses a disposable PostgreSQL service. To run it locally:
+
+```sh
+SIE_TEST_DB="host=localhost dbname=test_sie_dictation user=sie_test password=$SIE_TEST_PASSWORD" \
+  cargo test --locked --test correction_database -- --ignored
+```
+
+Tests do not read typing, write real lighting, change desktop settings or switch
 the logged-in user's workspaces. Physical M1–M5 presses and visual confirmation
 of the keyboard colors are separate checks described in the design document.
 
