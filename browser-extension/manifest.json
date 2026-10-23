@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "SIE Media Tab Bridge",
+  "version": "0.6.0",
+  "description": "Activate the existing media tab requested by the local SIE application.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArJttWh1h3ZSsvaGAHPcTSdTnOLfdOalAPpf3DezOJ5GxhfMxdNOE/Rvl0JmQsh/sk2gC06Y8FAmQ6/9Q2r5CqZzXwxJhBuV1TRaTz285Amfa+HAFiJ+KSTtjs4iYMaGUKZhFrijHnmSLhDN/SQdlERQXfeTZEBpnZlGjmGU0xLk3SYtB3EkQXloQWbGY3IgS9u0q3SghZshjGVW8y4JF3UIj2CKVG3qjRbDaPEPy3jln1Cf2kJmn+p5xdRzU/rXj2PiFJNsmaIJJcsUwj5syYYC00zDwxs/2ldsAklJmaXV+3kInzL3xT4JD2IdXJJC8O0hC7iygPAjAgAWbv/gDvQIDAQAB",
+  "permissions": [
+    "tabs",
+    "nativeMessaging"
+  ],
+  "background": {
+    "service_worker": "background.mjs",
+    "type": "module"
+  }
+}

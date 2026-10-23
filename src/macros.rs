@@ -9,9 +9,16 @@ pub enum InputAction {
     Workspace(u32),
     DictationToggle,
     DictationCancel,
+    MediaReveal,
 }
 
 pub fn action_for_event(event: InputEvent) -> Option<InputAction> {
+    if event.event_type() == EventType::KEY
+        && event.code() == KeyCode::KEY_PLAYPAUSE.code()
+        && event.value() == 1
+    {
+        return Some(InputAction::MediaReveal);
+    }
     if let Some(index) = workspace_for_event(event) {
         return Some(InputAction::Workspace(index));
     }
@@ -50,6 +57,27 @@ pub fn workspace_exists(index: u32, count: i32) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn media_reveal_uses_only_the_physical_play_pause_press() {
+        assert_eq!(
+            action_for_event(InputEvent::new(1, KeyCode::KEY_PLAYPAUSE.code(), 1)),
+            Some(InputAction::MediaReveal)
+        );
+        for value in [0, 2] {
+            assert_eq!(
+                action_for_event(InputEvent::new(1, KeyCode::KEY_PLAYPAUSE.code(), value)),
+                None
+            );
+        }
+        for code in [
+            KeyCode::KEY_SPACE,
+            KeyCode::KEY_NEXTSONG,
+            KeyCode::KEY_PREVIOUSSONG,
+        ] {
+            assert_eq!(action_for_event(InputEvent::new(1, code.code(), 1)), None);
+        }
+    }
 
     #[test]
     fn side_buttons_use_release_events_without_reusing_system_mute_or_legacy_keys() {

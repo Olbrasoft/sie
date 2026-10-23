@@ -35,6 +35,7 @@ pub struct AppTray {
     pub lighting_controls_available: bool,
     pub workspace_status: String,
     pub media_status: String,
+    pub focus_status: Option<String>,
     pub dictation_status: DictationStatus,
     pub dictation_controls_available: bool,
 }
@@ -58,7 +59,7 @@ impl Tray for AppTray {
     }
 
     fn menu(&self) -> Vec<MenuItem<Self>> {
-        vec![
+        let mut menu = vec![
             StandardItem {
                 label: self.lighting_status.clone(),
                 enabled: false,
@@ -170,7 +171,19 @@ impl Tray for AppTray {
                 ..Default::default()
             }
             .into(),
-        ]
+        ];
+        if let Some(label) = &self.focus_status {
+            menu.insert(
+                0,
+                StandardItem {
+                    label: label.clone(),
+                    enabled: false,
+                    ..Default::default()
+                }
+                .into(),
+            );
+        }
+        menu
     }
 }
 
@@ -226,6 +239,7 @@ mod tests {
             lighting_controls_available: true,
             workspace_status: "Ready".into(),
             media_status: "Média nedostupná".into(),
+            focus_status: None,
             dictation_status: DictationStatus::new(false, Phase::Disabled),
             dictation_controls_available: true,
         };
@@ -249,6 +263,7 @@ mod tests {
             lighting_controls_available: true,
             workspace_status: "Ready".into(),
             media_status: "Média nedostupná".into(),
+            focus_status: None,
             dictation_status: DictationStatus::new(false, Phase::Disabled),
             dictation_controls_available: true,
         };
@@ -289,6 +304,7 @@ mod tests {
             lighting_controls_available: true,
             workspace_status: "Ready".into(),
             media_status: "Média nedostupná".into(),
+            focus_status: None,
             dictation_status: DictationStatus::new(true, Phase::Recording),
             dictation_controls_available: true,
         };

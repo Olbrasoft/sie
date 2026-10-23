@@ -52,7 +52,7 @@ VirtualAssistant and live D-Bus introspection established these boundaries:
 | GNOME AppIndicator extension | Display the Rust StatusNotifierItem and menu |
 | `focus-tracker@olbrasoft.cz` | Read live workspace count and current index |
 | Mutter RemoteDesktop D-Bus API | Send the configured workspace accelerator |
-| `window-calls@domandoman.xyz` | Identify and verify the dictation target window |
+| `window-calls@domandoman.xyz` | Identify dictation targets and activate existing media windows/workspaces |
 | `computer-use-linux@avifenesh.dev` | Existing agent window control; no workspace activation method exposed |
 
 The current tracker exposes workspace state but no activation method. The
@@ -61,6 +61,11 @@ activation. VirtualAssistant's remote desktop command uses the existing
 Super + numpad shortcuts. SIE reuses those shortcuts and sends input through
 Mutter, whose session creation/start/stop works on this workstation. The existing
 local computer-control experiments also use this Mutter interface.
+
+For media reveal, Window Calls activates an existing player's window together
+with its workspace. [The optional local browser bridge](media-reveal.md)
+additionally selects a hidden media tab; a small JavaScript extension delegates
+routing and native messaging to Rust.
 
 **No new GNOME extension is installed or required for this setup.** SIE does not
 use unrestricted Shell Eval, alter the installed extensions, change keybindings
