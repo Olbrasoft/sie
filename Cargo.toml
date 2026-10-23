@@ -1,0 +1,22 @@
+[package]
+name = "sie"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.89"
+description = "System Interface Extensions for the Linux desktop"
+license = "MIT"
+repository = "https://github.com/Olbrasoft/sie"
+authors = ["Jiří Tůma", "Olbrasoft"]
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+evdev = { version = "0.13", features = ["tokio"] }
+ksni = "0.3.7"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "process", "signal", "sync", "time"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+zbus = { version = "5", default-features = false, features = ["tokio"] }
+
+[dev-dependencies]
+tempfile = "3"

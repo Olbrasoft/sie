@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=System Interface Extensions
+Comment=Keyboard lighting and workspace controls
+Exec=systemctl --user start sie.service
+Icon=input-keyboard
+Terminal=false
+Categories=Utility;
+StartupNotify=false
