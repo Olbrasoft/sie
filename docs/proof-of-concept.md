@@ -5,11 +5,13 @@ input and control. The first deliverable is a small, visible keyboard companion;
 later iterations can take over selected dictation and control capabilities from
 VirtualAssistant without interrupting the existing service.
 
-## Scope of version 0.2.0
+## Scope of version 0.3.0
 
 The application runs in the logged-in GNOME/Wayland session, displays a tray
 indicator, owns a touch-typing lighting frame, and maps the five dedicated macro
-keys to existing workspaces. The active workspace's macro key glows green,
+keys to existing workspaces. A tray switch turns all RGB lighting off or on
+without disconnecting the keyboard. The active workspace's macro key glows green
+when lighting is enabled,
 including after switches made through the mouse or other shortcuts. About displays the version compiled into the
 installed binary. Quit and SIGTERM release the process and input subscriptions.
 Starting a second controlling instance fails without replacing the first.
@@ -115,6 +117,26 @@ multiple Razer devices.
 
 Reference: [OpenRazer lighting API implementation](https://github.com/openrazer/openrazer/blob/master/daemon/openrazer_daemon/dbus_services/dbus_methods/chroma_keyboard.py).
 
+## Lighting toggle
+
+The tray shows `✅ Vypnout osvětlení klávesnice` when lighting is on and
+`❌ Zapnout osvětlení klávesnice` when it is off. The icon describes the current
+state and the text names the action. Both states remain clickable. The action
+requests the specific displayed mode, so repeated clicks on a stale menu do not
+accidentally reverse the user's requested state.
+
+`LightingMode::Off` generates a complete black 8 × 23 frame instead of applying
+any profile or workspace overlay. The normal refresh and workspace-change paths
+use the same mode, so the keyboard remains dark when the workspace changes or
+the hardware reconnects. Turning lighting on generates a fresh frame using the
+current workspace. The saved hardware brightness is never changed.
+
+Macro key monitoring and workspace activation operate independently of the RGB
+mode. The selection is held for the current process; a new SIE process starts
+with lighting on. `--tray-only` disables the lighting action. If the keyboard is
+absent or the driver fails, the tray reports that state and retains the requested
+mode for the next refresh.
+
 ## Macro keys and workspaces
 
 User-facing workspace numbers start at one: workspace 3 means the third
@@ -175,7 +197,7 @@ For a real desktop smoke test:
 
 1. Run `sie --doctor`; all required integrations should report OK.
 2. Start SIE; verify its keyboard tray icon and click it.
-3. Open About and verify version 0.2.0. Close the dialog.
+3. Open About and verify version 0.3.0. Close the dialog.
 4. Visually inspect the keyboard's finger zones, white remaining keys and accents.
 5. Press M1–M5 and verify workspaces 1–5 (indices 0–4). Release and hold keys to
    check repeat behavior. Switch using the mouse or another shortcut: the active
@@ -184,7 +206,10 @@ For a real desktop smoke test:
    unchanged. Do this in a suitable test session rather than removing occupied
    workspaces from the user's active desktop.
 7. Unplug/reconnect the keyboard; input and lighting should recover.
-8. Choose Quit; verify the tray and process disappear. Restart through the launcher.
+8. Turn lighting off from the tray; verify the item changes to the on action and
+   every RGB zone stays dark after workspace changes. Turn it on and verify the
+   current workspace's M key and the finger zones return.
+9. Choose Quit; verify the tray and process disappear. Restart through the launcher.
 
 Physical key presses, visual LED inspection and reconnect testing must be
 distinguished from mocked CI results in implementation reports.

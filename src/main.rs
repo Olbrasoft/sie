@@ -5,7 +5,9 @@ use clap::Parser;
 use ksni::TrayMethods;
 use sie::{
     desktop::{self, Desktop},
-    input, openrazer,
+    input,
+    lighting::LightingMode,
+    openrazer,
     tray::{Action, AppTray},
 };
 use tokio::{sync::mpsc, task::JoinSet};
@@ -175,15 +177,18 @@ async fn doctor(connection: &Connection) -> Result<()> {
 }
 
 async fn run(connection: Connection, tray_only: bool) -> Result<()> {
+    let mut lighting_mode = LightingMode::On;
     let (actions, mut action_rx) = mpsc::channel(8);
     let tray = AppTray {
         actions,
         lighting_status: if tray_only {
-            "Podsvícení vypnuto"
+            "Řízení osvětlení vypnuté"
         } else {
             "Připojuji klávesnici…"
         }
         .into(),
+        lighting_mode,
+        lighting_controls_available: !tray_only,
         workspace_status: if tray_only {
             "Makroklávesy vypnuty"
         } else {
@@ -216,6 +221,10 @@ async fn run(connection: Connection, tray_only: bool) -> Result<()> {
             _ = term.recv() => break,
             action = action_rx.recv() => match action {
                 Some(Action::Quit) | None => break,
+                Some(Action::SetLightingMode(mode)) => if !tray_only {
+                    lighting_mode = mode;
+                    refresh_lighting(&connection, &tray, lighting_mode, &mut last_status).await;
+                },
                 Some(Action::About) => if about.is_empty() {
                     about.spawn(async { if let Err(error) = sie::tray::show_about().await { tracing::warn!(%error, "About dialog failed"); } });
                 },
@@ -243,24 +252,7 @@ async fn run(connection: Connection, tray_only: bool) -> Result<()> {
                     Some(()) = workspace_rx.recv() => {},
                 }
             }, if !tray_only => {
-                let state = desktop::workspace_state(&connection).await.ok();
-                let active = state.and_then(|state| state.active_macro());
-                let lighting = match openrazer::apply(&connection, active).await {
-                    Ok(0) => "Klávesnice není připojena".to_owned(),
-                    Ok(_) => "Podsvícení aktivní".to_owned(),
-                    Err(error) => {
-                        tracing::debug!("Lighting unavailable: {error:#}");
-                        "Podsvícení nedostupné".to_owned()
-                    },
-                };
-                let workspace = state.map(sie::tray::workspace_label)
-                    .unwrap_or_else(|| "Ovládání ploch nedostupné".into());
-                let status = format!("{lighting}; {workspace}");
-                if status != last_status {
-                    tracing::info!("{status}");
-                    last_status = status;
-                    tray.update(move |tray| { tray.lighting_status = lighting; tray.workspace_status = workspace; }).await;
-                }
+                refresh_lighting(&connection, &tray, lighting_mode, &mut last_status).await;
             },
             Some(result) = tasks.join_next(), if !tasks.is_empty() => {
                 if let Err(error) = result { tracing::error!(%error, "Input monitor stopped"); }
@@ -274,4 +266,40 @@ async fn run(connection: Connection, tray_only: bool) -> Result<()> {
     tray.shutdown().await;
     tracing::info!("SIE stopped");
     Ok(())
+}
+
+async fn refresh_lighting(
+    connection: &Connection,
+    tray: &ksni::Handle<AppTray>,
+    mode: LightingMode,
+    last_status: &mut String,
+) {
+    let state = desktop::workspace_state(connection).await.ok();
+    let active = state.and_then(|state| state.active_macro());
+    let lighting = match openrazer::apply_mode(connection, active, mode).await {
+        Ok(0) => "Klávesnice není připojena".to_owned(),
+        Ok(_) => match mode {
+            LightingMode::On => "Podsvícení aktivní",
+            LightingMode::Off => "Osvětlení vypnuté",
+        }
+        .to_owned(),
+        Err(error) => {
+            tracing::warn!("Lighting unavailable: {error:#}");
+            "Podsvícení nedostupné".to_owned()
+        }
+    };
+    let workspace = state
+        .map(sie::tray::workspace_label)
+        .unwrap_or_else(|| "Ovládání ploch nedostupné".into());
+    let status = format!("{mode:?}: {lighting}; {workspace}");
+    if status != *last_status {
+        tracing::info!("{status}");
+        *last_status = status;
+        tray.update(move |tray| {
+            tray.lighting_status = lighting;
+            tray.lighting_mode = mode;
+            tray.workspace_status = workspace;
+        })
+        .await;
+    }
 }

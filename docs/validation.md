@@ -69,3 +69,29 @@ stopping each short input session. No new GNOME extension was installed.
 - The user confirmed that the correct physical M key glows green and follows
   workspace changes made with the mouse or another shortcut. The earlier M1
   Settings regression was also physically confirmed fixed by the user.
+
+## Lighting toggle in version 0.3.0
+
+- Formatting, Clippy and all 27 tests passed locally (18 unit tests and nine
+  private D-Bus integration tests). The release binary was installed and the
+  user service restarted successfully.
+- New tests verify that every RGB cell stays black with lighting off, including
+  ambient rows and macro indicators. A complete D-Bus off/switch/refresh/on
+  sequence confirms workspace switching still works and re-enabling restores
+  the profile for the newly active workspace.
+- The actual tray item was clicked to disable lighting. Its green check and
+  off action changed to a red cross and on action. The user confirmed the
+  physical keyboard, macro keys and ambient lighting were fully dark.
+- An external shortcut switched the real desktop to workspace 4. After a
+  periodic refresh, the tray still reported lighting off and showed the new
+  workspace. The original workspace was restored.
+- Clicking the on action succeeded; the menu returned to its green check/off
+  action and the application reported active lighting again.
+- The toggle is intentionally scoped to the current application run; no
+  brightness setting or persistent preference was changed.
+- Physical on/off behavior was additionally checked using 1920 × 1080 snapshots
+  from the connected Logitech StreamCam. The images clearly distinguish the
+  illuminated RGB matrix from the unlit keyboard. White, blue/cyan, pink/purple
+  and green areas can be distinguished, but the current oblique, soft image
+  does not reliably identify every key label or precise color shade. Photos
+  were kept locally and opened in the desktop image viewer.

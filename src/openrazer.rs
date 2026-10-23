@@ -1,7 +1,7 @@
 use anyhow::{Context, Result, ensure};
 use zbus::{Connection, Proxy};
 
-use crate::lighting::{COLS, ROWS, encode_frame, workspace_frame};
+use crate::lighting::{COLS, LightingMode, ROWS, encode_frame};
 
 pub const VENDOR_ID: u16 = 0x1532;
 pub const PRODUCT_ID: u16 = 0x028D;
@@ -33,10 +33,20 @@ pub async fn devices(connection: &Connection) -> Result<Vec<String>> {
 }
 
 pub async fn apply(connection: &Connection, active_workspace: Option<i32>) -> Result<usize> {
+    apply_mode(connection, active_workspace, LightingMode::On).await
+}
+
+pub async fn apply_mode(
+    connection: &Connection,
+    active_workspace: Option<i32>,
+    mode: LightingMode,
+) -> Result<usize> {
     let paths = devices(connection)
         .await
         .context("OpenRazer discovery failed")?;
-    let payload = encode_frame(&workspace_frame(active_workspace));
+    // A complete black custom frame also covers macro and ambient LEDs without
+    // changing the user's saved brightness or disabling keyboard input.
+    let payload = encode_frame(&mode.frame(active_workspace));
     for path in &paths {
         let lighting = Proxy::new(
             connection,

@@ -1,11 +1,15 @@
 # System Interface Extensions
 
 System Interface Extensions (SIE) is an MIT-licensed Rust desktop companion
-for extending how input devices control a Linux computer. Version 0.2.0 is a
+for extending how input devices control a Linux computer. Version 0.3.0 is a
 GNOME/Wayland proof of concept for the **Razer BlackWidow V4 Pro** (`1532:028d`).
 
 - A top-panel tray opens a Czech menu with **O aplikaci** (the running binary's
   version) and **Ukončit**.
+- **Vypnout osvětlení klávesnice** turns off the entire RGB matrix at night.
+  The item then becomes **Zapnout osvětlení klávesnice**. A green check marks
+  lighting on; a red cross marks lighting off. Workspace switching keeps working
+  while the keyboard stays dark.
 - Rust generates touch-typing finger zones and sends them directly to OpenRazer.
   The active workspace's **M1–M5 key is green** and other macro keys are white,
   including when switching with the mouse or another shortcut. The established
@@ -53,6 +57,13 @@ unchanged. Avoid playing a competing Polychromatic
 software effect while SIE owns the lighting. The old experimental profile is
 neither loaded nor required. Quit stops monitoring and refreshing; the hardware
 may retain its last frame until another controller changes it.
+
+The lighting toggle keeps every RGB cell black, including ambient/wrist-rest
+LEDs and macro highlights, during workspace changes and periodic refreshes.
+Turning it back on restores the profile for the current workspace without
+changing the saved device brightness. The choice applies to the current run;
+restarting SIE starts with lighting enabled. In `--tray-only` mode the lighting
+control is disabled.
 
 ```sh
 cargo run --locked -- --tray-only            # Tray without keyboard control
