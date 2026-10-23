@@ -1,6 +1,6 @@
 [package]
 name = "sie"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 rust-version = "1.89"
 description = "System Interface Extensions for the Linux desktop"
@@ -12,6 +12,7 @@ authors = ["Jiří Tůma", "Olbrasoft"]
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }
 evdev = { version = "0.13", features = ["tokio"] }
+futures-util = "0.3"
 ksni = "0.3.7"
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "process", "signal", "sync", "time"] }
 tracing = "0.1"

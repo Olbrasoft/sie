@@ -5,6 +5,8 @@ the connected Razer BlackWidow V4 Pro (`1532:028d`), and Rust 1.99.0.
 
 ## Automated checks
 
+The initial version 0.1.0 checks were:
+
 - Formatting and Clippy with warnings denied passed.
 - All 17 tests passed: eleven unit tests and six private D-Bus integration tests.
 - The release build, shell installer syntax, systemd unit and desktop launcher
@@ -50,3 +52,20 @@ Mutter's `NotifyKeyboardKeysym` did not reliably activate the fifth target on
 this desktop. `NotifyKeyboardKeycode` with Linux evdev codes worked for every
 target. The implementation uses keycodes and confirms actual activation before
 stopping each short input session. No new GNOME extension was installed.
+
+## Active workspace lighting in version 0.2.0
+
+- Formatting, Clippy and all 23 tests passed locally (15 unit tests and eight
+  private D-Bus integration tests).
+- The LED map was verified against the installed BlackWidow device graphic:
+  M1–M5 use column 1 and rows 5 through 1 respectively.
+- Tests confirm that externally emitted workspace changes move the green LED
+  from M3 to M4, return the old key to white, and never send keyboard input.
+  Losing tracker state clears the old highlight. All touch-typing cells retain
+  their previous colors.
+- Version 0.2.0 was installed and the user service restarted successfully. Live
+  logs show workspace changes updating the one-based tray label and selected
+  macro key.
+- The user confirmed that the correct physical M key glows green and follows
+  workspace changes made with the mouse or another shortcut. The earlier M1
+  Settings regression was also physically confirmed fixed by the user.

@@ -227,7 +227,12 @@ async fn lighting_writes_a_byte_array_only_to_the_supported_model() {
     let bus = Bus::start();
     let state = Shared::default();
     let _server = services(&bus, state.clone(), vec![8, 23]).await;
-    assert_eq!(openrazer::apply(&bus.connection().await).await.unwrap(), 1);
+    assert_eq!(
+        openrazer::apply(&bus.connection().await, None)
+            .await
+            .unwrap(),
+        1
+    );
     let state = state.lock().unwrap();
     assert_eq!(state.frames, vec![encode_frame(&touch_typing_frame())]);
     assert_eq!(state.customs, 1);
@@ -238,7 +243,11 @@ async fn wrong_matrix_prevents_all_lighting_writes() {
     let bus = Bus::start();
     let state = Shared::default();
     let _server = services(&bus, state.clone(), vec![6, 22]).await;
-    assert!(openrazer::apply(&bus.connection().await).await.is_err());
+    assert!(
+        openrazer::apply(&bus.connection().await, None)
+            .await
+            .is_err()
+    );
     assert!(state.lock().unwrap().frames.is_empty());
 }
 
@@ -331,5 +340,103 @@ async fn duplicate_instance_cannot_replace_the_running_application() {
             .unwrap()
             .as_str(),
         first.unique_name().unwrap().as_str()
+    );
+}
+
+#[tokio::test]
+async fn externally_changed_workspace_moves_the_led_without_sending_keyboard_input() {
+    use sie::desktop::{watch_workspaces, workspace_state};
+    use std::time::Duration;
+
+    let bus = Bus::start();
+    let state = Arc::new(Mutex::new(State {
+        count: 5,
+        ..Default::default()
+    }));
+    let server = services(&bus, state.clone(), vec![8, 23]).await;
+    let connection = bus.connection().await;
+    let (changed, mut changes) = tokio::sync::mpsc::channel(1);
+    let watcher = tokio::spawn(watch_workspaces(connection.clone(), changed));
+    tokio::time::timeout(Duration::from_secs(2), changes.recv())
+        .await
+        .unwrap()
+        .unwrap();
+
+    // These changes originate at the compositor, without any macro key event.
+    for index in [2, 3] {
+        state.lock().unwrap().current = index;
+        server
+            .emit_signal(
+                None::<&str>,
+                "/org/olbrasoft/Desktop",
+                "org.olbrasoft.Desktop",
+                "WorkspaceChanged",
+                &(index, 5_i32),
+            )
+            .await
+            .unwrap();
+        tokio::time::timeout(Duration::from_secs(2), changes.recv())
+            .await
+            .unwrap()
+            .unwrap();
+        let desktop = workspace_state(&connection).await.unwrap();
+        assert_eq!(desktop.index, index);
+        openrazer::apply(&connection, desktop.active_macro())
+            .await
+            .unwrap();
+    }
+    let state = state.lock().unwrap();
+    let third = &state.frames[0];
+    let fourth = &state.frames[1];
+    assert_eq!(
+        &third[3 * 72 + 6..3 * 72 + 9],
+        &[0, 255, 0],
+        "M3 on workspace 3"
+    );
+    assert_eq!(
+        &third[2 * 72 + 6..2 * 72 + 9],
+        &[255, 255, 255],
+        "M4 initially white"
+    );
+    assert_eq!(
+        &fourth[3 * 72 + 6..3 * 72 + 9],
+        &[255, 255, 255],
+        "M3 returns to white"
+    );
+    assert_eq!(
+        &fourth[2 * 72 + 6..2 * 72 + 9],
+        &[0, 255, 0],
+        "M4 on workspace 4"
+    );
+    assert!(state.keys.is_empty());
+    assert_eq!(state.starts, 0, "Lighting must not open an input session");
+    watcher.abort();
+}
+
+#[tokio::test]
+async fn losing_workspace_state_clears_the_old_highlight() {
+    let bus = Bus::start();
+    let state = Arc::new(Mutex::new(State {
+        count: 5,
+        current: 2,
+        ..Default::default()
+    }));
+    let server = services(&bus, state.clone(), vec![8, 23]).await;
+    let connection = bus.connection().await;
+    let active = sie::desktop::workspace_state(&connection)
+        .await
+        .unwrap()
+        .active_macro();
+    openrazer::apply(&connection, active).await.unwrap();
+    server.release_name("org.olbrasoft.Desktop").await.unwrap();
+    let active = sie::desktop::workspace_state(&connection)
+        .await
+        .ok()
+        .and_then(|state| state.active_macro());
+    assert!(active.is_none());
+    openrazer::apply(&connection, active).await.unwrap();
+    assert_eq!(
+        state.lock().unwrap().frames.last().unwrap(),
+        &encode_frame(&touch_typing_frame())
     );
 }
