@@ -89,3 +89,9 @@ stopping each short input session. No new GNOME extension was installed.
   action and the application reported active lighting again.
 - The toggle is intentionally scoped to the current application run; no
   brightness setting or persistent preference was changed.
+- Physical on/off behavior was additionally checked using 1920 × 1080 snapshots
+  from the connected Logitech StreamCam. The images clearly distinguish the
+  illuminated RGB matrix from the unlit keyboard. White, blue/cyan, pink/purple
+  and green areas can be distinguished, but the current oblique, soft image
+  does not reliably identify every key label or precise color shade. Photos
+  were kept locally and opened in the desktop image viewer.
