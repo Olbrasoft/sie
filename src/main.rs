@@ -54,7 +54,11 @@ async fn main() -> Result<()> {
         .await
         .context("SIE is already running, or its application name cannot be acquired")?;
     if args.apply_lighting {
-        let count = openrazer::apply(&connection).await?;
+        let active = desktop::workspace_state(&connection)
+            .await
+            .ok()
+            .and_then(|state| state.active_macro());
+        let count = openrazer::apply(&connection, active).await?;
         anyhow::ensure!(count > 0, "No supported BlackWidow V4 Pro found");
         println!("Touch-typing lighting applied to {count} keyboard(s).");
         return Ok(());
@@ -193,10 +197,15 @@ async fn run(connection: Connection, tray_only: bool) -> Result<()> {
     let mut tasks = JoinSet::new();
     let mut about = JoinSet::new();
     let (macros, mut macro_rx) = mpsc::channel(8);
+    let (workspace_changes, mut workspace_rx) = mpsc::channel(1);
     let mut refresh = tokio::time::interval(Duration::from_secs(2));
     refresh.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
     if !tray_only {
         tasks.spawn(input::monitor(macros));
+        tasks.spawn(desktop::watch_workspaces(
+            connection.clone(),
+            workspace_changes,
+        ));
     }
     let mut term = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())?;
     let mut last_status = String::new();
@@ -228,8 +237,15 @@ async fn run(connection: Connection, tray_only: bool) -> Result<()> {
                     Err(error) => tracing::warn!("Workspace switch failed: {error:#}"),
                 }
             },
-            _ = refresh.tick(), if !tray_only => {
-                let lighting = match openrazer::apply(&connection).await {
+            _ = async {
+                tokio::select! {
+                    _ = refresh.tick() => {},
+                    Some(()) = workspace_rx.recv() => {},
+                }
+            }, if !tray_only => {
+                let state = desktop::workspace_state(&connection).await.ok();
+                let active = state.and_then(|state| state.active_macro());
+                let lighting = match openrazer::apply(&connection, active).await {
                     Ok(0) => "Klávesnice není připojena".to_owned(),
                     Ok(_) => "Podsvícení aktivní".to_owned(),
                     Err(error) => {
@@ -237,10 +253,8 @@ async fn run(connection: Connection, tray_only: bool) -> Result<()> {
                         "Podsvícení nedostupné".to_owned()
                     },
                 };
-                let workspace = match desktop::workspace_count(&connection).await {
-                    Ok(count) => format!("Plochy: {count} · M1–M5"),
-                    Err(_) => "Ovládání ploch nedostupné".into(),
-                };
+                let workspace = state.map(sie::tray::workspace_label)
+                    .unwrap_or_else(|| "Ovládání ploch nedostupné".into());
                 let status = format!("{lighting}; {workspace}");
                 if status != last_status {
                     tracing::info!("{status}");

@@ -1,7 +1,7 @@
 use anyhow::{Context, Result, ensure};
 use zbus::{Connection, Proxy};
 
-use crate::lighting::{COLS, ROWS, encode_frame, touch_typing_frame};
+use crate::lighting::{COLS, ROWS, encode_frame, workspace_frame};
 
 pub const VENDOR_ID: u16 = 0x1532;
 pub const PRODUCT_ID: u16 = 0x028D;
@@ -32,11 +32,11 @@ pub async fn devices(connection: &Connection) -> Result<Vec<String>> {
     Ok(paths)
 }
 
-pub async fn apply(connection: &Connection) -> Result<usize> {
+pub async fn apply(connection: &Connection, active_workspace: Option<i32>) -> Result<usize> {
     let paths = devices(connection)
         .await
         .context("OpenRazer discovery failed")?;
-    let payload = encode_frame(&touch_typing_frame());
+    let payload = encode_frame(&workspace_frame(active_workspace));
     for path in &paths {
         let lighting = Proxy::new(
             connection,

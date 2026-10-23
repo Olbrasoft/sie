@@ -5,11 +5,12 @@ input and control. The first deliverable is a small, visible keyboard companion;
 later iterations can take over selected dictation and control capabilities from
 VirtualAssistant without interrupting the existing service.
 
-## Scope of version 0.1.0
+## Scope of version 0.2.0
 
 The application runs in the logged-in GNOME/Wayland session, displays a tray
 indicator, owns a touch-typing lighting frame, and maps the five dedicated macro
-keys to existing workspaces. About displays the version compiled into the
+keys to existing workspaces. The active workspace's macro key glows green,
+including after switches made through the mouse or other shortcuts. About displays the version compiled into the
 installed binary. Quit and SIGTERM release the process and input subscriptions.
 Starting a second controlling instance fails without replacing the first.
 
@@ -82,10 +83,23 @@ implementation. Character keys follow the established eight finger zones:
 | Right ring finger | `#7664B4` |
 | Right little finger | `#D05291` |
 
-Remaining keys, modifiers, navigation, numpad, macro keys, media controls and
-ambient LEDs are white. The existing explicit accents are retained: the left
+Remaining keys, modifiers, navigation, numpad, inactive macro keys, media controls
+and ambient LEDs are white. The active workspace's macro key is green
+(`#00FF00`). The existing explicit accents are retained: the left
 system key is Debian red (`#A80030`) and the main Enter is green (`#00FF00`).
 Numpad Enter stays white.
+
+The macro LED coordinates are `(row, column)`: M1 `(5, 1)`, M2 `(4, 1)`,
+M3 `(3, 1)`, M4 `(2, 1)` and M5 `(1, 1)`, verified against the installed native
+BlackWidow device map. The matrix's row order is reversed relative to key order.
+Each frame starts with the established touch-typing colors and overlays exactly
+one macro LED for GNOME indices 0–4. Higher indices or missing desktop state
+leave all five macro LEDs white, clearing any previous highlight.
+
+SIE subscribes to the existing tracker's `WorkspaceChanged` signal and reads
+`CurrentWorkspace` and `TotalWorkspaces` afresh when it arrives. Lighting updates
+do not inject keyboard input or depend on M1–M5 being pressed. The two-second
+refresh also recovers state if signals are missed or the tracker restarts.
 
 Each driver row contains `[row, first_column, last_column, RGB…]`; eight rows
 form one 576-byte `ay` payload. SIE calls `setKeyRow` and then `setCustom` on
@@ -103,13 +117,17 @@ Reference: [OpenRazer lighting API implementation](https://github.com/openrazer/
 
 ## Macro keys and workspaces
 
-| Physical key | OpenRazer default event | Workspace index | Existing GNOME accelerator |
-| --- | --- | --- | --- |
-| M1 | F13 | 0 | Super + KP 1 |
-| M2 | F14 | 1 | Super + KP 2 |
-| M3 | F15 | 2 | Super + KP 3 |
-| M4 | F16 | 3 | Super + KP 4 |
-| M5 | F17 | 4 | Super + KP 5 |
+User-facing workspace numbers start at one: workspace 3 means the third
+workspace, whose GNOME index is 2. Tray text and discussions use this numbering.
+The diagnostic `--switch-workspace` option explicitly accepts GNOME indices.
+
+| Physical key | OpenRazer default event | Workspace number | GNOME index | Existing GNOME accelerator |
+| --- | --- | --- | --- | --- |
+| M1 | F13 | 1 | 0 | Super + KP 1 |
+| M2 | F14 | 2 | 1 | Super + KP 2 |
+| M3 | F15 | 3 | 2 | Super + KP 3 |
+| M4 | F16 | 4 | 3 | Super + KP 4 |
+| M5 | F17 | 5 | 4 | Super + KP 5 |
 
 Linux `KEY_MACRO1` through `KEY_MACRO5` are also recognized. The application
 opens only by-id paths for the supported keyboard, verifies its USB IDs and
@@ -148,15 +166,20 @@ models, all five macro mappings, ignored events, menu actions and exact shortcut
 matching. Private D-Bus integration tests exercise the real application binary,
 all five target accelerators, live workspace-count changes, no input for absent
 targets, key release on failure, OpenRazer byte-array calls and duplicate-instance
-rejection. CI runs formatting, Clippy and tests on stable Rust and Rust 1.89.
+rejection. Tests also cover every active macro LED, unchanged finger zones,
+workspace changes made without macro input, one-based tray labels and clearing
+the highlight when workspace state disappears. CI runs formatting, Clippy and
+tests on stable Rust and Rust 1.89.
 
 For a real desktop smoke test:
 
 1. Run `sie --doctor`; all required integrations should report OK.
 2. Start SIE; verify its keyboard tray icon and click it.
-3. Open About and verify version 0.1.0. Close the dialog.
+3. Open About and verify version 0.2.0. Close the dialog.
 4. Visually inspect the keyboard's finger zones, white remaining keys and accents.
-5. Press M1–M5 and verify indices 0–4. Release and hold keys to check repeat behavior.
+5. Press M1–M5 and verify workspaces 1–5 (indices 0–4). Release and hold keys to
+   check repeat behavior. Switch using the mouse or another shortcut: the active
+   macro key should turn green and the previous one should return to white.
 6. With four existing workspaces, press M5 and verify the active workspace stays
    unchanged. Do this in a suitable test session rather than removing occupied
    workspaces from the user's active desktop.
