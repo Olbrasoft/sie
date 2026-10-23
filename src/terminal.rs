@@ -57,9 +57,15 @@ async fn descendants(pid: u32) -> HashSet<u32> {
         if seen.len() > 512 {
             break;
         }
-        if let Ok(children) =
-            tokio::fs::read_to_string(format!("/proc/{pid}/task/{pid}/children")).await
-        {
+        // A GUI may launch its client from a worker thread. Linux children
+        // files are per-thread, so inspect every task rather than only the leader.
+        let Ok(mut tasks) = tokio::fs::read_dir(format!("/proc/{pid}/task")).await else {
+            continue;
+        };
+        while let Ok(Some(task)) = tasks.next_entry().await {
+            let Ok(children) = tokio::fs::read_to_string(task.path().join("children")).await else {
+                continue;
+            };
             for child in children
                 .split_whitespace()
                 .filter_map(|s| s.parse::<u32>().ok())
