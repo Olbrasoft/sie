@@ -66,6 +66,7 @@ struct State {
     focused_window: u32,
     switch_on_paste: bool,
     cancel_on_paste: Option<Arc<AtomicBool>>,
+    missing_keyboard: bool,
 }
 type Shared = Arc<Mutex<State>>;
 
@@ -150,11 +151,14 @@ impl Windows {
     }
 }
 
-struct RazerManager;
+struct RazerManager(Shared);
 #[zbus::interface(name = "razer.devices")]
 impl RazerManager {
     #[zbus(name = "getDevices")]
     fn devices(&self) -> Vec<String> {
+        if self.0.lock().unwrap().missing_keyboard {
+            return vec![];
+        }
         vec!["test".into(), "other".into()]
     }
 }
@@ -203,7 +207,7 @@ async fn services(bus: &Bus, state: Shared, dimensions: Vec<i32>) -> Connection 
             Session(state.clone()),
         )
         .unwrap()
-        .serve_at("/org/razer", RazerManager)
+        .serve_at("/org/razer", RazerManager(state.clone()))
         .unwrap()
         .serve_at(
             "/org/razer/device/test",
@@ -729,4 +733,141 @@ async fn empty_or_canceled_submit_cannot_stage_text_or_start_input() {
     let state = state.lock().unwrap();
     assert!(state.keys.is_empty());
     assert_eq!(state.starts, 0);
+}
+
+async fn wait_for_frames(state: &Shared, minimum: usize) {
+    tokio::time::timeout(std::time::Duration::from_secs(3), async {
+        while state.lock().unwrap().frames.len() < minimum {
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .unwrap();
+}
+
+#[tokio::test]
+async fn recording_renderer_preserves_keys_handles_off_reconnect_and_restores_idle_on_shutdown() {
+    use sie::{
+        lighting::{LightingMode, State as LightingState},
+        media::Playback,
+    };
+    use tokio::sync::watch;
+    let bus = Bus::start();
+    let state = Shared::default();
+    let _server = services(&bus, state.clone(), vec![8, 23]).await;
+    let mut settings = LightingState {
+        workspace: Some(2),
+        playback: Playback::Paused,
+        ..Default::default()
+    };
+    let (requests, receiver) = watch::channel(settings);
+    let (status, mut status_rx) = watch::channel(String::new());
+    let task = tokio::spawn(sie::openrazer::run(
+        bus.connection().await,
+        receiver,
+        status,
+    ));
+    wait_for_frames(&state, 1).await;
+    let idle = encode_frame(&LightingMode::On.frame_with_media(Some(2), Playback::Paused));
+    assert_eq!(state.lock().unwrap().frames[0], idle);
+    settings.recording = true;
+    requests.send_replace(settings);
+    wait_for_frames(&state, 4).await;
+    {
+        let state = state.lock().unwrap();
+        assert!(state.frames[1..].windows(2).any(|w| w[0] != w[1]));
+        for frame in &state.frames[1..] {
+            // All six key rows remain identical to the idle frame.
+            assert_eq!(&frame[..432], &idle[..432]);
+            assert_ne!(&frame[432..], &idle[432..]);
+        }
+    }
+    settings.workspace = Some(3);
+    settings.playback = Playback::Playing;
+    let before = state.lock().unwrap().frames.len();
+    requests.send_replace(settings);
+    let expected = encode_frame(&LightingMode::On.frame_with_media(Some(3), Playback::Playing));
+    tokio::time::timeout(std::time::Duration::from_secs(3), async {
+        loop {
+            if state.lock().unwrap().frames[before..]
+                .iter()
+                .any(|f| f[..432] == expected[..432])
+            {
+                break;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .unwrap();
+    settings.mode = LightingMode::Off;
+    requests.send_replace(settings);
+    tokio::time::timeout(std::time::Duration::from_secs(3), async {
+        loop {
+            if state
+                .lock()
+                .unwrap()
+                .frames
+                .last()
+                .is_some_and(|f| f[3..72].iter().all(|b| *b == 0))
+            {
+                break;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .unwrap();
+    let dark_from = state.lock().unwrap().frames.len() - 1;
+    tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+    for frame in &state.lock().unwrap().frames[dark_from..] {
+        for row in frame.as_chunks::<72>().0 {
+            assert!(row[3..].iter().all(|b| *b == 0));
+        }
+    }
+    // Continue recording while off, reconnect, then enable: use the full current
+    // profile immediately, rather than initializing only the ambient rows.
+    state.lock().unwrap().missing_keyboard = true;
+    settings.mode = LightingMode::On;
+    requests.send_replace(settings);
+    tokio::time::timeout(std::time::Duration::from_secs(3), async {
+        loop {
+            let missing = status_rx.borrow_and_update().contains("není připojena");
+            if missing {
+                break;
+            }
+            status_rx.changed().await.unwrap();
+        }
+    })
+    .await
+    .unwrap();
+    let before = state.lock().unwrap().frames.len();
+    state.lock().unwrap().missing_keyboard = false;
+    wait_for_frames(&state, before + 1).await;
+    let restored = state.lock().unwrap().frames.last().unwrap().clone();
+    assert_eq!(&restored[..432], &expected[..432]);
+    assert_ne!(&restored[432..], &expected[432..]);
+    settings.recording = false;
+    requests.send_replace(settings);
+    tokio::time::timeout(std::time::Duration::from_secs(3), async {
+        loop {
+            if state.lock().unwrap().frames.last() == Some(&expected) {
+                break;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .unwrap();
+    // Quit during another recording must leave the ambient strip white.
+    settings.recording = true;
+    let before = state.lock().unwrap().frames.len();
+    requests.send_replace(settings);
+    wait_for_frames(&state, before + 1).await;
+    drop(requests);
+    tokio::time::timeout(std::time::Duration::from_secs(3), task)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(state.lock().unwrap().frames.last(), Some(&expected));
 }

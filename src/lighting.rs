@@ -1,4 +1,5 @@
 //! Native BlackWidow V4 Pro matrix. Coordinates are (row, column).
+use std::time::Duration;
 
 pub const ROWS: usize = 8;
 pub const COLS: usize = 23;
@@ -11,6 +12,16 @@ pub const WHITE: Rgb = [255, 255, 255];
 pub const ACTIVE_WORKSPACE_GREEN: Rgb = [0, 255, 0];
 // The device's macro LED rows run in reverse physical key order: M1 → M5.
 pub const MACRO_KEYS: [(usize, usize); 5] = [(5, 1), (4, 1), (3, 1), (2, 1), (1, 1)];
+pub const ANIMATION_INTERVAL: Duration = Duration::from_millis(125);
+pub const RAINBOW_PERIOD: Duration = Duration::from_secs(6);
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct State {
+    pub mode: LightingMode,
+    pub workspace: Option<i32>,
+    pub playback: crate::media::Playback,
+    pub recording: bool,
+}
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum LightingMode {
@@ -37,6 +48,15 @@ impl LightingMode {
         active_workspace: Option<i32>,
         playback: crate::media::Playback,
     ) -> Frame {
+        self.frame_with_recording(active_workspace, playback, None)
+    }
+
+    pub fn frame_with_recording(
+        self,
+        active_workspace: Option<i32>,
+        playback: crate::media::Playback,
+        elapsed: Option<Duration>,
+    ) -> Frame {
         match self {
             Self::On => {
                 let mut frame = workspace_frame(active_workspace);
@@ -46,10 +66,40 @@ impl LightingMode {
                     crate::media::Playback::Paused => MEDIA_PAUSED_RED,
                     crate::media::Playback::Playing => MEDIA_PLAYING_GREEN,
                 };
+                if let Some(elapsed) = elapsed {
+                    recording_rainbow(&mut frame, elapsed);
+                }
                 frame
             }
             Self::Off => [[[0, 0, 0]; COLS]; ROWS],
         }
+    }
+}
+
+fn recording_rainbow(frame: &mut Frame, elapsed: Duration) {
+    // Native SVG order: keyboard left (0..8), wrist rest (0..19),
+    // keyboard right (9..17). Only these 38 ambient cells are physical LEDs.
+    let perimeter = (0..9)
+        .map(|column| (6, column))
+        .chain((0..20).map(|column| (7, column)))
+        .chain((9..18).map(|column| (6, column)));
+    let phase =
+        (elapsed.as_millis() % RAINBOW_PERIOD.as_millis()) * 1536 / RAINBOW_PERIOD.as_millis();
+    for (index, (row, column)) in perimeter.enumerate() {
+        frame[row][column] = rainbow_color((phase as usize + index * 1536 / 38) % 1536);
+    }
+}
+
+fn rainbow_color(hue: usize) -> Rgb {
+    let rising = (hue % 256) as u8;
+    let falling = 255 - rising;
+    match hue / 256 {
+        0 => [255, rising, 0],
+        1 => [falling, 255, 0],
+        2 => [0, 255, rising],
+        3 => [0, falling, 255],
+        4 => [rising, 0, 255],
+        _ => [255, 0, falling],
     }
 }
 
@@ -108,6 +158,69 @@ pub fn encode_frame(frame: &Frame) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn recording_rainbow_moves_only_the_38_physical_ambient_leds_and_repeats() {
+        for workspace in [None, Some(0), Some(3), Some(8)] {
+            for playback in [
+                crate::media::Playback::Unavailable,
+                crate::media::Playback::Playing,
+                crate::media::Playback::Paused,
+            ] {
+                let idle = LightingMode::On.frame_with_media(workspace, playback);
+                let first = LightingMode::On.frame_with_recording(
+                    workspace,
+                    playback,
+                    Some(Duration::ZERO),
+                );
+                let later = LightingMode::On.frame_with_recording(
+                    workspace,
+                    playback,
+                    Some(Duration::from_secs(1)),
+                );
+                let repeat = LightingMode::On.frame_with_recording(
+                    workspace,
+                    playback,
+                    Some(RAINBOW_PERIOD),
+                );
+                assert_eq!(first, repeat);
+                assert_ne!(first, later);
+                for row in 0..ROWS {
+                    for column in 0..COLS {
+                        let ambient = (row == 6 && column < 18) || (row == 7 && column < 20);
+                        if ambient {
+                            assert_ne!(first[row][column], WHITE);
+                            assert_eq!(*first[row][column].iter().max().unwrap(), 255);
+                            assert_eq!(*first[row][column].iter().min().unwrap(), 0);
+                            assert_ne!(first[row][column], later[row][column]);
+                        } else {
+                            assert_eq!(
+                                first[row][column], idle[row][column],
+                                "cell {row},{column}"
+                            );
+                            assert_eq!(
+                                later[row][column], idle[row][column],
+                                "cell {row},{column}"
+                            );
+                        }
+                    }
+                }
+                assert_eq!(
+                    LightingMode::On.frame_with_recording(workspace, playback, None),
+                    idle
+                );
+                for elapsed in [Duration::ZERO, Duration::from_millis(500), Duration::MAX] {
+                    assert!(
+                        LightingMode::Off
+                            .frame_with_recording(workspace, playback, Some(elapsed))
+                            .iter()
+                            .flatten()
+                            .all(|rgb| *rgb == [0, 0, 0])
+                    );
+                }
+            }
+        }
+    }
 
     #[test]
     fn media_overlay_changes_only_the_second_physical_media_key() {

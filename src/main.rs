@@ -14,7 +14,7 @@ use sie::{
     desktop::{self, Desktop},
     dictation::{self, Command as DictationCommand, Phase, Status as DictationStatus},
     input,
-    lighting::LightingMode,
+    lighting::{LightingMode, State as LightingState},
     macros::InputAction,
     media::{self, Status as MediaStatus},
     media_focus, openrazer,
@@ -276,6 +276,9 @@ async fn run(
     dictation_config: DictationConfig,
 ) -> Result<()> {
     let mut lighting_mode = LightingMode::On;
+    let (lighting_requests, lighting_request_rx) =
+        tokio::sync::watch::channel(LightingState::default());
+    let (lighting_status, mut lighting_status_rx) = tokio::sync::watch::channel(String::new());
     let broker = Arc::new(browser::Broker::default());
     browser::export(&connection, broker.clone()).await?;
     let (focus_requests, focus_rx) = mpsc::channel(8);
@@ -325,6 +328,15 @@ async fn run(
     let mut refresh = tokio::time::interval(Duration::from_secs(2));
     refresh.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
     let mut dictation_task = None;
+    let lighting_task = if tray_only {
+        None
+    } else {
+        Some(tokio::spawn(openrazer::run(
+            connection.clone(),
+            lighting_request_rx,
+            lighting_status,
+        )))
+    };
     if !tray_only {
         tasks.spawn(input::monitor(macros));
         tasks.spawn(media_focus::run(
@@ -386,7 +398,8 @@ async fn run(
                 Some(Action::SetLightingMode(mode)) => if !tray_only {
                     lighting_mode = mode;
                     let media=media_rx.borrow_and_update().clone();
-                    refresh_lighting(&connection, &tray, lighting_mode, &media, &mut last_status).await;
+                    let recording = dictation_status_rx.borrow().phase == Phase::Recording;
+                    refresh_lighting(&connection, &tray, lighting_mode, &media, recording, &lighting_requests, &mut last_status).await;
                 },
                 Some(Action::Dictation(command)) => if !tray_only { let _ = dictation_commands.try_send(command); },
                 Some(Action::About) => if about.is_empty() {
@@ -432,7 +445,17 @@ async fn run(
             Ok(()) = dictation_status_rx.changed(), if !tray_only => {
                 let status=dictation_status_rx.borrow_and_update().clone();
                 tracing::info!(phase=?status.phase,"Dictation state changed");
+                lighting_requests.send_if_modified(|state| {
+                    let recording = status.phase == Phase::Recording;
+                    if state.recording == recording { return false; }
+                    state.recording = recording;
+                    true
+                });
                 tray.update(move |tray| tray.dictation_status=status).await;
+            },
+            Ok(()) = lighting_status_rx.changed(), if !tray_only => {
+                let status = lighting_status_rx.borrow_and_update().clone();
+                tray.update(move |tray| tray.lighting_status = status).await;
             },
             _ = async {
                 tokio::select! {
@@ -442,7 +465,8 @@ async fn run(
                 }
             }, if !tray_only => {
                 let media=media_rx.borrow_and_update().clone();
-                refresh_lighting(&connection, &tray, lighting_mode, &media, &mut last_status).await;
+                let recording = dictation_status_rx.borrow().phase == Phase::Recording;
+                refresh_lighting(&connection, &tray, lighting_mode, &media, recording, &lighting_requests, &mut last_status).await;
             },
             Some(result) = tasks.join_next(), if !tasks.is_empty() => {
                 if let Err(error) = result { tracing::error!(%error, "Input monitor stopped"); }
@@ -450,6 +474,15 @@ async fn run(
         }
     }
     drop(dictation_commands);
+    drop(lighting_requests);
+    if let Some(mut task) = lighting_task
+        && tokio::time::timeout(Duration::from_secs(3), &mut task)
+            .await
+            .is_err()
+    {
+        task.abort();
+        let _ = task.await;
+    }
     if let Some(mut task) = dictation_task
         && tokio::time::timeout(Duration::from_secs(4), &mut task)
             .await
@@ -472,32 +505,34 @@ async fn refresh_lighting(
     tray: &ksni::Handle<AppTray>,
     mode: LightingMode,
     media: &MediaStatus,
+    recording: bool,
+    lighting_requests: &tokio::sync::watch::Sender<LightingState>,
     last_status: &mut String,
 ) {
     let state = desktop::workspace_state(connection).await.ok();
     let active = state.and_then(|state| state.active_macro());
-    let lighting = match openrazer::apply_status(connection, active, mode, media.playback).await {
-        Ok(0) => "Klávesnice není připojena".to_owned(),
-        Ok(_) => match mode {
-            LightingMode::On => "Podsvícení aktivní",
-            LightingMode::Off => "Osvětlení vypnuté",
-        }
-        .to_owned(),
-        Err(error) => {
-            tracing::warn!("Lighting unavailable: {error:#}");
-            "Podsvícení nedostupné".to_owned()
-        }
+    let next = LightingState {
+        mode,
+        workspace: active,
+        playback: media.playback,
+        recording,
     };
+    lighting_requests.send_if_modified(|old| {
+        if *old == next {
+            return false;
+        }
+        *old = next;
+        true
+    });
     let workspace = state
         .map(sie::tray::workspace_label)
         .unwrap_or_else(|| "Ovládání ploch nedostupné".into());
     let media = media.label();
-    let status = format!("{mode:?}: {lighting}; {workspace}; {media}");
+    let status = format!("{mode:?}; {workspace}; {media}");
     if status != *last_status {
         tracing::info!("{status}");
         *last_status = status;
         tray.update(move |tray| {
-            tray.lighting_status = lighting;
             tray.lighting_mode = mode;
             tray.workspace_status = workspace;
             tray.media_status = media;

@@ -96,7 +96,8 @@ implementation. Character keys follow the established eight finger zones:
 | Right little finger | `#D05291` |
 
 Remaining keys, modifiers, navigation, numpad, inactive macro keys, media controls
-and ambient LEDs are white. The active workspace's macro key is green
+and ambient LEDs are white. During microphone recording, the 38 ambient LEDs
+show a [moving recording rainbow](recording-lighting.md); key colors stay unchanged. The active workspace's macro key is green
 (`#00FF00`). The existing explicit accents are retained: the left
 system key is Debian red (`#A80030`), Escape is red (`#FF0000`, row 0/column 2),
 and the main Enter is green (`#00FF00`).
