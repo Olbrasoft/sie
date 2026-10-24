@@ -39,6 +39,14 @@ The pinned whisper-rs 0.16 abort wrapper has a callback-data type mismatch
 SIE uses the native callback with an explicitly owned atomic cancellation flag.
 The real-model regression verifies cancellation followed by repeated inference.
 
+## Keyboard recording indication
+
+Since 0.8.0, the ambient strip animates a rainbow during `Recording` and returns
+to white when capture ends, including while transcribing. All three buttons and
+the tray use the same phase signal. Lighting off overrides the animation. This
+first stage is time-based, not reactive to voice intensity; see the separate
+[effect design and voice-intensity feasibility assessment](recording-lighting.md).
+
 ## Sound cues
 
 The three existing VirtualAssistant MP3 assets and their MIT notice are included
