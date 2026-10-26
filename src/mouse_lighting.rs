@@ -116,6 +116,23 @@ fn response(request: &[u8; 20], reply: &[u8]) -> Option<Result<Vec<u8>>> {
     None
 }
 
+fn discard_pending_replies(reader: &mut impl Read) -> Result<()> {
+    // Hidraw broadcasts control replies to every open fd. A prior --doctor
+    // reply can reuse our software ID; discard queued reports before sending.
+    // This is only the vendor-control interface, never the pointer/input node.
+    let mut ignored = [0; 64];
+    for _ in 0..64 {
+        match reader.read(&mut ignored) {
+            Ok(0) => bail!("Mouse disconnected"),
+            Ok(_) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => return Ok(()),
+            Err(error) if error.kind() == std::io::ErrorKind::Interrupted => {}
+            Err(error) => return Err(error.into()),
+        }
+    }
+    bail!("Mouse control reply queue did not become idle")
+}
+
 impl Transport for Hidraw {
     fn request(&mut self, feature: u8, function: u8, parameters: &[u8]) -> Result<Vec<u8>> {
         ensure!(
@@ -123,6 +140,7 @@ impl Transport for Hidraw {
             "Invalid HID++ request"
         );
         self.validate()?;
+        discard_pending_replies(&mut self.file)?;
         self.software_id = self.software_id % 15 + 1;
         let mut request = [0; 20];
         request[..4].copy_from_slice(&[0x11, 0xff, feature, function | self.software_id]);
@@ -179,6 +197,7 @@ impl Transport for Hidraw {
 struct Mouse<T> {
     transport: T,
     feature: u8,
+    static_effect: u8,
     applied: Option<LightingMode>,
 }
 
@@ -205,9 +224,19 @@ impl<T: Transport> Mouse<T> {
             cluster[0] == 0 && cluster[2..4] == [0, 2] && (1..=16).contains(&cluster[4]),
             "Unsupported mouse lighting cluster"
         );
+        let mut static_effect = None;
+        for index in 0..cluster[4] {
+            let effect = reply(transport.request(feature, 0, &[0, index, 0])?, 4)?;
+            ensure!(effect[..2] == [0, index], "Malformed mouse effect index");
+            if effect[2..4] == [0, 1] {
+                static_effect = Some(index);
+                break;
+            }
+        }
         let mut mouse = Self {
             transport,
             feature,
+            static_effect: static_effect.context("Mouse does not advertise static RGB lighting")?,
             applied: None,
         };
         mouse.power_mode()?;
@@ -242,9 +271,11 @@ impl<T: Transport> Mouse<T> {
     }
 
     fn set_software_mode(&mut self, mode: u8) -> Result<()> {
-        let result = reply(self.transport.request(self.feature, 0x50, &[1, mode])?, 2)?;
+        // G203's real LED pipeline requires the event-enable handshake as well.
+        let parameters = [1, mode, if mode == 3 { 5 } else { 0 }];
+        let result = reply(self.transport.request(self.feature, 0x50, &parameters)?, 3)?;
         ensure!(
-            result[..2] == [1, mode],
+            result[..3] == parameters,
             "Mouse did not acknowledge LED control mode"
         );
         Ok(())
@@ -258,8 +289,14 @@ impl<T: Transport> Mouse<T> {
         match mode {
             LightingMode::Off => {
                 self.set_software_mode(3)?;
-                // PowerOff covers every LED and preserves both stored and RAM effects.
-                self.set_power_mode(3)?;
+                // PowerOff read-back is not an optical guarantee on G203 firmware.
+                // Paint a volatile static-black effect with the tested G203 layout.
+                self.set_power_mode(1)?;
+                let mut black = [0; 13];
+                black[1] = self.static_effect;
+                black[5] = 2;
+                black[12] = 1; // Volatile RAM only, never EEPROM.
+                self.transport.request(self.feature, 0x10, &black)?;
                 ensure!(
                     self.software_mode()? == 3,
                     "Mouse did not retain software LED control"
@@ -458,6 +495,8 @@ mod tests {
             Step(0, 0, vec![0x80, 0x71], vec![14, 0, 0]),
             step(0, &[0xff, 0xff, 0], &[0xff, 0, 1, 0, 3, 0, 4]),
             step(0, &[0, 0xff, 0], &[0, 0, 0, 2, 7, 1]),
+            step(0, &[0, 0, 0], &[0, 0, 0, 0]),
+            step(0, &[0, 1, 0], &[0, 1, 0, 1]),
             step(0x80, &[0], &[0, 1]),
         ]
     }
@@ -501,14 +540,26 @@ mod tests {
         steps.extend([
             step(0x50, &[0], &[0, 0]),
             step(0x50, &[0], &[0, 0]),
-            step(0x50, &[1, 3], &[1, 3]),
-            step(0x80, &[1, 3], &[1, 0]),
-            step(0x80, &[0], &[0, 3]),
+            step(0x50, &[1, 3, 5], &[1, 3, 5]),
+            step(0x80, &[1, 1], &[1, 0]),
+            step(0x80, &[0], &[0, 1]),
+            step(0x10, &[0, 1, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 1], &[0, 0]),
             step(0x50, &[0], &[0, 3]),
             step(0x50, &[0], &[0, 3]),
             step(0x80, &[1, 1], &[1, 0]),
             step(0x80, &[0], &[0, 1]),
-            step(0x50, &[1, 0], &[1, 0]),
+            step(0x50, &[1, 0, 0], &[1, 0, 0]),
+            step(0x50, &[0], &[0, 0]),
+            // After restore, every later Off must paint black again.
+            step(0x50, &[1, 3, 5], &[1, 3, 5]),
+            step(0x80, &[1, 1], &[1, 0]),
+            step(0x80, &[0], &[0, 1]),
+            step(0x10, &[0, 1, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 1], &[0, 0]),
+            step(0x50, &[0], &[0, 3]),
+            step(0x50, &[0], &[0, 3]),
+            step(0x80, &[1, 1], &[1, 0]),
+            step(0x80, &[0], &[0, 1]),
+            step(0x50, &[1, 0, 0], &[1, 0, 0]),
             step(0x50, &[0], &[0, 0]),
         ]);
         let mut mouse = Mouse::discover(Fake(steps.into())).unwrap();
@@ -518,6 +569,18 @@ mod tests {
         mouse.apply(LightingMode::Off).unwrap();
         mouse.apply(LightingMode::On).unwrap();
         mouse.apply(LightingMode::On).unwrap();
+        mouse.apply(LightingMode::Off).unwrap();
+        mouse.apply(LightingMode::On).unwrap();
+        assert!(mouse.transport.0.is_empty());
+    }
+
+    #[test]
+    fn a_missing_activation_flag_is_rejected_before_painting_or_caching() {
+        let mut steps = discovery();
+        steps.push(step(0x50, &[1, 3, 5], &[1, 3, 0]));
+        let mut mouse = Mouse::discover(Fake(steps.into())).unwrap();
+        assert!(mouse.apply(LightingMode::Off).is_err());
+        assert_eq!(mouse.applied, None);
         assert!(mouse.transport.0.is_empty());
     }
 
@@ -529,7 +592,7 @@ mod tests {
             step(0x50, &[0], &[0, 3]),
             step(0x80, &[1, 1], &[1, 0]),
             step(0x80, &[0], &[0, 1]),
-            step(0x50, &[1, 0], &[1, 0]),
+            step(0x50, &[1, 0, 0], &[1, 0, 0]),
             step(0x50, &[0], &[0, 0]),
         ]);
         let mut mouse = Mouse::discover(Fake(steps.into())).unwrap();
@@ -547,9 +610,11 @@ mod tests {
             (2, vec![0, 0, 0, 1, 7, 1]),
             (2, vec![0, 0, 0, 2, 0, 1]),
             (2, vec![0, 0, 0, 2, 17, 1]),
-            (3, vec![0, 0]),
-            (3, vec![1, 3]),
-            (3, vec![]),
+            (3, vec![0, 1, 0, 0]),
+            (4, vec![0, 0, 0, 1]),
+            (5, vec![0, 0]),
+            (5, vec![1, 3]),
+            (5, vec![]),
         ] {
             let mut steps = discovery();
             steps.truncate(position + 1);
@@ -562,12 +627,13 @@ mod tests {
     fn a_failed_off_acknowledgement_is_not_cached_as_success() {
         let mut steps = discovery();
         steps.extend([
-            step(0x50, &[1, 3], &[1, 3]),
-            step(0x80, &[1, 3], &[1, 0]),
-            step(0x80, &[0], &[0, 1]),
-            step(0x50, &[1, 3], &[1, 3]),
-            step(0x80, &[1, 3], &[1, 0]),
+            step(0x50, &[1, 3, 5], &[1, 3, 5]),
+            step(0x80, &[1, 1], &[1, 0]),
             step(0x80, &[0], &[0, 3]),
+            step(0x50, &[1, 3, 5], &[1, 3, 5]),
+            step(0x80, &[1, 1], &[1, 0]),
+            step(0x80, &[0], &[0, 1]),
+            step(0x10, &[0, 1, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 1], &[0, 0]),
             step(0x50, &[0], &[0, 3]),
         ]);
         let mut mouse = Mouse::discover(Fake(steps.into())).unwrap();
@@ -595,6 +661,31 @@ mod tests {
         let mut error = [0; 20];
         error[..6].copy_from_slice(&[0x11, 0xff, 0xff, 14, 0x57, 7]);
         assert!(response(&request, &error).unwrap().is_err());
+    }
+
+    #[test]
+    fn stale_diagnostic_replies_are_discarded_before_a_new_request() {
+        struct Queued(VecDeque<Vec<u8>>, usize);
+        impl Read for Queued {
+            fn read(&mut self, buffer: &mut [u8]) -> std::io::Result<usize> {
+                self.1 += 1;
+                let Some(data) = self.0.pop_front() else {
+                    return Err(std::io::ErrorKind::WouldBlock.into());
+                };
+                buffer[..data.len()].copy_from_slice(&data);
+                Ok(data.len())
+            }
+        }
+        // A stale GetSWControl reply has the same token as a later SetSWControl.
+        let stale = vec![0x11, 0xff, 14, 0x54, 0, 0, 0];
+        let mut queue = Queued(VecDeque::from([stale.clone(), stale.clone()]), 0);
+        discard_pending_replies(&mut queue).unwrap();
+        assert!(queue.0.is_empty());
+        assert_eq!(queue.1, 3);
+        // Draining stays bounded even if another producer keeps adding reports.
+        let mut queue = Queued(std::iter::repeat_n(stale, 100).collect(), 0);
+        assert!(discard_pending_replies(&mut queue).is_err());
+        assert_eq!(queue.1, 64);
     }
 
     struct FakeBackend {

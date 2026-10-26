@@ -20,24 +20,36 @@ cluster. Before each request, an ioctl checks the USB identity of the opened
 file descriptor again. The RGB power-mode query must succeed before any lighting
 change. Unsupported interfaces and ambiguous multiple matching mice are refused.
 
-The adapter looks up feature indices rather than hardcoding their position.
-Only three feature functions are used:
+The adapter looks up feature/effect indices rather than hardcoding their position.
+Only these feature functions are used:
 
 - `getInfo` (`0x00`) for capability discovery.
+- `setRgbClusterEffect` (`0x10`) for a volatile static-black frame.
 - `manageSWControl` (`0x50`) to claim/release volatile LED control.
 - `manageRGBPowerMode` (`0x80`) to set/query FullRgb (1) or PowerOff (3).
 
-Off claims software LED/power control and selects PowerOff, then reads back the
-power and control state. On selects FullRgb while software control is held,
-then releases control to the device so its saved lighting effect resumes. An
-already device-controlled mouse is left alone at startup. No effect parameters,
-onboard profiles, DPI, report rate, buttons, calibration or EEPROM are written.
+Since 0.9.1, Off sends the tested G203 activation handshake (`01 03 05`), selects
+FullRgb and writes a static-black effect to volatile RAM (`persistence = 1`).
+Static-effect indices are discovered, not assumed. The effect acknowledgement
+does not echo the effect parameters on this mouse, so a power-state read-back
+is not treated as optical evidence. On releases control to the device so its
+unchanged saved lighting effect resumes. An already device-controlled mouse is
+left alone at startup. Onboard profiles, DPI, report rate, buttons, calibration
+and EEPROM are not written; only the temporary software lighting effect changes.
+
+The initial 0.9.0 implementation selected PowerOff and read back 3 successfully,
+but the user found that the LEDs still glowed. A direct static-black test using
+the activation handshake did visibly darken the mouse, and the user confirmed
+that enabling through the menu restored its lighting. The deployed 0.9.0 menu's
+next Off still used the old power-only method; 0.9.1 applies black on every cycle.
 
 Sources reviewed for protocol behavior: [libratbag device support](
 https://github.com/libratbag/libratbag/blob/master/data/devices/logitech-g102-g203.device),
 [libratbag RGB discovery](https://github.com/libratbag/libratbag/blob/master/src/hidpp20.c),
 [Solaar LED control](https://github.com/pwr-Solaar/Solaar/blob/master/lib/logitech_receiver/settings_templates.py),
 and the [OpenLogi RGB Effects reference](https://openlogi.org/hidpp/features/x8071-rgb-effects).
+The G203-specific handshake and volatile static-frame layout were also checked
+against [g203-led](https://github.com/smasty/g203-led/blob/master/g203-led.py).
 SIE's implementation is original Rust code using the protocol, not a copied driver.
 
 ## Local access
@@ -72,7 +84,9 @@ two-second checks only validate the existing node or retry missing/failed device
 Reconnects apply the current requested mode, including Off.
 
 Each HID++ reply wait is bounded to 750 ms and correlated by feature, function,
-device and software ID. Non-vendor reports are discarded without parsing their
+device and software ID. Queued replies from earlier diagnostic queries are
+discarded before sending a new request; draining is bounded and an overflowing
+queue is refused. Non-vendor reports are discarded without parsing their
 payload or logging them. The program never grabs input, parses pointer/button
 events or records ordinary typing. Protocol errors are logged only when changed;
 the tray retains a working keyboard toggle and reports mouse unavailability.
@@ -92,7 +106,9 @@ open actual input devices or use the user's desktop. Existing private D-Bus
 tests cover keyboard matrix validation, dark mode during workspace changes and
 recording animation/shutdown.
 
-Separately, the actual mouse accepted the commands and read back PowerOff (3),
-then FullRgb (1) and device control (0). The onboard profile mode stayed unchanged.
+Separately, initial power-state read-backs succeeded but did not prove darkness;
+the user reported that failure. The user then confirmed actual darkness after
+the explicit black frame and restoration on enable. The onboard profile mode
+stayed unchanged.
 After deployment, exercise the combined tray action and visually check that both
 devices darken and that the mouse's normal lighting effect returns on enable.
