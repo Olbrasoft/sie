@@ -84,7 +84,9 @@ two-second checks only validate the existing node or retry missing/failed device
 Reconnects apply the current requested mode, including Off.
 
 Each HID++ reply wait is bounded to 750 ms and correlated by feature, function,
-device and software ID. Non-vendor reports are discarded without parsing their
+device and software ID. Queued replies from earlier diagnostic queries are
+discarded before sending a new request; draining is bounded and an overflowing
+queue is refused. Non-vendor reports are discarded without parsing their
 payload or logging them. The program never grabs input, parses pointer/button
 events or records ordinary typing. Protocol errors are logged only when changed;
 the tray retains a working keyboard toggle and reports mouse unavailability.

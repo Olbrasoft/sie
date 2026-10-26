@@ -116,6 +116,23 @@ fn response(request: &[u8; 20], reply: &[u8]) -> Option<Result<Vec<u8>>> {
     None
 }
 
+fn discard_pending_replies(reader: &mut impl Read) -> Result<()> {
+    // Hidraw broadcasts control replies to every open fd. A prior --doctor
+    // reply can reuse our software ID; discard queued reports before sending.
+    // This is only the vendor-control interface, never the pointer/input node.
+    let mut ignored = [0; 64];
+    for _ in 0..64 {
+        match reader.read(&mut ignored) {
+            Ok(0) => bail!("Mouse disconnected"),
+            Ok(_) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => return Ok(()),
+            Err(error) if error.kind() == std::io::ErrorKind::Interrupted => {}
+            Err(error) => return Err(error.into()),
+        }
+    }
+    bail!("Mouse control reply queue did not become idle")
+}
+
 impl Transport for Hidraw {
     fn request(&mut self, feature: u8, function: u8, parameters: &[u8]) -> Result<Vec<u8>> {
         ensure!(
@@ -123,6 +140,7 @@ impl Transport for Hidraw {
             "Invalid HID++ request"
         );
         self.validate()?;
+        discard_pending_replies(&mut self.file)?;
         self.software_id = self.software_id % 15 + 1;
         let mut request = [0; 20];
         request[..4].copy_from_slice(&[0x11, 0xff, feature, function | self.software_id]);
@@ -643,6 +661,31 @@ mod tests {
         let mut error = [0; 20];
         error[..6].copy_from_slice(&[0x11, 0xff, 0xff, 14, 0x57, 7]);
         assert!(response(&request, &error).unwrap().is_err());
+    }
+
+    #[test]
+    fn stale_diagnostic_replies_are_discarded_before_a_new_request() {
+        struct Queued(VecDeque<Vec<u8>>, usize);
+        impl Read for Queued {
+            fn read(&mut self, buffer: &mut [u8]) -> std::io::Result<usize> {
+                self.1 += 1;
+                let Some(data) = self.0.pop_front() else {
+                    return Err(std::io::ErrorKind::WouldBlock.into());
+                };
+                buffer[..data.len()].copy_from_slice(&data);
+                Ok(data.len())
+            }
+        }
+        // A stale GetSWControl reply has the same token as a later SetSWControl.
+        let stale = vec![0x11, 0xff, 14, 0x54, 0, 0, 0];
+        let mut queue = Queued(VecDeque::from([stale.clone(), stale.clone()]), 0);
+        discard_pending_replies(&mut queue).unwrap();
+        assert!(queue.0.is_empty());
+        assert_eq!(queue.1, 3);
+        // Draining stays bounded even if another producer keeps adding reports.
+        let mut queue = Queued(std::iter::repeat_n(stale, 100).collect(), 0);
+        assert!(discard_pending_replies(&mut queue).is_err());
+        assert_eq!(queue.1, 64);
     }
 
     struct FakeBackend {
