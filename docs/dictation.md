@@ -34,6 +34,15 @@ with a configurable 1–600 second limit (default 300). SIE does not unmute a mu
 microphone. It uses whisper-rs/whisper.cpp directly and caches the loaded model;
 first inference includes model loading. CUDA is an optional build feature, with
 CPU inference available in either build by setting `use_gpu = false`.
+
+Version 0.8.1 adds the optional `flash_attention = true` CUDA optimization.
+It defaults to false for existing configurations and is disabled when GPU use
+is explicitly disabled or the binary was built without CUDA.
+Restart SIE after changing it, because the model context is cached. Set it back
+to false and restart to restore the original inference path. The model, beam
+search and correction rules stay the same. See the [reproducible comparison](
+../benchmarks/whisper-flash-attention/README.md) for measurements and limitations.
+
 The pinned whisper-rs 0.16 abort wrapper has a callback-data type mismatch
 ([upstream source](https://docs.rs/crate/whisper-rs/0.16.0/source/src/whisper_params.rs));
 SIE uses the native callback with an explicitly owned atomic cancellation flag.

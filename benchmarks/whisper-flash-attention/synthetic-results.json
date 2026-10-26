@@ -1,0 +1,551 @@
+{
+  "sie_version": "0.8.0",
+  "model": "ggml-large-v3-turbo.bin",
+  "language": "cs",
+  "beam_size": 5,
+  "repetitions_per_block": 3,
+  "block_order": [
+    false,
+    true,
+    true,
+    false
+  ],
+  "summary": [
+    {
+      "sample": "short.wav",
+      "flash_attention": false,
+      "measured_calls": 6,
+      "median_seconds": 0.7423001410000001,
+      "min_seconds": 0.720754849,
+      "max_seconds": 0.765381258,
+      "distinct_transcripts": [
+        "Dnes zkoušíme rychlost českého diktování. Po ukončení nahrávání se má věta přepsat a vložit do otevřeného terminálu. Příliš žlutočký kůň úpěl Ďábelské ódy."
+      ]
+    },
+    {
+      "sample": "short.wav",
+      "flash_attention": true,
+      "measured_calls": 6,
+      "median_seconds": 0.5021287165,
+      "min_seconds": 0.498054271,
+      "max_seconds": 0.547570871,
+      "distinct_transcripts": [
+        "Dnes zkoušíme rychlost českého diktování. Po ukončení nahrávání se má věta přepsat a vložit do otevřeného terminálu. Příliš žlutočký kun úpěl Ďábelské ódy."
+      ]
+    },
+    {
+      "sample": "medium.wav",
+      "flash_attention": false,
+      "measured_calls": 6,
+      "median_seconds": 1.788680483,
+      "min_seconds": 1.7429676079999998,
+      "max_seconds": 1.849548993,
+      "distinct_transcripts": [
+        "Potřebuji upravit nastavení aplikace tak, aby bylo možné rychle zapnout a vypnout diktování. Spodní tlačítko zahájí nahrávání a dalším stisknutím ho ukončí. Prostřední tlačítko všechno zruší a žádný text se potom nesmí vložit. Holní tlačítko naopak dokončí přepis, vloží výsledek a odešle ho klávesou Enter. Během nahrávání má po obvodu klávesnice běžet barevná duha. Jakmile nahrávání skončí, podsvícení se vrátí na bílou. Ostatní klávesy si mají ponechat svoje nastavené barvy. Stejně to musí fungovat v prohlížeči i v terminálu."
+      ]
+    },
+    {
+      "sample": "medium.wav",
+      "flash_attention": true,
+      "measured_calls": 6,
+      "median_seconds": 1.2819247445,
+      "min_seconds": 1.2709452319999999,
+      "max_seconds": 1.5584136320000002,
+      "distinct_transcripts": [
+        "Potřebuji upravit nastavení aplikace tak, aby bylo možné rychle zapnout a vypnout diktování. Spodní tlačítko zahájí nahrávání a dalším stisknutím ho ukončí. Prostřední tlačítko všechno zruší a žádný text se potom nesmí vložit. Holní tlačítko naopak dokončí přepis, vloží výsledek a odešle ho klávesou Enter. Během nahrávání má po obvodu klávesnice běžet barevná duha. Jakmile nahrávání skončí, podsvícení se vrátí na bílou. Ostatní klávesy si mají ponechat svoje nastavené barvy. Stejně to musí fungovat v prohlížeči i v terminálu."
+      ]
+    },
+    {
+      "sample": "long.wav",
+      "flash_attention": false,
+      "measured_calls": 6,
+      "median_seconds": 3.730620311,
+      "min_seconds": 3.625882012,
+      "max_seconds": 3.951421023,
+      "distinct_transcripts": [
+        "Při dnešní zkoušce budeme porovnávat dvě nastavení stejného programu. Nejdřív přepíšeme několik připravených českých nahrávek se současným nastavením a potom zapneme rychlejší zpracování pozornosti. Model, jazyk i způsob vyhledávání výsledných slov zůstanou stejné. Samostatně změříme první spuštění, protože při něm program načítá model z disku a připravuje grafickou kartu. Další opakování už použijí model uložený v paměti. Výsledky je potřeba porovnat nejen podle času, ale také podle přesnosti přepsaného textu. Zajímají nás české háčky, čárky, interpunkce a správné hranice jednotlivých věd. Rozdíl v délce čekání nesmí být vykoupený chybějícími slovy. Během měření nebudeme nahrávat mikrofon ani vkládat text do jiných aplikací. Použijeme pouze připravené testovací soubory. Pořadí obou variant několikrát vystřídáme, abychom omezili vy v zahřívání počítače. Pokud nové nastavení přinese opakované zrychlení bez horšení výsledků, nasadíme ho do běžného diktování. Původní nastavení zůstane dostupné pro snadný návrat. Ovládat ž grafické karty ani způsob spouštění operačního systému při tomto testu měnit nebudeme."
+      ]
+    },
+    {
+      "sample": "long.wav",
+      "flash_attention": true,
+      "measured_calls": 6,
+      "median_seconds": 2.704740898,
+      "min_seconds": 2.612892431,
+      "max_seconds": 4.052603666,
+      "distinct_transcripts": [
+        "Při dnešní zkoušce budeme porovnávat dvě nastavení stejného programu. Nejdřív přepíšeme několik připravených českých nahrávek se současným nastavením a potom zapneme rychlejší zpracování pozornosti. Model, jazyk i způsob vyhledávání výsledných slov zůstanou stejné. Samostatně změříme první spuštění, protože při něm program načítá model z disku a připravuje grafickou kartu. Další opakování už použijí model uložený v paměti. Výsledky je potřeba porovnat nejen podle času, ale také podle přesnosti přepsaného textu. Zajímají nás české háčky, čárky, interpunkce a správné hranice jednotlivých věd. Rozdíl v délce čekání nesmí být vykoupený chybějícími slovy. Během měření nebudeme nahrávat mikrofon ani vkládat text do jiných aplikací. Použijeme pouze připravené testovací soubory. Pořadí obou variant několikrát vystřídáme, abychom omezili výv zahřívání počítače. Pokud nové nastavení přinese opakované zrychlení bez horšení výsledků, nasadíme ho do běžného diktování. Původní nastavení zůstane dostupné pro snadný návrat. Ovládat ž grafické karty ani způsob spouštění operačního systému při tomto testu měnit nebudeme."
+      ]
+    }
+  ],
+  "measurements": [
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "first_call_with_model_initialization",
+      "sample": "short.wav",
+      "audio_seconds": 13.9784375,
+      "elapsed_seconds": 2.985545732,
+      "text": "Dnes zkoušíme rychlost českého diktování. Po ukončení nahrávání se má věta přepsat a vložit do otevřeného terminálu. Příliš žlutočký kůň úpěl Ďábelské ódy."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "warmup",
+      "sample": "short.wav",
+      "audio_seconds": 13.9784375,
+      "elapsed_seconds": 0.759287814,
+      "text": "Dnes zkoušíme rychlost českého diktování. Po ukončení nahrávání se má věta přepsat a vložit do otevřeného terminálu. Příliš žlutočký kůň úpěl Ďábelské ódy."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "warmup",
+      "sample": "medium.wav",
+      "audio_seconds": 47.9028125,
+      "elapsed_seconds": 1.8596321649999998,
+      "text": "Potřebuji upravit nastavení aplikace tak, aby bylo možné rychle zapnout a vypnout diktování. Spodní tlačítko zahájí nahrávání a dalším stisknutím ho ukončí. Prostřední tlačítko všechno zruší a žádný text se potom nesmí vložit. Holní tlačítko naopak dokončí přepis, vloží výsledek a odešle ho klávesou Enter. Během nahrávání má po obvodu klávesnice běžet barevná duha. Jakmile nahrávání skončí, podsvícení se vrátí na bílou. Ostatní klávesy si mají ponechat svoje nastavené barvy. Stejně to musí fungovat v prohlížeči i v terminálu."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "warmup",
+      "sample": "long.wav",
+      "audio_seconds": 98.847375,
+      "elapsed_seconds": 3.830389264,
+      "text": "Při dnešní zkoušce budeme porovnávat dvě nastavení stejného programu. Nejdřív přepíšeme několik připravených českých nahrávek se současným nastavením a potom zapneme rychlejší zpracování pozornosti. Model, jazyk i způsob vyhledávání výsledných slov zůstanou stejné. Samostatně změříme první spuštění, protože při něm program načítá model z disku a připravuje grafickou kartu. Další opakování už použijí model uložený v paměti. Výsledky je potřeba porovnat nejen podle času, ale také podle přesnosti přepsaného textu. Zajímají nás české háčky, čárky, interpunkce a správné hranice jednotlivých věd. Rozdíl v délce čekání nesmí být vykoupený chybějícími slovy. Během měření nebudeme nahrávat mikrofon ani vkládat text do jiných aplikací. Použijeme pouze připravené testovací soubory. Pořadí obou variant několikrát vystřídáme, abychom omezili vy v zahřívání počítače. Pokud nové nastavení přinese opakované zrychlení bez horšení výsledků, nasadíme ho do běžného diktování. Původní nastavení zůstane dostupné pro snadný návrat. Ovládat ž grafické karty ani způsob spouštění operačního systému při tomto testu měnit nebudeme."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "short.wav",
+      "audio_seconds": 13.9784375,
+      "elapsed_seconds": 0.755788337,
+      "text": "Dnes zkoušíme rychlost českého diktování. Po ukončení nahrávání se má věta přepsat a vložit do otevřeného terminálu. Příliš žlutočký kůň úpěl Ďábelské ódy."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "medium.wav",
+      "audio_seconds": 47.9028125,
+      "elapsed_seconds": 1.831760787,
+      "text": "Potřebuji upravit nastavení aplikace tak, aby bylo možné rychle zapnout a vypnout diktování. Spodní tlačítko zahájí nahrávání a dalším stisknutím ho ukončí. Prostřední tlačítko všechno zruší a žádný text se potom nesmí vložit. Holní tlačítko naopak dokončí přepis, vloží výsledek a odešle ho klávesou Enter. Během nahrávání má po obvodu klávesnice běžet barevná duha. Jakmile nahrávání skončí, podsvícení se vrátí na bílou. Ostatní klávesy si mají ponechat svoje nastavené barvy. Stejně to musí fungovat v prohlížeči i v terminálu."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "long.wav",
+      "audio_seconds": 98.847375,
+      "elapsed_seconds": 3.951421023,
+      "text": "Při dnešní zkoušce budeme porovnávat dvě nastavení stejného programu. Nejdřív přepíšeme několik připravených českých nahrávek se současným nastavením a potom zapneme rychlejší zpracování pozornosti. Model, jazyk i způsob vyhledávání výsledných slov zůstanou stejné. Samostatně změříme první spuštění, protože při něm program načítá model z disku a připravuje grafickou kartu. Další opakování už použijí model uložený v paměti. Výsledky je potřeba porovnat nejen podle času, ale také podle přesnosti přepsaného textu. Zajímají nás české háčky, čárky, interpunkce a správné hranice jednotlivých věd. Rozdíl v délce čekání nesmí být vykoupený chybějícími slovy. Během měření nebudeme nahrávat mikrofon ani vkládat text do jiných aplikací. Použijeme pouze připravené testovací soubory. Pořadí obou variant několikrát vystřídáme, abychom omezili vy v zahřívání počítače. Pokud nové nastavení přinese opakované zrychlení bez horšení výsledků, nasadíme ho do běžného diktování. Původní nastavení zůstane dostupné pro snadný návrat. Ovládat ž grafické karty ani způsob spouštění operačního systému při tomto testu měnit nebudeme."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "short.wav",
+      "audio_seconds": 13.9784375,
+      "elapsed_seconds": 0.765381258,
+      "text": "Dnes zkoušíme rychlost českého diktování. Po ukončení nahrávání se má věta přepsat a vložit do otevřeného terminálu. Příliš žlutočký kůň úpěl Ďábelské ódy."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "medium.wav",
+      "audio_seconds": 47.9028125,
+      "elapsed_seconds": 1.83054265,
+      "text": "Potřebuji upravit nastavení aplikace tak, aby bylo možné rychle zapnout a vypnout diktování. Spodní tlačítko zahájí nahrávání a dalším stisknutím ho ukončí. Prostřední tlačítko všechno zruší a žádný text se potom nesmí vložit. Holní tlačítko naopak dokončí přepis, vloží výsledek a odešle ho klávesou Enter. Během nahrávání má po obvodu klávesnice běžet barevná duha. Jakmile nahrávání skončí, podsvícení se vrátí na bílou. Ostatní klávesy si mají ponechat svoje nastavené barvy. Stejně to musí fungovat v prohlížeči i v terminálu."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "long.wav",
+      "audio_seconds": 98.847375,
+      "elapsed_seconds": 3.838632479,
+      "text": "Při dnešní zkoušce budeme porovnávat dvě nastavení stejného programu. Nejdřív přepíšeme několik připravených českých nahrávek se současným nastavením a potom zapneme rychlejší zpracování pozornosti. Model, jazyk i způsob vyhledávání výsledných slov zůstanou stejné. Samostatně změříme první spuštění, protože při něm program načítá model z disku a připravuje grafickou kartu. Další opakování už použijí model uložený v paměti. Výsledky je potřeba porovnat nejen podle času, ale také podle přesnosti přepsaného textu. Zajímají nás české háčky, čárky, interpunkce a správné hranice jednotlivých věd. Rozdíl v délce čekání nesmí být vykoupený chybějícími slovy. Během měření nebudeme nahrávat mikrofon ani vkládat text do jiných aplikací. Použijeme pouze připravené testovací soubory. Pořadí obou variant několikrát vystřídáme, abychom omezili vy v zahřívání počítače. Pokud nové nastavení přinese opakované zrychlení bez horšení výsledků, nasadíme ho do běžného diktování. Původní nastavení zůstane dostupné pro snadný návrat. Ovládat ž grafické karty ani způsob spouštění operačního systému při tomto testu měnit nebudeme."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "short.wav",
+      "audio_seconds": 13.9784375,
+      "elapsed_seconds": 0.75642065,
+      "text": "Dnes zkoušíme rychlost českého diktování. Po ukončení nahrávání se má věta přepsat a vložit do otevřeného terminálu. Příliš žlutočký kůň úpěl Ďábelské ódy."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "medium.wav",
+      "audio_seconds": 47.9028125,
+      "elapsed_seconds": 1.849548993,
+      "text": "Potřebuji upravit nastavení aplikace tak, aby bylo možné rychle zapnout a vypnout diktování. Spodní tlačítko zahájí nahrávání a dalším stisknutím ho ukončí. Prostřední tlačítko všechno zruší a žádný text se potom nesmí vložit. Holní tlačítko naopak dokončí přepis, vloží výsledek a odešle ho klávesou Enter. Během nahrávání má po obvodu klávesnice běžet barevná duha. Jakmile nahrávání skončí, podsvícení se vrátí na bílou. Ostatní klávesy si mají ponechat svoje nastavené barvy. Stejně to musí fungovat v prohlížeči i v terminálu."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "long.wav",
+      "audio_seconds": 98.847375,
+      "elapsed_seconds": 3.825905718,
+      "text": "Při dnešní zkoušce budeme porovnávat dvě nastavení stejného programu. Nejdřív přepíšeme několik připravených českých nahrávek se současným nastavením a potom zapneme rychlejší zpracování pozornosti. Model, jazyk i způsob vyhledávání výsledných slov zůstanou stejné. Samostatně změříme první spuštění, protože při něm program načítá model z disku a připravuje grafickou kartu. Další opakování už použijí model uložený v paměti. Výsledky je potřeba porovnat nejen podle času, ale také podle přesnosti přepsaného textu. Zajímají nás české háčky, čárky, interpunkce a správné hranice jednotlivých věd. Rozdíl v délce čekání nesmí být vykoupený chybějícími slovy. Během měření nebudeme nahrávat mikrofon ani vkládat text do jiných aplikací. Použijeme pouze připravené testovací soubory. Pořadí obou variant několikrát vystřídáme, abychom omezili vy v zahřívání počítače. Pokud nové nastavení přinese opakované zrychlení bez horšení výsledků, nasadíme ho do běžného diktování. Původní nastavení zůstane dostupné pro snadný návrat. Ovládat ž grafické karty ani způsob spouštění operačního systému při tomto testu měnit nebudeme."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "first_call_with_model_initialization",
+      "sample": "short.wav",
+      "audio_seconds": 13.9784375,
+      "elapsed_seconds": 0.777310245,
+      "text": "Dnes zkoušíme rychlost českého diktování. Po ukončení nahrávání se má věta přepsat a vložit do otevřeného terminálu. Příliš žlutočký kun úpěl Ďábelské ódy."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "warmup",
+      "sample": "short.wav",
+      "audio_seconds": 13.9784375,
+      "elapsed_seconds": 0.502829483,
+      "text": "Dnes zkoušíme rychlost českého diktování. Po ukončení nahrávání se má věta přepsat a vložit do otevřeného terminálu. Příliš žlutočký kun úpěl Ďábelské ódy."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "warmup",
+      "sample": "medium.wav",
+      "audio_seconds": 47.9028125,
+      "elapsed_seconds": 1.278273058,
+      "text": "Potřebuji upravit nastavení aplikace tak, aby bylo možné rychle zapnout a vypnout diktování. Spodní tlačítko zahájí nahrávání a dalším stisknutím ho ukončí. Prostřední tlačítko všechno zruší a žádný text se potom nesmí vložit. Holní tlačítko naopak dokončí přepis, vloží výsledek a odešle ho klávesou Enter. Během nahrávání má po obvodu klávesnice běžet barevná duha. Jakmile nahrávání skončí, podsvícení se vrátí na bílou. Ostatní klávesy si mají ponechat svoje nastavené barvy. Stejně to musí fungovat v prohlížeči i v terminálu."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "warmup",
+      "sample": "long.wav",
+      "audio_seconds": 98.847375,
+      "elapsed_seconds": 2.6769946879999997,
+      "text": "Při dnešní zkoušce budeme porovnávat dvě nastavení stejného programu. Nejdřív přepíšeme několik připravených českých nahrávek se současným nastavením a potom zapneme rychlejší zpracování pozornosti. Model, jazyk i způsob vyhledávání výsledných slov zůstanou stejné. Samostatně změříme první spuštění, protože při něm program načítá model z disku a připravuje grafickou kartu. Další opakování už použijí model uložený v paměti. Výsledky je potřeba porovnat nejen podle času, ale také podle přesnosti přepsaného textu. Zajímají nás české háčky, čárky, interpunkce a správné hranice jednotlivých věd. Rozdíl v délce čekání nesmí být vykoupený chybějícími slovy. Během měření nebudeme nahrávat mikrofon ani vkládat text do jiných aplikací. Použijeme pouze připravené testovací soubory. Pořadí obou variant několikrát vystřídáme, abychom omezili výv zahřívání počítače. Pokud nové nastavení přinese opakované zrychlení bez horšení výsledků, nasadíme ho do běžného diktování. Původní nastavení zůstane dostupné pro snadný návrat. Ovládat ž grafické karty ani způsob spouštění operačního systému při tomto testu měnit nebudeme."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "short.wav",
+      "audio_seconds": 13.9784375,
+      "elapsed_seconds": 0.500471294,
+      "text": "Dnes zkoušíme rychlost českého diktování. Po ukončení nahrávání se má věta přepsat a vložit do otevřeného terminálu. Příliš žlutočký kun úpěl Ďábelské ódy."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "medium.wav",
+      "audio_seconds": 47.9028125,
+      "elapsed_seconds": 1.2839140119999999,
+      "text": "Potřebuji upravit nastavení aplikace tak, aby bylo možné rychle zapnout a vypnout diktování. Spodní tlačítko zahájí nahrávání a dalším stisknutím ho ukončí. Prostřední tlačítko všechno zruší a žádný text se potom nesmí vložit. Holní tlačítko naopak dokončí přepis, vloží výsledek a odešle ho klávesou Enter. Během nahrávání má po obvodu klávesnice běžet barevná duha. Jakmile nahrávání skončí, podsvícení se vrátí na bílou. Ostatní klávesy si mají ponechat svoje nastavené barvy. Stejně to musí fungovat v prohlížeči i v terminálu."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "long.wav",
+      "audio_seconds": 98.847375,
+      "elapsed_seconds": 2.74539736,
+      "text": "Při dnešní zkoušce budeme porovnávat dvě nastavení stejného programu. Nejdřív přepíšeme několik připravených českých nahrávek se současným nastavením a potom zapneme rychlejší zpracování pozornosti. Model, jazyk i způsob vyhledávání výsledných slov zůstanou stejné. Samostatně změříme první spuštění, protože při něm program načítá model z disku a připravuje grafickou kartu. Další opakování už použijí model uložený v paměti. Výsledky je potřeba porovnat nejen podle času, ale také podle přesnosti přepsaného textu. Zajímají nás české háčky, čárky, interpunkce a správné hranice jednotlivých věd. Rozdíl v délce čekání nesmí být vykoupený chybějícími slovy. Během měření nebudeme nahrávat mikrofon ani vkládat text do jiných aplikací. Použijeme pouze připravené testovací soubory. Pořadí obou variant několikrát vystřídáme, abychom omezili výv zahřívání počítače. Pokud nové nastavení přinese opakované zrychlení bez horšení výsledků, nasadíme ho do běžného diktování. Původní nastavení zůstane dostupné pro snadný návrat. Ovládat ž grafické karty ani způsob spouštění operačního systému při tomto testu měnit nebudeme."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "short.wav",
+      "audio_seconds": 13.9784375,
+      "elapsed_seconds": 0.547570871,
+      "text": "Dnes zkoušíme rychlost českého diktování. Po ukončení nahrávání se má věta přepsat a vložit do otevřeného terminálu. Příliš žlutočký kun úpěl Ďábelské ódy."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "medium.wav",
+      "audio_seconds": 47.9028125,
+      "elapsed_seconds": 1.5584136320000002,
+      "text": "Potřebuji upravit nastavení aplikace tak, aby bylo možné rychle zapnout a vypnout diktování. Spodní tlačítko zahájí nahrávání a dalším stisknutím ho ukončí. Prostřední tlačítko všechno zruší a žádný text se potom nesmí vložit. Holní tlačítko naopak dokončí přepis, vloží výsledek a odešle ho klávesou Enter. Během nahrávání má po obvodu klávesnice běžet barevná duha. Jakmile nahrávání skončí, podsvícení se vrátí na bílou. Ostatní klávesy si mají ponechat svoje nastavené barvy. Stejně to musí fungovat v prohlížeči i v terminálu."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "long.wav",
+      "audio_seconds": 98.847375,
+      "elapsed_seconds": 4.052603666,
+      "text": "Při dnešní zkoušce budeme porovnávat dvě nastavení stejného programu. Nejdřív přepíšeme několik připravených českých nahrávek se současným nastavením a potom zapneme rychlejší zpracování pozornosti. Model, jazyk i způsob vyhledávání výsledných slov zůstanou stejné. Samostatně změříme první spuštění, protože při něm program načítá model z disku a připravuje grafickou kartu. Další opakování už použijí model uložený v paměti. Výsledky je potřeba porovnat nejen podle času, ale také podle přesnosti přepsaného textu. Zajímají nás české háčky, čárky, interpunkce a správné hranice jednotlivých věd. Rozdíl v délce čekání nesmí být vykoupený chybějícími slovy. Během měření nebudeme nahrávat mikrofon ani vkládat text do jiných aplikací. Použijeme pouze připravené testovací soubory. Pořadí obou variant několikrát vystřídáme, abychom omezili výv zahřívání počítače. Pokud nové nastavení přinese opakované zrychlení bez horšení výsledků, nasadíme ho do běžného diktování. Původní nastavení zůstane dostupné pro snadný návrat. Ovládat ž grafické karty ani způsob spouštění operačního systému při tomto testu měnit nebudeme."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "short.wav",
+      "audio_seconds": 13.9784375,
+      "elapsed_seconds": 0.530900752,
+      "text": "Dnes zkoušíme rychlost českého diktování. Po ukončení nahrávání se má věta přepsat a vložit do otevřeného terminálu. Příliš žlutočký kun úpěl Ďábelské ódy."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "medium.wav",
+      "audio_seconds": 47.9028125,
+      "elapsed_seconds": 1.3122076599999999,
+      "text": "Potřebuji upravit nastavení aplikace tak, aby bylo možné rychle zapnout a vypnout diktování. Spodní tlačítko zahájí nahrávání a dalším stisknutím ho ukončí. Prostřední tlačítko všechno zruší a žádný text se potom nesmí vložit. Holní tlačítko naopak dokončí přepis, vloží výsledek a odešle ho klávesou Enter. Během nahrávání má po obvodu klávesnice běžet barevná duha. Jakmile nahrávání skončí, podsvícení se vrátí na bílou. Ostatní klávesy si mají ponechat svoje nastavené barvy. Stejně to musí fungovat v prohlížeči i v terminálu."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "long.wav",
+      "audio_seconds": 98.847375,
+      "elapsed_seconds": 2.875843688,
+      "text": "Při dnešní zkoušce budeme porovnávat dvě nastavení stejného programu. Nejdřív přepíšeme několik připravených českých nahrávek se současným nastavením a potom zapneme rychlejší zpracování pozornosti. Model, jazyk i způsob vyhledávání výsledných slov zůstanou stejné. Samostatně změříme první spuštění, protože při něm program načítá model z disku a připravuje grafickou kartu. Další opakování už použijí model uložený v paměti. Výsledky je potřeba porovnat nejen podle času, ale také podle přesnosti přepsaného textu. Zajímají nás české háčky, čárky, interpunkce a správné hranice jednotlivých věd. Rozdíl v délce čekání nesmí být vykoupený chybějícími slovy. Během měření nebudeme nahrávat mikrofon ani vkládat text do jiných aplikací. Použijeme pouze připravené testovací soubory. Pořadí obou variant několikrát vystřídáme, abychom omezili výv zahřívání počítače. Pokud nové nastavení přinese opakované zrychlení bez horšení výsledků, nasadíme ho do běžného diktování. Původní nastavení zůstane dostupné pro snadný návrat. Ovládat ž grafické karty ani způsob spouštění operačního systému při tomto testu měnit nebudeme."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "first_call_with_model_initialization",
+      "sample": "short.wav",
+      "audio_seconds": 13.9784375,
+      "elapsed_seconds": 1.7091679069999999,
+      "text": "Dnes zkoušíme rychlost českého diktování. Po ukončení nahrávání se má věta přepsat a vložit do otevřeného terminálu. Příliš žlutočký kun úpěl Ďábelské ódy."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "warmup",
+      "sample": "short.wav",
+      "audio_seconds": 13.9784375,
+      "elapsed_seconds": 0.502450479,
+      "text": "Dnes zkoušíme rychlost českého diktování. Po ukončení nahrávání se má věta přepsat a vložit do otevřeného terminálu. Příliš žlutočký kun úpěl Ďábelské ódy."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "warmup",
+      "sample": "medium.wav",
+      "audio_seconds": 47.9028125,
+      "elapsed_seconds": 1.263287327,
+      "text": "Potřebuji upravit nastavení aplikace tak, aby bylo možné rychle zapnout a vypnout diktování. Spodní tlačítko zahájí nahrávání a dalším stisknutím ho ukončí. Prostřední tlačítko všechno zruší a žádný text se potom nesmí vložit. Holní tlačítko naopak dokončí přepis, vloží výsledek a odešle ho klávesou Enter. Během nahrávání má po obvodu klávesnice běžet barevná duha. Jakmile nahrávání skončí, podsvícení se vrátí na bílou. Ostatní klávesy si mají ponechat svoje nastavené barvy. Stejně to musí fungovat v prohlížeči i v terminálu."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "warmup",
+      "sample": "long.wav",
+      "audio_seconds": 98.847375,
+      "elapsed_seconds": 2.67311765,
+      "text": "Při dnešní zkoušce budeme porovnávat dvě nastavení stejného programu. Nejdřív přepíšeme několik připravených českých nahrávek se současným nastavením a potom zapneme rychlejší zpracování pozornosti. Model, jazyk i způsob vyhledávání výsledných slov zůstanou stejné. Samostatně změříme první spuštění, protože při něm program načítá model z disku a připravuje grafickou kartu. Další opakování už použijí model uložený v paměti. Výsledky je potřeba porovnat nejen podle času, ale také podle přesnosti přepsaného textu. Zajímají nás české háčky, čárky, interpunkce a správné hranice jednotlivých věd. Rozdíl v délce čekání nesmí být vykoupený chybějícími slovy. Během měření nebudeme nahrávat mikrofon ani vkládat text do jiných aplikací. Použijeme pouze připravené testovací soubory. Pořadí obou variant několikrát vystřídáme, abychom omezili výv zahřívání počítače. Pokud nové nastavení přinese opakované zrychlení bez horšení výsledků, nasadíme ho do běžného diktování. Původní nastavení zůstane dostupné pro snadný návrat. Ovládat ž grafické karty ani způsob spouštění operačního systému při tomto testu měnit nebudeme."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "short.wav",
+      "audio_seconds": 13.9784375,
+      "elapsed_seconds": 0.498839151,
+      "text": "Dnes zkoušíme rychlost českého diktování. Po ukončení nahrávání se má věta přepsat a vložit do otevřeného terminálu. Příliš žlutočký kun úpěl Ďábelské ódy."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "medium.wav",
+      "audio_seconds": 47.9028125,
+      "elapsed_seconds": 1.277648493,
+      "text": "Potřebuji upravit nastavení aplikace tak, aby bylo možné rychle zapnout a vypnout diktování. Spodní tlačítko zahájí nahrávání a dalším stisknutím ho ukončí. Prostřední tlačítko všechno zruší a žádný text se potom nesmí vložit. Holní tlačítko naopak dokončí přepis, vloží výsledek a odešle ho klávesou Enter. Během nahrávání má po obvodu klávesnice běžet barevná duha. Jakmile nahrávání skončí, podsvícení se vrátí na bílou. Ostatní klávesy si mají ponechat svoje nastavené barvy. Stejně to musí fungovat v prohlížeči i v terminálu."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "long.wav",
+      "audio_seconds": 98.847375,
+      "elapsed_seconds": 2.660479357,
+      "text": "Při dnešní zkoušce budeme porovnávat dvě nastavení stejného programu. Nejdřív přepíšeme několik připravených českých nahrávek se současným nastavením a potom zapneme rychlejší zpracování pozornosti. Model, jazyk i způsob vyhledávání výsledných slov zůstanou stejné. Samostatně změříme první spuštění, protože při něm program načítá model z disku a připravuje grafickou kartu. Další opakování už použijí model uložený v paměti. Výsledky je potřeba porovnat nejen podle času, ale také podle přesnosti přepsaného textu. Zajímají nás české háčky, čárky, interpunkce a správné hranice jednotlivých věd. Rozdíl v délce čekání nesmí být vykoupený chybějícími slovy. Během měření nebudeme nahrávat mikrofon ani vkládat text do jiných aplikací. Použijeme pouze připravené testovací soubory. Pořadí obou variant několikrát vystřídáme, abychom omezili výv zahřívání počítače. Pokud nové nastavení přinese opakované zrychlení bez horšení výsledků, nasadíme ho do běžného diktování. Původní nastavení zůstane dostupné pro snadný návrat. Ovládat ž grafické karty ani způsob spouštění operačního systému při tomto testu měnit nebudeme."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "short.wav",
+      "audio_seconds": 13.9784375,
+      "elapsed_seconds": 0.503786139,
+      "text": "Dnes zkoušíme rychlost českého diktování. Po ukončení nahrávání se má věta přepsat a vložit do otevřeného terminálu. Příliš žlutočký kun úpěl Ďábelské ódy."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "medium.wav",
+      "audio_seconds": 47.9028125,
+      "elapsed_seconds": 1.2709452319999999,
+      "text": "Potřebuji upravit nastavení aplikace tak, aby bylo možné rychle zapnout a vypnout diktování. Spodní tlačítko zahájí nahrávání a dalším stisknutím ho ukončí. Prostřední tlačítko všechno zruší a žádný text se potom nesmí vložit. Holní tlačítko naopak dokončí přepis, vloží výsledek a odešle ho klávesou Enter. Během nahrávání má po obvodu klávesnice běžet barevná duha. Jakmile nahrávání skončí, podsvícení se vrátí na bílou. Ostatní klávesy si mají ponechat svoje nastavené barvy. Stejně to musí fungovat v prohlížeči i v terminálu."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "long.wav",
+      "audio_seconds": 98.847375,
+      "elapsed_seconds": 2.664084436,
+      "text": "Při dnešní zkoušce budeme porovnávat dvě nastavení stejného programu. Nejdřív přepíšeme několik připravených českých nahrávek se současným nastavením a potom zapneme rychlejší zpracování pozornosti. Model, jazyk i způsob vyhledávání výsledných slov zůstanou stejné. Samostatně změříme první spuštění, protože při něm program načítá model z disku a připravuje grafickou kartu. Další opakování už použijí model uložený v paměti. Výsledky je potřeba porovnat nejen podle času, ale také podle přesnosti přepsaného textu. Zajímají nás české háčky, čárky, interpunkce a správné hranice jednotlivých věd. Rozdíl v délce čekání nesmí být vykoupený chybějícími slovy. Během měření nebudeme nahrávat mikrofon ani vkládat text do jiných aplikací. Použijeme pouze připravené testovací soubory. Pořadí obou variant několikrát vystřídáme, abychom omezili výv zahřívání počítače. Pokud nové nastavení přinese opakované zrychlení bez horšení výsledků, nasadíme ho do běžného diktování. Původní nastavení zůstane dostupné pro snadný návrat. Ovládat ž grafické karty ani způsob spouštění operačního systému při tomto testu měnit nebudeme."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "short.wav",
+      "audio_seconds": 13.9784375,
+      "elapsed_seconds": 0.498054271,
+      "text": "Dnes zkoušíme rychlost českého diktování. Po ukončení nahrávání se má věta přepsat a vložit do otevřeného terminálu. Příliš žlutočký kun úpěl Ďábelské ódy."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "medium.wav",
+      "audio_seconds": 47.9028125,
+      "elapsed_seconds": 1.279935477,
+      "text": "Potřebuji upravit nastavení aplikace tak, aby bylo možné rychle zapnout a vypnout diktování. Spodní tlačítko zahájí nahrávání a dalším stisknutím ho ukončí. Prostřední tlačítko všechno zruší a žádný text se potom nesmí vložit. Holní tlačítko naopak dokončí přepis, vloží výsledek a odešle ho klávesou Enter. Během nahrávání má po obvodu klávesnice běžet barevná duha. Jakmile nahrávání skončí, podsvícení se vrátí na bílou. Ostatní klávesy si mají ponechat svoje nastavené barvy. Stejně to musí fungovat v prohlížeči i v terminálu."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "long.wav",
+      "audio_seconds": 98.847375,
+      "elapsed_seconds": 2.612892431,
+      "text": "Při dnešní zkoušce budeme porovnávat dvě nastavení stejného programu. Nejdřív přepíšeme několik připravených českých nahrávek se současným nastavením a potom zapneme rychlejší zpracování pozornosti. Model, jazyk i způsob vyhledávání výsledných slov zůstanou stejné. Samostatně změříme první spuštění, protože při něm program načítá model z disku a připravuje grafickou kartu. Další opakování už použijí model uložený v paměti. Výsledky je potřeba porovnat nejen podle času, ale také podle přesnosti přepsaného textu. Zajímají nás české háčky, čárky, interpunkce a správné hranice jednotlivých věd. Rozdíl v délce čekání nesmí být vykoupený chybějícími slovy. Během měření nebudeme nahrávat mikrofon ani vkládat text do jiných aplikací. Použijeme pouze připravené testovací soubory. Pořadí obou variant několikrát vystřídáme, abychom omezili výv zahřívání počítače. Pokud nové nastavení přinese opakované zrychlení bez horšení výsledků, nasadíme ho do běžného diktování. Původní nastavení zůstane dostupné pro snadný návrat. Ovládat ž grafické karty ani způsob spouštění operačního systému při tomto testu měnit nebudeme."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "first_call_with_model_initialization",
+      "sample": "short.wav",
+      "audio_seconds": 13.9784375,
+      "elapsed_seconds": 0.972302479,
+      "text": "Dnes zkoušíme rychlost českého diktování. Po ukončení nahrávání se má věta přepsat a vložit do otevřeného terminálu. Příliš žlutočký kůň úpěl Ďábelské ódy."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "warmup",
+      "sample": "short.wav",
+      "audio_seconds": 13.9784375,
+      "elapsed_seconds": 0.722488183,
+      "text": "Dnes zkoušíme rychlost českého diktování. Po ukončení nahrávání se má věta přepsat a vložit do otevřeného terminálu. Příliš žlutočký kůň úpěl Ďábelské ódy."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "warmup",
+      "sample": "medium.wav",
+      "audio_seconds": 47.9028125,
+      "elapsed_seconds": 1.755009633,
+      "text": "Potřebuji upravit nastavení aplikace tak, aby bylo možné rychle zapnout a vypnout diktování. Spodní tlačítko zahájí nahrávání a dalším stisknutím ho ukončí. Prostřední tlačítko všechno zruší a žádný text se potom nesmí vložit. Holní tlačítko naopak dokončí přepis, vloží výsledek a odešle ho klávesou Enter. Během nahrávání má po obvodu klávesnice běžet barevná duha. Jakmile nahrávání skončí, podsvícení se vrátí na bílou. Ostatní klávesy si mají ponechat svoje nastavené barvy. Stejně to musí fungovat v prohlížeči i v terminálu."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "warmup",
+      "sample": "long.wav",
+      "audio_seconds": 98.847375,
+      "elapsed_seconds": 3.649513195,
+      "text": "Při dnešní zkoušce budeme porovnávat dvě nastavení stejného programu. Nejdřív přepíšeme několik připravených českých nahrávek se současným nastavením a potom zapneme rychlejší zpracování pozornosti. Model, jazyk i způsob vyhledávání výsledných slov zůstanou stejné. Samostatně změříme první spuštění, protože při něm program načítá model z disku a připravuje grafickou kartu. Další opakování už použijí model uložený v paměti. Výsledky je potřeba porovnat nejen podle času, ale také podle přesnosti přepsaného textu. Zajímají nás české háčky, čárky, interpunkce a správné hranice jednotlivých věd. Rozdíl v délce čekání nesmí být vykoupený chybějícími slovy. Během měření nebudeme nahrávat mikrofon ani vkládat text do jiných aplikací. Použijeme pouze připravené testovací soubory. Pořadí obou variant několikrát vystřídáme, abychom omezili vy v zahřívání počítače. Pokud nové nastavení přinese opakované zrychlení bez horšení výsledků, nasadíme ho do běžného diktování. Původní nastavení zůstane dostupné pro snadný návrat. Ovládat ž grafické karty ani způsob spouštění operačního systému při tomto testu měnit nebudeme."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "short.wav",
+      "audio_seconds": 13.9784375,
+      "elapsed_seconds": 0.726783423,
+      "text": "Dnes zkoušíme rychlost českého diktování. Po ukončení nahrávání se má věta přepsat a vložit do otevřeného terminálu. Příliš žlutočký kůň úpěl Ďábelské ódy."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "medium.wav",
+      "audio_seconds": 47.9028125,
+      "elapsed_seconds": 1.7468183160000001,
+      "text": "Potřebuji upravit nastavení aplikace tak, aby bylo možné rychle zapnout a vypnout diktování. Spodní tlačítko zahájí nahrávání a dalším stisknutím ho ukončí. Prostřední tlačítko všechno zruší a žádný text se potom nesmí vložit. Holní tlačítko naopak dokončí přepis, vloží výsledek a odešle ho klávesou Enter. Během nahrávání má po obvodu klávesnice běžet barevná duha. Jakmile nahrávání skončí, podsvícení se vrátí na bílou. Ostatní klávesy si mají ponechat svoje nastavené barvy. Stejně to musí fungovat v prohlížeči i v terminálu."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "long.wav",
+      "audio_seconds": 98.847375,
+      "elapsed_seconds": 3.633307099,
+      "text": "Při dnešní zkoušce budeme porovnávat dvě nastavení stejného programu. Nejdřív přepíšeme několik připravených českých nahrávek se současným nastavením a potom zapneme rychlejší zpracování pozornosti. Model, jazyk i způsob vyhledávání výsledných slov zůstanou stejné. Samostatně změříme první spuštění, protože při něm program načítá model z disku a připravuje grafickou kartu. Další opakování už použijí model uložený v paměti. Výsledky je potřeba porovnat nejen podle času, ale také podle přesnosti přepsaného textu. Zajímají nás české háčky, čárky, interpunkce a správné hranice jednotlivých věd. Rozdíl v délce čekání nesmí být vykoupený chybějícími slovy. Během měření nebudeme nahrávat mikrofon ani vkládat text do jiných aplikací. Použijeme pouze připravené testovací soubory. Pořadí obou variant několikrát vystřídáme, abychom omezili vy v zahřívání počítače. Pokud nové nastavení přinese opakované zrychlení bez horšení výsledků, nasadíme ho do běžného diktování. Původní nastavení zůstane dostupné pro snadný návrat. Ovládat ž grafické karty ani způsob spouštění operačního systému při tomto testu měnit nebudeme."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "short.wav",
+      "audio_seconds": 13.9784375,
+      "elapsed_seconds": 0.728811945,
+      "text": "Dnes zkoušíme rychlost českého diktování. Po ukončení nahrávání se má věta přepsat a vložit do otevřeného terminálu. Příliš žlutočký kůň úpěl Ďábelské ódy."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "medium.wav",
+      "audio_seconds": 47.9028125,
+      "elapsed_seconds": 1.7447934840000001,
+      "text": "Potřebuji upravit nastavení aplikace tak, aby bylo možné rychle zapnout a vypnout diktování. Spodní tlačítko zahájí nahrávání a dalším stisknutím ho ukončí. Prostřední tlačítko všechno zruší a žádný text se potom nesmí vložit. Holní tlačítko naopak dokončí přepis, vloží výsledek a odešle ho klávesou Enter. Během nahrávání má po obvodu klávesnice běžet barevná duha. Jakmile nahrávání skončí, podsvícení se vrátí na bílou. Ostatní klávesy si mají ponechat svoje nastavené barvy. Stejně to musí fungovat v prohlížeči i v terminálu."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "long.wav",
+      "audio_seconds": 98.847375,
+      "elapsed_seconds": 3.625882012,
+      "text": "Při dnešní zkoušce budeme porovnávat dvě nastavení stejného programu. Nejdřív přepíšeme několik připravených českých nahrávek se současným nastavením a potom zapneme rychlejší zpracování pozornosti. Model, jazyk i způsob vyhledávání výsledných slov zůstanou stejné. Samostatně změříme první spuštění, protože při něm program načítá model z disku a připravuje grafickou kartu. Další opakování už použijí model uložený v paměti. Výsledky je potřeba porovnat nejen podle času, ale také podle přesnosti přepsaného textu. Zajímají nás české háčky, čárky, interpunkce a správné hranice jednotlivých věd. Rozdíl v délce čekání nesmí být vykoupený chybějícími slovy. Během měření nebudeme nahrávat mikrofon ani vkládat text do jiných aplikací. Použijeme pouze připravené testovací soubory. Pořadí obou variant několikrát vystřídáme, abychom omezili vy v zahřívání počítače. Pokud nové nastavení přinese opakované zrychlení bez horšení výsledků, nasadíme ho do běžného diktování. Původní nastavení zůstane dostupné pro snadný návrat. Ovládat ž grafické karty ani způsob spouštění operačního systému při tomto testu měnit nebudeme."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "short.wav",
+      "audio_seconds": 13.9784375,
+      "elapsed_seconds": 0.720754849,
+      "text": "Dnes zkoušíme rychlost českého diktování. Po ukončení nahrávání se má věta přepsat a vložit do otevřeného terminálu. Příliš žlutočký kůň úpěl Ďábelské ódy."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "medium.wav",
+      "audio_seconds": 47.9028125,
+      "elapsed_seconds": 1.7429676079999998,
+      "text": "Potřebuji upravit nastavení aplikace tak, aby bylo možné rychle zapnout a vypnout diktování. Spodní tlačítko zahájí nahrávání a dalším stisknutím ho ukončí. Prostřední tlačítko všechno zruší a žádný text se potom nesmí vložit. Holní tlačítko naopak dokončí přepis, vloží výsledek a odešle ho klávesou Enter. Během nahrávání má po obvodu klávesnice běžet barevná duha. Jakmile nahrávání skončí, podsvícení se vrátí na bílou. Ostatní klávesy si mají ponechat svoje nastavené barvy. Stejně to musí fungovat v prohlížeči i v terminálu."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "long.wav",
+      "audio_seconds": 98.847375,
+      "elapsed_seconds": 3.635334904,
+      "text": "Při dnešní zkoušce budeme porovnávat dvě nastavení stejného programu. Nejdřív přepíšeme několik připravených českých nahrávek se současným nastavením a potom zapneme rychlejší zpracování pozornosti. Model, jazyk i způsob vyhledávání výsledných slov zůstanou stejné. Samostatně změříme první spuštění, protože při něm program načítá model z disku a připravuje grafickou kartu. Další opakování už použijí model uložený v paměti. Výsledky je potřeba porovnat nejen podle času, ale také podle přesnosti přepsaného textu. Zajímají nás české háčky, čárky, interpunkce a správné hranice jednotlivých věd. Rozdíl v délce čekání nesmí být vykoupený chybějícími slovy. Během měření nebudeme nahrávat mikrofon ani vkládat text do jiných aplikací. Použijeme pouze připravené testovací soubory. Pořadí obou variant několikrát vystřídáme, abychom omezili vy v zahřívání počítače. Pokud nové nastavení přinese opakované zrychlení bez horšení výsledků, nasadíme ho do běžného diktování. Původní nastavení zůstane dostupné pro snadný návrat. Ovládat ž grafické karty ani způsob spouštění operačního systému při tomto testu měnit nebudeme."
+    }
+  ]
+}

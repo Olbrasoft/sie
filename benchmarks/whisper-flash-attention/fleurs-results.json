@@ -1,0 +1,1933 @@
+{
+  "sie_version": "0.8.1",
+  "model": "ggml-large-v3-turbo.bin",
+  "language": "cs",
+  "beam_size": 5,
+  "repetitions_per_block": 1,
+  "block_order": [
+    false,
+    true,
+    true,
+    false
+  ],
+  "summary": [
+    {
+      "sample": "fleurs-000.wav",
+      "flash_attention": false,
+      "measured_calls": 2,
+      "median_seconds": 0.597684531,
+      "min_seconds": 0.595152453,
+      "max_seconds": 0.600216609,
+      "distinct_transcripts": [
+        "Čím dál víc oblíbenější možnost pro ty, kdo plánují dát si rok pauzu, je cestovat a učit se."
+      ]
+    },
+    {
+      "sample": "fleurs-000.wav",
+      "flash_attention": true,
+      "measured_calls": 2,
+      "median_seconds": 0.4624727535,
+      "min_seconds": 0.460866882,
+      "max_seconds": 0.464078625,
+      "distinct_transcripts": [
+        "Čím dál víc oblíbenější možnost pro ty, kdo plánují dát si rok pauzu, je cestovat a učit se."
+      ]
+    },
+    {
+      "sample": "fleurs-001.wav",
+      "flash_attention": false,
+      "measured_calls": 2,
+      "median_seconds": 0.56517594,
+      "min_seconds": 0.564740958,
+      "max_seconds": 0.565610922,
+      "distinct_transcripts": [
+        "Východoafrické ostrovy se nacházejí v Indickém oceánu u východního pobřeží Afriky."
+      ]
+    },
+    {
+      "sample": "fleurs-001.wav",
+      "flash_attention": true,
+      "measured_calls": 2,
+      "median_seconds": 0.3271574785,
+      "min_seconds": 0.323496318,
+      "max_seconds": 0.330818639,
+      "distinct_transcripts": [
+        "Východoafrické ostrovy se nacházejí v Indickém oceánu u východního pobřeží Afriky."
+      ]
+    },
+    {
+      "sample": "fleurs-002.wav",
+      "flash_attention": false,
+      "measured_calls": 2,
+      "median_seconds": 0.5933801325,
+      "min_seconds": 0.592364046,
+      "max_seconds": 0.594396219,
+      "distinct_transcripts": [
+        "Jelikož bylo k dispozici pouze 18 medailí denně, některým zemím se nepodařilo dostat na stupně vítězů."
+      ]
+    },
+    {
+      "sample": "fleurs-002.wav",
+      "flash_attention": true,
+      "measured_calls": 2,
+      "median_seconds": 0.3474731835,
+      "min_seconds": 0.346182841,
+      "max_seconds": 0.348763526,
+      "distinct_transcripts": [
+        "Jelikož bylo k dispozici pouze 18 medailí denně, některým zemím se nepodařilo dostat na stupně vítězů."
+      ]
+    },
+    {
+      "sample": "fleurs-003.wav",
+      "flash_attention": false,
+      "measured_calls": 2,
+      "median_seconds": 0.6502780045000001,
+      "min_seconds": 0.647942896,
+      "max_seconds": 0.652613113,
+      "distinct_transcripts": [
+        "Některá zvířata, jako například sloni a žirafy, mají tendenci se k vozidlům přiblížit a standardní vybavení tak umožní dobrý výhled."
+      ]
+    },
+    {
+      "sample": "fleurs-003.wav",
+      "flash_attention": true,
+      "measured_calls": 2,
+      "median_seconds": 0.3977864485,
+      "min_seconds": 0.39583284,
+      "max_seconds": 0.399740057,
+      "distinct_transcripts": [
+        "Některá zvířata, jako například sloni a žirafy, mají tendenci se k vozidlům přiblížit a standardní vybavení tak umožní dobrý výhled."
+      ]
+    },
+    {
+      "sample": "fleurs-004.wav",
+      "flash_attention": false,
+      "measured_calls": 2,
+      "median_seconds": 0.704054501,
+      "min_seconds": 0.699662391,
+      "max_seconds": 0.708446611,
+      "distinct_transcripts": [
+        "Vědci předpokládají, že i když se jedná o ocaz mladého dinosaura, představuje vzorek o peření dospělého zvířete a několiv prachové peří mláděte."
+      ]
+    },
+    {
+      "sample": "fleurs-004.wav",
+      "flash_attention": true,
+      "measured_calls": 2,
+      "median_seconds": 0.438483907,
+      "min_seconds": 0.43772294,
+      "max_seconds": 0.439244874,
+      "distinct_transcripts": [
+        "Vědci předpokládají, že i když se jedná o ocaz mladého dinosaura, představuje vzorek o peření dospělého zvířete a několiv prachové peří mláděte."
+      ]
+    },
+    {
+      "sample": "fleurs-005.wav",
+      "flash_attention": false,
+      "measured_calls": 2,
+      "median_seconds": 0.6573725575,
+      "min_seconds": 0.656166566,
+      "max_seconds": 0.658578549,
+      "distinct_transcripts": [
+        "Pokud navštívíte arktické nebo antarktické oblasti v zimě, budete moci zažít polárení noc, což znamená, že slunce nevýjde na antiobzor."
+      ]
+    },
+    {
+      "sample": "fleurs-005.wav",
+      "flash_attention": true,
+      "measured_calls": 2,
+      "median_seconds": 0.406915678,
+      "min_seconds": 0.405588854,
+      "max_seconds": 0.408242502,
+      "distinct_transcripts": [
+        "Pokud navštívíte arktické nebo antarktické oblasti v zimě, budete moci zažít polárení noc, což znamená, že slunce nevýjde na antiobzor."
+      ]
+    },
+    {
+      "sample": "fleurs-006.wav",
+      "flash_attention": false,
+      "measured_calls": 2,
+      "median_seconds": 0.5543234345,
+      "min_seconds": 0.553476558,
+      "max_seconds": 0.555170311,
+      "distinct_transcripts": [
+        "Výsledek vykreslovací analýzy bude zveřejněn na veřejně přístupném webu."
+      ]
+    },
+    {
+      "sample": "fleurs-006.wav",
+      "flash_attention": true,
+      "measured_calls": 2,
+      "median_seconds": 0.31986876399999997,
+      "min_seconds": 0.316713351,
+      "max_seconds": 0.323024177,
+      "distinct_transcripts": [
+        "Výsledek vykreslovací analýzy bude zveřejněn na veřejně přístupném webu."
+      ]
+    },
+    {
+      "sample": "fleurs-007.wav",
+      "flash_attention": false,
+      "measured_calls": 2,
+      "median_seconds": 0.7437024125,
+      "min_seconds": 0.743423955,
+      "max_seconds": 0.74398087,
+      "distinct_transcripts": [
+        "Napříč Spojenými státy americkými je známo zhruba 400 000 případů roztroušené sklerózy, což z tohoto onamocnění činí přední neurologické onamocnění u dospělých v mladším a středním věku."
+      ]
+    },
+    {
+      "sample": "fleurs-007.wav",
+      "flash_attention": true,
+      "measured_calls": 2,
+      "median_seconds": 0.486484197,
+      "min_seconds": 0.486114081,
+      "max_seconds": 0.486854313,
+      "distinct_transcripts": [
+        "Napříč Spojenými státy americkými je známo zhruba 400 000 případů roztroušené sklerózy, což z tohoto onamocnění činí přední neurologické onamocnění u dospělých v mladším a středním věku."
+      ]
+    },
+    {
+      "sample": "fleurs-008.wav",
+      "flash_attention": false,
+      "measured_calls": 2,
+      "median_seconds": 0.6536861295,
+      "min_seconds": 0.652132383,
+      "max_seconds": 0.655239876,
+      "distinct_transcripts": [
+        "Bushův mluvčí Gordon John Rowe nazval slib Soverní Koreje významným krokem k cílí dosažení ověřitelné denuklearizace korejského polostrova."
+      ]
+    },
+    {
+      "sample": "fleurs-008.wav",
+      "flash_attention": true,
+      "measured_calls": 2,
+      "median_seconds": 0.405746215,
+      "min_seconds": 0.404694315,
+      "max_seconds": 0.406798115,
+      "distinct_transcripts": [
+        "Bushův mluvčí Gordon John Rowe nazval slib Soverní Koreje významným krokem k cílí dosažení ověřitelné denuklearizace korejského polostrova."
+      ]
+    },
+    {
+      "sample": "fleurs-009.wav",
+      "flash_attention": false,
+      "measured_calls": 2,
+      "median_seconds": 0.624985177,
+      "min_seconds": 0.624462289,
+      "max_seconds": 0.625508065,
+      "distinct_transcripts": [
+        "Dr. Moll si myslí, že někteří pacienti mohli tento virus chytit v nemocnici a nejméně dva z nich byly nemocniční zdravotnictví."
+      ]
+    },
+    {
+      "sample": "fleurs-009.wav",
+      "flash_attention": true,
+      "measured_calls": 2,
+      "median_seconds": 0.379064049,
+      "min_seconds": 0.378457579,
+      "max_seconds": 0.379670519,
+      "distinct_transcripts": [
+        "Dr. Moll si myslí, že někteří pacienti mohli tento virus chytit v nemocnici a nejméně dva z nich byly nemocniční zdravotnictví."
+      ]
+    },
+    {
+      "sample": "fleurs-010.wav",
+      "flash_attention": false,
+      "measured_calls": 2,
+      "median_seconds": 0.746206285,
+      "min_seconds": 0.746063388,
+      "max_seconds": 0.746349182,
+      "distinct_transcripts": [
+        "Články vyžadovaly jednomyslný souhlas všech států a teprve poté mohly být doplněny. Státy braly centrální vládu na lehkou váhu, a to natolik, že jejich zástupci často nebyli přítomni."
+      ]
+    },
+    {
+      "sample": "fleurs-010.wav",
+      "flash_attention": true,
+      "measured_calls": 2,
+      "median_seconds": 0.4870295885,
+      "min_seconds": 0.483687019,
+      "max_seconds": 0.490372158,
+      "distinct_transcripts": [
+        "Články vyžadovaly jednomyslný souhlas všech států a teprve poté mohly být doplněny. Státy brali centrální vládu na lehkou váhu, a to natolik, že jejich zástupci často nebyli přítomni."
+      ]
+    },
+    {
+      "sample": "fleurs-011.wav",
+      "flash_attention": false,
+      "measured_calls": 2,
+      "median_seconds": 0.8033878575,
+      "min_seconds": 0.800139283,
+      "max_seconds": 0.806636432,
+      "distinct_transcripts": [
+        "Struktura peří naznačuje, že nebyla používána za zaletu, ale spíše pro regulaci teploty nebo předvádění. Vědci předpokládají, že i když se jedná o ocaz mladého dinosaura, vzorek ukazuje dospělé peří a několiv mláděte."
+      ]
+    },
+    {
+      "sample": "fleurs-011.wav",
+      "flash_attention": true,
+      "measured_calls": 2,
+      "median_seconds": 0.5359988105,
+      "min_seconds": 0.534608478,
+      "max_seconds": 0.537389143,
+      "distinct_transcripts": [
+        "Struktura peří naznačuje, že nebyla používána za zaletu, ale spíše pro regulaci teploty nebo předvádění. Vědci předpokládají, že i když se jedná o ocaz mladého dinosaura, vzorek ukazuje dospělé peří a několiv mláděte."
+      ]
+    },
+    {
+      "sample": "fleurs-012.wav",
+      "flash_attention": false,
+      "measured_calls": 2,
+      "median_seconds": 0.5416664664999999,
+      "min_seconds": 0.537868134,
+      "max_seconds": 0.545464799,
+      "distinct_transcripts": [
+        "Vědci uvádějí, že exploze způsobena nárazem byla masivní."
+      ]
+    },
+    {
+      "sample": "fleurs-012.wav",
+      "flash_attention": true,
+      "measured_calls": 2,
+      "median_seconds": 0.303456724,
+      "min_seconds": 0.301640371,
+      "max_seconds": 0.305273077,
+      "distinct_transcripts": [
+        "Vědci uvádějí, že exploze způsobena nárazem byla masivní."
+      ]
+    },
+    {
+      "sample": "fleurs-013.wav",
+      "flash_attention": false,
+      "measured_calls": 2,
+      "median_seconds": 0.597481564,
+      "min_seconds": 0.597089357,
+      "max_seconds": 0.597873771,
+      "distinct_transcripts": [
+        "Kurs se obvykle vinuje mnohem podrobněji všem zde popsaným problémům obvyklejí formou praktických cvičin."
+      ]
+    },
+    {
+      "sample": "fleurs-013.wav",
+      "flash_attention": true,
+      "measured_calls": 2,
+      "median_seconds": 0.350848765,
+      "min_seconds": 0.350162283,
+      "max_seconds": 0.351535247,
+      "distinct_transcripts": [
+        "Kurs se obvykle vinuje mnohem podrobněji všem zde popsaným problémům obvyklejí formou praktických cvičin."
+      ]
+    },
+    {
+      "sample": "fleurs-014.wav",
+      "flash_attention": false,
+      "measured_calls": 2,
+      "median_seconds": 0.6760904205,
+      "min_seconds": 0.672203666,
+      "max_seconds": 0.679977175,
+      "distinct_transcripts": [
+        "Vlastnosti, díky kterým se subkultura odlišuje, mohou být lingvistické, estetické, náboženské, politické, sexuální, geografické nebo kombinace faktorů."
+      ]
+    },
+    {
+      "sample": "fleurs-014.wav",
+      "flash_attention": true,
+      "measured_calls": 2,
+      "median_seconds": 0.42694374749999997,
+      "min_seconds": 0.425904822,
+      "max_seconds": 0.427982673,
+      "distinct_transcripts": [
+        "Vlastnosti, díky kterým se subkultura odlišuje, mohou být lingvistické, estetické, náboženské, politické, sexuální, geografické nebo kombinace faktorů."
+      ]
+    },
+    {
+      "sample": "fleurs-015.wav",
+      "flash_attention": false,
+      "measured_calls": 2,
+      "median_seconds": 0.550708467,
+      "min_seconds": 0.547001973,
+      "max_seconds": 0.554414961,
+      "distinct_transcripts": [
+        "Kary může být buď suché nebo mokré podle toho, kolik obsahujete kutiny."
+      ]
+    },
+    {
+      "sample": "fleurs-015.wav",
+      "flash_attention": true,
+      "measured_calls": 2,
+      "median_seconds": 0.3090541935,
+      "min_seconds": 0.30839481,
+      "max_seconds": 0.309713577,
+      "distinct_transcripts": [
+        "Kary může být buď suché nebo mokré podle toho, kolik obsahuje takutiny."
+      ]
+    },
+    {
+      "sample": "fleurs-016.wav",
+      "flash_attention": false,
+      "measured_calls": 2,
+      "median_seconds": 0.638958045,
+      "min_seconds": 0.638625703,
+      "max_seconds": 0.639290387,
+      "distinct_transcripts": [
+        "Bývalý mluvčí domu Newt Gingrich, texanský guvernér Rick Perry a kongresmandka Michelle Bachmann skončili na čtvrtém, pátém a šestém míst."
+      ]
+    },
+    {
+      "sample": "fleurs-016.wav",
+      "flash_attention": true,
+      "measured_calls": 2,
+      "median_seconds": 0.39055726,
+      "min_seconds": 0.386776367,
+      "max_seconds": 0.394338153,
+      "distinct_transcripts": [
+        "Bývalý mluvčí domu Newt Gingrich, texanský guvernér Rick Perry a kongresmandka Michelle Bachmann skončili na čtvrtém, pátém a šestém míst."
+      ]
+    },
+    {
+      "sample": "fleurs-017.wav",
+      "flash_attention": false,
+      "measured_calls": 2,
+      "median_seconds": 0.634585757,
+      "min_seconds": 0.626493487,
+      "max_seconds": 0.642678027,
+      "distinct_transcripts": [
+        "Zpráva začíná prozbou o otevřenou debatu a vytvoření konsenzu ve Spojených státech o politice vůči Blízkému východu."
+      ]
+    },
+    {
+      "sample": "fleurs-017.wav",
+      "flash_attention": true,
+      "measured_calls": 2,
+      "median_seconds": 0.38539948,
+      "min_seconds": 0.384279766,
+      "max_seconds": 0.386519194,
+      "distinct_transcripts": [
+        "Zpráva začíná prozbou o otevřenou debatu a vytvoření konsenzu ve Spojených státech o politice vůči Blízkému východu."
+      ]
+    },
+    {
+      "sample": "fleurs-018.wav",
+      "flash_attention": false,
+      "measured_calls": 2,
+      "median_seconds": 0.5480949545,
+      "min_seconds": 0.546791175,
+      "max_seconds": 0.549398734,
+      "distinct_transcripts": [
+        "Španělé zahájeli období kolonizace, které trvalo po tři století."
+      ]
+    },
+    {
+      "sample": "fleurs-018.wav",
+      "flash_attention": true,
+      "measured_calls": 2,
+      "median_seconds": 0.305439046,
+      "min_seconds": 0.304788915,
+      "max_seconds": 0.306089177,
+      "distinct_transcripts": [
+        "Španělé zahájeli období kolonizace, které trvalo po tři století."
+      ]
+    },
+    {
+      "sample": "fleurs-019.wav",
+      "flash_attention": false,
+      "measured_calls": 2,
+      "median_seconds": 0.7285947645,
+      "min_seconds": 0.726634693,
+      "max_seconds": 0.730554836,
+      "distinct_transcripts": [
+        "Ženy by měly mít na paměti, že kvůli kulturným rozdílům se někdy mohou setkat s obtěžováním a že není neobdeklé, když muž ženu při chůzi sleduje, chytá za roku a podobně."
+      ]
+    },
+    {
+      "sample": "fleurs-019.wav",
+      "flash_attention": true,
+      "measured_calls": 2,
+      "median_seconds": 0.46245914850000003,
+      "min_seconds": 0.460076626,
+      "max_seconds": 0.464841671,
+      "distinct_transcripts": [
+        "Ženy by měly mít na paměti, že kvůli kulturným rozdílům se někdy mohou setkat s obtěžováním a že není neobdeklé, když muž ženu při chůzi sleduje, chytá za roku a podobně."
+      ]
+    }
+  ],
+  "measurements": [
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "first_call_with_model_initialization",
+      "sample": "fleurs-000.wav",
+      "audio_seconds": 8.64,
+      "elapsed_seconds": 1.079868943,
+      "text": "Čím dál víc oblíbenější možnost pro ty, kdo plánují dát si rok pauzu, je cestovat a učit se."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "warmup",
+      "sample": "fleurs-000.wav",
+      "audio_seconds": 8.64,
+      "elapsed_seconds": 0.589220394,
+      "text": "Čím dál víc oblíbenější možnost pro ty, kdo plánují dát si rok pauzu, je cestovat a učit se."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "warmup",
+      "sample": "fleurs-001.wav",
+      "audio_seconds": 6.24,
+      "elapsed_seconds": 0.564286894,
+      "text": "Východoafrické ostrovy se nacházejí v Indickém oceánu u východního pobřeží Afriky."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "warmup",
+      "sample": "fleurs-002.wav",
+      "audio_seconds": 7.56,
+      "elapsed_seconds": 0.597498993,
+      "text": "Jelikož bylo k dispozici pouze 18 medailí denně, některým zemím se nepodařilo dostat na stupně vítězů."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "warmup",
+      "sample": "fleurs-003.wav",
+      "audio_seconds": 14.04,
+      "elapsed_seconds": 0.653901105,
+      "text": "Některá zvířata, jako například sloni a žirafy, mají tendenci se k vozidlům přiblížit a standardní vybavení tak umožní dobrý výhled."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "warmup",
+      "sample": "fleurs-004.wav",
+      "audio_seconds": 12.54,
+      "elapsed_seconds": 0.69854402,
+      "text": "Vědci předpokládají, že i když se jedná o ocaz mladého dinosaura, představuje vzorek o peření dospělého zvířete a několiv prachové peří mláděte."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "warmup",
+      "sample": "fleurs-005.wav",
+      "audio_seconds": 8.52,
+      "elapsed_seconds": 0.65654437,
+      "text": "Pokud navštívíte arktické nebo antarktické oblasti v zimě, budete moci zažít polárení noc, což znamená, že slunce nevýjde na antiobzor."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "warmup",
+      "sample": "fleurs-006.wav",
+      "audio_seconds": 9.12,
+      "elapsed_seconds": 0.554108376,
+      "text": "Výsledek vykreslovací analýzy bude zveřejněn na veřejně přístupném webu."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "warmup",
+      "sample": "fleurs-007.wav",
+      "audio_seconds": 19.68,
+      "elapsed_seconds": 0.748134373,
+      "text": "Napříč Spojenými státy americkými je známo zhruba 400 000 případů roztroušené sklerózy, což z tohoto onamocnění činí přední neurologické onamocnění u dospělých v mladším a středním věku."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "warmup",
+      "sample": "fleurs-008.wav",
+      "audio_seconds": 15.84,
+      "elapsed_seconds": 0.652125976,
+      "text": "Bushův mluvčí Gordon John Rowe nazval slib Soverní Koreje významným krokem k cílí dosažení ověřitelné denuklearizace korejského polostrova."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "warmup",
+      "sample": "fleurs-009.wav",
+      "audio_seconds": 9.36,
+      "elapsed_seconds": 0.622999605,
+      "text": "Dr. Moll si myslí, že někteří pacienti mohli tento virus chytit v nemocnici a nejméně dva z nich byly nemocniční zdravotnictví."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "warmup",
+      "sample": "fleurs-010.wav",
+      "audio_seconds": 19.38,
+      "elapsed_seconds": 0.747191914,
+      "text": "Články vyžadovaly jednomyslný souhlas všech států a teprve poté mohly být doplněny. Státy braly centrální vládu na lehkou váhu, a to natolik, že jejich zástupci často nebyli přítomni."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "warmup",
+      "sample": "fleurs-011.wav",
+      "audio_seconds": 17.16,
+      "elapsed_seconds": 0.804670188,
+      "text": "Struktura peří naznačuje, že nebyla používána za zaletu, ale spíše pro regulaci teploty nebo předvádění. Vědci předpokládají, že i když se jedná o ocaz mladého dinosaura, vzorek ukazuje dospělé peří a několiv mláděte."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "warmup",
+      "sample": "fleurs-012.wav",
+      "audio_seconds": 9.36,
+      "elapsed_seconds": 0.536918127,
+      "text": "Vědci uvádějí, že exploze způsobena nárazem byla masivní."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "warmup",
+      "sample": "fleurs-013.wav",
+      "audio_seconds": 11.4,
+      "elapsed_seconds": 0.596607669,
+      "text": "Kurs se obvykle vinuje mnohem podrobněji všem zde popsaným problémům obvyklejí formou praktických cvičin."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "warmup",
+      "sample": "fleurs-014.wav",
+      "audio_seconds": 14.52,
+      "elapsed_seconds": 0.685628225,
+      "text": "Vlastnosti, díky kterým se subkultura odlišuje, mohou být lingvistické, estetické, náboženské, politické, sexuální, geografické nebo kombinace faktorů."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "warmup",
+      "sample": "fleurs-015.wav",
+      "audio_seconds": 7.44,
+      "elapsed_seconds": 0.545366072,
+      "text": "Kary může být buď suché nebo mokré podle toho, kolik obsahujete kutiny."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "warmup",
+      "sample": "fleurs-016.wav",
+      "audio_seconds": 15.84,
+      "elapsed_seconds": 0.634639541,
+      "text": "Bývalý mluvčí domu Newt Gingrich, texanský guvernér Rick Perry a kongresmandka Michelle Bachmann skončili na čtvrtém, pátém a šestém míst."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "warmup",
+      "sample": "fleurs-017.wav",
+      "audio_seconds": 13.14,
+      "elapsed_seconds": 0.629232321,
+      "text": "Zpráva začíná prozbou o otevřenou debatu a vytvoření konsenzu ve Spojených státech o politice vůči Blízkému východu."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "warmup",
+      "sample": "fleurs-018.wav",
+      "audio_seconds": 9.36,
+      "elapsed_seconds": 0.545913226,
+      "text": "Španělé zahájeli období kolonizace, které trvalo po tři století."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "warmup",
+      "sample": "fleurs-019.wav",
+      "audio_seconds": 16.74,
+      "elapsed_seconds": 0.720900562,
+      "text": "Ženy by měly mít na paměti, že kvůli kulturným rozdílům se někdy mohou setkat s obtěžováním a že není neobdeklé, když muž ženu při chůzi sleduje, chytá za roku a podobně."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "fleurs-000.wav",
+      "audio_seconds": 8.64,
+      "elapsed_seconds": 0.600216609,
+      "text": "Čím dál víc oblíbenější možnost pro ty, kdo plánují dát si rok pauzu, je cestovat a učit se."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "fleurs-001.wav",
+      "audio_seconds": 6.24,
+      "elapsed_seconds": 0.565610922,
+      "text": "Východoafrické ostrovy se nacházejí v Indickém oceánu u východního pobřeží Afriky."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "fleurs-002.wav",
+      "audio_seconds": 7.56,
+      "elapsed_seconds": 0.592364046,
+      "text": "Jelikož bylo k dispozici pouze 18 medailí denně, některým zemím se nepodařilo dostat na stupně vítězů."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "fleurs-003.wav",
+      "audio_seconds": 14.04,
+      "elapsed_seconds": 0.647942896,
+      "text": "Některá zvířata, jako například sloni a žirafy, mají tendenci se k vozidlům přiblížit a standardní vybavení tak umožní dobrý výhled."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "fleurs-004.wav",
+      "audio_seconds": 12.54,
+      "elapsed_seconds": 0.699662391,
+      "text": "Vědci předpokládají, že i když se jedná o ocaz mladého dinosaura, představuje vzorek o peření dospělého zvířete a několiv prachové peří mláděte."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "fleurs-005.wav",
+      "audio_seconds": 8.52,
+      "elapsed_seconds": 0.658578549,
+      "text": "Pokud navštívíte arktické nebo antarktické oblasti v zimě, budete moci zažít polárení noc, což znamená, že slunce nevýjde na antiobzor."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "fleurs-006.wav",
+      "audio_seconds": 9.12,
+      "elapsed_seconds": 0.555170311,
+      "text": "Výsledek vykreslovací analýzy bude zveřejněn na veřejně přístupném webu."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "fleurs-007.wav",
+      "audio_seconds": 19.68,
+      "elapsed_seconds": 0.74398087,
+      "text": "Napříč Spojenými státy americkými je známo zhruba 400 000 případů roztroušené sklerózy, což z tohoto onamocnění činí přední neurologické onamocnění u dospělých v mladším a středním věku."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "fleurs-008.wav",
+      "audio_seconds": 15.84,
+      "elapsed_seconds": 0.652132383,
+      "text": "Bushův mluvčí Gordon John Rowe nazval slib Soverní Koreje významným krokem k cílí dosažení ověřitelné denuklearizace korejského polostrova."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "fleurs-009.wav",
+      "audio_seconds": 9.36,
+      "elapsed_seconds": 0.624462289,
+      "text": "Dr. Moll si myslí, že někteří pacienti mohli tento virus chytit v nemocnici a nejméně dva z nich byly nemocniční zdravotnictví."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "fleurs-010.wav",
+      "audio_seconds": 19.38,
+      "elapsed_seconds": 0.746063388,
+      "text": "Články vyžadovaly jednomyslný souhlas všech států a teprve poté mohly být doplněny. Státy braly centrální vládu na lehkou váhu, a to natolik, že jejich zástupci často nebyli přítomni."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "fleurs-011.wav",
+      "audio_seconds": 17.16,
+      "elapsed_seconds": 0.800139283,
+      "text": "Struktura peří naznačuje, že nebyla používána za zaletu, ale spíše pro regulaci teploty nebo předvádění. Vědci předpokládají, že i když se jedná o ocaz mladého dinosaura, vzorek ukazuje dospělé peří a několiv mláděte."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "fleurs-012.wav",
+      "audio_seconds": 9.36,
+      "elapsed_seconds": 0.537868134,
+      "text": "Vědci uvádějí, že exploze způsobena nárazem byla masivní."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "fleurs-013.wav",
+      "audio_seconds": 11.4,
+      "elapsed_seconds": 0.597089357,
+      "text": "Kurs se obvykle vinuje mnohem podrobněji všem zde popsaným problémům obvyklejí formou praktických cvičin."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "fleurs-014.wav",
+      "audio_seconds": 14.52,
+      "elapsed_seconds": 0.672203666,
+      "text": "Vlastnosti, díky kterým se subkultura odlišuje, mohou být lingvistické, estetické, náboženské, politické, sexuální, geografické nebo kombinace faktorů."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "fleurs-015.wav",
+      "audio_seconds": 7.44,
+      "elapsed_seconds": 0.547001973,
+      "text": "Kary může být buď suché nebo mokré podle toho, kolik obsahujete kutiny."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "fleurs-016.wav",
+      "audio_seconds": 15.84,
+      "elapsed_seconds": 0.639290387,
+      "text": "Bývalý mluvčí domu Newt Gingrich, texanský guvernér Rick Perry a kongresmandka Michelle Bachmann skončili na čtvrtém, pátém a šestém míst."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "fleurs-017.wav",
+      "audio_seconds": 13.14,
+      "elapsed_seconds": 0.642678027,
+      "text": "Zpráva začíná prozbou o otevřenou debatu a vytvoření konsenzu ve Spojených státech o politice vůči Blízkému východu."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "fleurs-018.wav",
+      "audio_seconds": 9.36,
+      "elapsed_seconds": 0.549398734,
+      "text": "Španělé zahájeli období kolonizace, které trvalo po tři století."
+    },
+    {
+      "block": 0,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "fleurs-019.wav",
+      "audio_seconds": 16.74,
+      "elapsed_seconds": 0.730554836,
+      "text": "Ženy by měly mít na paměti, že kvůli kulturným rozdílům se někdy mohou setkat s obtěžováním a že není neobdeklé, když muž ženu při chůzi sleduje, chytá za roku a podobně."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "first_call_with_model_initialization",
+      "sample": "fleurs-000.wav",
+      "audio_seconds": 8.64,
+      "elapsed_seconds": 0.917228243,
+      "text": "Čím dál víc oblíbenější možnost pro ty, kdo plánují dát si rok pauzu, je cestovat a učit se."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "warmup",
+      "sample": "fleurs-000.wav",
+      "audio_seconds": 8.64,
+      "elapsed_seconds": 0.473053794,
+      "text": "Čím dál víc oblíbenější možnost pro ty, kdo plánují dát si rok pauzu, je cestovat a učit se."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "warmup",
+      "sample": "fleurs-001.wav",
+      "audio_seconds": 6.24,
+      "elapsed_seconds": 0.33590434,
+      "text": "Východoafrické ostrovy se nacházejí v Indickém oceánu u východního pobřeží Afriky."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "warmup",
+      "sample": "fleurs-002.wav",
+      "audio_seconds": 7.56,
+      "elapsed_seconds": 0.354873442,
+      "text": "Jelikož bylo k dispozici pouze 18 medailí denně, některým zemím se nepodařilo dostat na stupně vítězů."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "warmup",
+      "sample": "fleurs-003.wav",
+      "audio_seconds": 14.04,
+      "elapsed_seconds": 0.405999639,
+      "text": "Některá zvířata, jako například sloni a žirafy, mají tendenci se k vozidlům přiblížit a standardní vybavení tak umožní dobrý výhled."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "warmup",
+      "sample": "fleurs-004.wav",
+      "audio_seconds": 12.54,
+      "elapsed_seconds": 0.44743709,
+      "text": "Vědci předpokládají, že i když se jedná o ocaz mladého dinosaura, představuje vzorek o peření dospělého zvířete a několiv prachové peří mláděte."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "warmup",
+      "sample": "fleurs-005.wav",
+      "audio_seconds": 8.52,
+      "elapsed_seconds": 0.408130838,
+      "text": "Pokud navštívíte arktické nebo antarktické oblasti v zimě, budete moci zažít polárení noc, což znamená, že slunce nevýjde na antiobzor."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "warmup",
+      "sample": "fleurs-006.wav",
+      "audio_seconds": 9.12,
+      "elapsed_seconds": 0.323079708,
+      "text": "Výsledek vykreslovací analýzy bude zveřejněn na veřejně přístupném webu."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "warmup",
+      "sample": "fleurs-007.wav",
+      "audio_seconds": 19.68,
+      "elapsed_seconds": 0.514364686,
+      "text": "Napříč Spojenými státy americkými je známo zhruba 400 000 případů roztroušené sklerózy, což z tohoto onamocnění činí přední neurologické onamocnění u dospělých v mladším a středním věku."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "warmup",
+      "sample": "fleurs-008.wav",
+      "audio_seconds": 15.84,
+      "elapsed_seconds": 0.40592862,
+      "text": "Bushův mluvčí Gordon John Rowe nazval slib Soverní Koreje významným krokem k cílí dosažení ověřitelné denuklearizace korejského polostrova."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "warmup",
+      "sample": "fleurs-009.wav",
+      "audio_seconds": 9.36,
+      "elapsed_seconds": 0.385612229,
+      "text": "Dr. Moll si myslí, že někteří pacienti mohli tento virus chytit v nemocnici a nejméně dva z nich byly nemocniční zdravotnictví."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "warmup",
+      "sample": "fleurs-010.wav",
+      "audio_seconds": 19.38,
+      "elapsed_seconds": 0.500669026,
+      "text": "Články vyžadovaly jednomyslný souhlas všech států a teprve poté mohly být doplněny. Státy brali centrální vládu na lehkou váhu, a to natolik, že jejich zástupci často nebyli přítomni."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "warmup",
+      "sample": "fleurs-011.wav",
+      "audio_seconds": 17.16,
+      "elapsed_seconds": 0.556889828,
+      "text": "Struktura peří naznačuje, že nebyla používána za zaletu, ale spíše pro regulaci teploty nebo předvádění. Vědci předpokládají, že i když se jedná o ocaz mladého dinosaura, vzorek ukazuje dospělé peří a několiv mláděte."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "warmup",
+      "sample": "fleurs-012.wav",
+      "audio_seconds": 9.36,
+      "elapsed_seconds": 0.30762151,
+      "text": "Vědci uvádějí, že exploze způsobena nárazem byla masivní."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "warmup",
+      "sample": "fleurs-013.wav",
+      "audio_seconds": 11.4,
+      "elapsed_seconds": 0.355962364,
+      "text": "Kurs se obvykle vinuje mnohem podrobněji všem zde popsaným problémům obvyklejí formou praktických cvičin."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "warmup",
+      "sample": "fleurs-014.wav",
+      "audio_seconds": 14.52,
+      "elapsed_seconds": 0.434740054,
+      "text": "Vlastnosti, díky kterým se subkultura odlišuje, mohou být lingvistické, estetické, náboženské, politické, sexuální, geografické nebo kombinace faktorů."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "warmup",
+      "sample": "fleurs-015.wav",
+      "audio_seconds": 7.44,
+      "elapsed_seconds": 0.31257058,
+      "text": "Kary může být buď suché nebo mokré podle toho, kolik obsahuje takutiny."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "warmup",
+      "sample": "fleurs-016.wav",
+      "audio_seconds": 15.84,
+      "elapsed_seconds": 0.404809735,
+      "text": "Bývalý mluvčí domu Newt Gingrich, texanský guvernér Rick Perry a kongresmandka Michelle Bachmann skončili na čtvrtém, pátém a šestém míst."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "warmup",
+      "sample": "fleurs-017.wav",
+      "audio_seconds": 13.14,
+      "elapsed_seconds": 0.388805162,
+      "text": "Zpráva začíná prozbou o otevřenou debatu a vytvoření konsenzu ve Spojených státech o politice vůči Blízkému východu."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "warmup",
+      "sample": "fleurs-018.wav",
+      "audio_seconds": 9.36,
+      "elapsed_seconds": 0.308836779,
+      "text": "Španělé zahájeli období kolonizace, které trvalo po tři století."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "warmup",
+      "sample": "fleurs-019.wav",
+      "audio_seconds": 16.74,
+      "elapsed_seconds": 0.464543184,
+      "text": "Ženy by měly mít na paměti, že kvůli kulturným rozdílům se někdy mohou setkat s obtěžováním a že není neobdeklé, když muž ženu při chůzi sleduje, chytá za roku a podobně."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "fleurs-000.wav",
+      "audio_seconds": 8.64,
+      "elapsed_seconds": 0.460866882,
+      "text": "Čím dál víc oblíbenější možnost pro ty, kdo plánují dát si rok pauzu, je cestovat a učit se."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "fleurs-001.wav",
+      "audio_seconds": 6.24,
+      "elapsed_seconds": 0.330818639,
+      "text": "Východoafrické ostrovy se nacházejí v Indickém oceánu u východního pobřeží Afriky."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "fleurs-002.wav",
+      "audio_seconds": 7.56,
+      "elapsed_seconds": 0.348763526,
+      "text": "Jelikož bylo k dispozici pouze 18 medailí denně, některým zemím se nepodařilo dostat na stupně vítězů."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "fleurs-003.wav",
+      "audio_seconds": 14.04,
+      "elapsed_seconds": 0.39583284,
+      "text": "Některá zvířata, jako například sloni a žirafy, mají tendenci se k vozidlům přiblížit a standardní vybavení tak umožní dobrý výhled."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "fleurs-004.wav",
+      "audio_seconds": 12.54,
+      "elapsed_seconds": 0.43772294,
+      "text": "Vědci předpokládají, že i když se jedná o ocaz mladého dinosaura, představuje vzorek o peření dospělého zvířete a několiv prachové peří mláděte."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "fleurs-005.wav",
+      "audio_seconds": 8.52,
+      "elapsed_seconds": 0.405588854,
+      "text": "Pokud navštívíte arktické nebo antarktické oblasti v zimě, budete moci zažít polárení noc, což znamená, že slunce nevýjde na antiobzor."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "fleurs-006.wav",
+      "audio_seconds": 9.12,
+      "elapsed_seconds": 0.323024177,
+      "text": "Výsledek vykreslovací analýzy bude zveřejněn na veřejně přístupném webu."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "fleurs-007.wav",
+      "audio_seconds": 19.68,
+      "elapsed_seconds": 0.486114081,
+      "text": "Napříč Spojenými státy americkými je známo zhruba 400 000 případů roztroušené sklerózy, což z tohoto onamocnění činí přední neurologické onamocnění u dospělých v mladším a středním věku."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "fleurs-008.wav",
+      "audio_seconds": 15.84,
+      "elapsed_seconds": 0.404694315,
+      "text": "Bushův mluvčí Gordon John Rowe nazval slib Soverní Koreje významným krokem k cílí dosažení ověřitelné denuklearizace korejského polostrova."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "fleurs-009.wav",
+      "audio_seconds": 9.36,
+      "elapsed_seconds": 0.379670519,
+      "text": "Dr. Moll si myslí, že někteří pacienti mohli tento virus chytit v nemocnici a nejméně dva z nich byly nemocniční zdravotnictví."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "fleurs-010.wav",
+      "audio_seconds": 19.38,
+      "elapsed_seconds": 0.483687019,
+      "text": "Články vyžadovaly jednomyslný souhlas všech států a teprve poté mohly být doplněny. Státy brali centrální vládu na lehkou váhu, a to natolik, že jejich zástupci často nebyli přítomni."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "fleurs-011.wav",
+      "audio_seconds": 17.16,
+      "elapsed_seconds": 0.537389143,
+      "text": "Struktura peří naznačuje, že nebyla používána za zaletu, ale spíše pro regulaci teploty nebo předvádění. Vědci předpokládají, že i když se jedná o ocaz mladého dinosaura, vzorek ukazuje dospělé peří a několiv mláděte."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "fleurs-012.wav",
+      "audio_seconds": 9.36,
+      "elapsed_seconds": 0.301640371,
+      "text": "Vědci uvádějí, že exploze způsobena nárazem byla masivní."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "fleurs-013.wav",
+      "audio_seconds": 11.4,
+      "elapsed_seconds": 0.351535247,
+      "text": "Kurs se obvykle vinuje mnohem podrobněji všem zde popsaným problémům obvyklejí formou praktických cvičin."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "fleurs-014.wav",
+      "audio_seconds": 14.52,
+      "elapsed_seconds": 0.425904822,
+      "text": "Vlastnosti, díky kterým se subkultura odlišuje, mohou být lingvistické, estetické, náboženské, politické, sexuální, geografické nebo kombinace faktorů."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "fleurs-015.wav",
+      "audio_seconds": 7.44,
+      "elapsed_seconds": 0.309713577,
+      "text": "Kary může být buď suché nebo mokré podle toho, kolik obsahuje takutiny."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "fleurs-016.wav",
+      "audio_seconds": 15.84,
+      "elapsed_seconds": 0.394338153,
+      "text": "Bývalý mluvčí domu Newt Gingrich, texanský guvernér Rick Perry a kongresmandka Michelle Bachmann skončili na čtvrtém, pátém a šestém míst."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "fleurs-017.wav",
+      "audio_seconds": 13.14,
+      "elapsed_seconds": 0.384279766,
+      "text": "Zpráva začíná prozbou o otevřenou debatu a vytvoření konsenzu ve Spojených státech o politice vůči Blízkému východu."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "fleurs-018.wav",
+      "audio_seconds": 9.36,
+      "elapsed_seconds": 0.304788915,
+      "text": "Španělé zahájeli období kolonizace, které trvalo po tři století."
+    },
+    {
+      "block": 1,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "fleurs-019.wav",
+      "audio_seconds": 16.74,
+      "elapsed_seconds": 0.460076626,
+      "text": "Ženy by měly mít na paměti, že kvůli kulturným rozdílům se někdy mohou setkat s obtěžováním a že není neobdeklé, když muž ženu při chůzi sleduje, chytá za roku a podobně."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "first_call_with_model_initialization",
+      "sample": "fleurs-000.wav",
+      "audio_seconds": 8.64,
+      "elapsed_seconds": 0.795524999,
+      "text": "Čím dál víc oblíbenější možnost pro ty, kdo plánují dát si rok pauzu, je cestovat a učit se."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "warmup",
+      "sample": "fleurs-000.wav",
+      "audio_seconds": 8.64,
+      "elapsed_seconds": 0.465354499,
+      "text": "Čím dál víc oblíbenější možnost pro ty, kdo plánují dát si rok pauzu, je cestovat a učit se."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "warmup",
+      "sample": "fleurs-001.wav",
+      "audio_seconds": 6.24,
+      "elapsed_seconds": 0.324216584,
+      "text": "Východoafrické ostrovy se nacházejí v Indickém oceánu u východního pobřeží Afriky."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "warmup",
+      "sample": "fleurs-002.wav",
+      "audio_seconds": 7.56,
+      "elapsed_seconds": 0.350079642,
+      "text": "Jelikož bylo k dispozici pouze 18 medailí denně, některým zemím se nepodařilo dostat na stupně vítězů."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "warmup",
+      "sample": "fleurs-003.wav",
+      "audio_seconds": 14.04,
+      "elapsed_seconds": 0.395557041,
+      "text": "Některá zvířata, jako například sloni a žirafy, mají tendenci se k vozidlům přiblížit a standardní vybavení tak umožní dobrý výhled."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "warmup",
+      "sample": "fleurs-004.wav",
+      "audio_seconds": 12.54,
+      "elapsed_seconds": 0.444503921,
+      "text": "Vědci předpokládají, že i když se jedná o ocaz mladého dinosaura, představuje vzorek o peření dospělého zvířete a několiv prachové peří mláděte."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "warmup",
+      "sample": "fleurs-005.wav",
+      "audio_seconds": 8.52,
+      "elapsed_seconds": 0.403487721,
+      "text": "Pokud navštívíte arktické nebo antarktické oblasti v zimě, budete moci zažít polárení noc, což znamená, že slunce nevýjde na antiobzor."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "warmup",
+      "sample": "fleurs-006.wav",
+      "audio_seconds": 9.12,
+      "elapsed_seconds": 0.313905182,
+      "text": "Výsledek vykreslovací analýzy bude zveřejněn na veřejně přístupném webu."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "warmup",
+      "sample": "fleurs-007.wav",
+      "audio_seconds": 19.68,
+      "elapsed_seconds": 0.48761073,
+      "text": "Napříč Spojenými státy americkými je známo zhruba 400 000 případů roztroušené sklerózy, což z tohoto onamocnění činí přední neurologické onamocnění u dospělých v mladším a středním věku."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "warmup",
+      "sample": "fleurs-008.wav",
+      "audio_seconds": 15.84,
+      "elapsed_seconds": 0.401785671,
+      "text": "Bushův mluvčí Gordon John Rowe nazval slib Soverní Koreje významným krokem k cílí dosažení ověřitelné denuklearizace korejského polostrova."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "warmup",
+      "sample": "fleurs-009.wav",
+      "audio_seconds": 9.36,
+      "elapsed_seconds": 0.381829143,
+      "text": "Dr. Moll si myslí, že někteří pacienti mohli tento virus chytit v nemocnici a nejméně dva z nich byly nemocniční zdravotnictví."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "warmup",
+      "sample": "fleurs-010.wav",
+      "audio_seconds": 19.38,
+      "elapsed_seconds": 0.494116651,
+      "text": "Články vyžadovaly jednomyslný souhlas všech států a teprve poté mohly být doplněny. Státy brali centrální vládu na lehkou váhu, a to natolik, že jejich zástupci často nebyli přítomni."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "warmup",
+      "sample": "fleurs-011.wav",
+      "audio_seconds": 17.16,
+      "elapsed_seconds": 0.537011275,
+      "text": "Struktura peří naznačuje, že nebyla používána za zaletu, ale spíše pro regulaci teploty nebo předvádění. Vědci předpokládají, že i když se jedná o ocaz mladého dinosaura, vzorek ukazuje dospělé peří a několiv mláděte."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "warmup",
+      "sample": "fleurs-012.wav",
+      "audio_seconds": 9.36,
+      "elapsed_seconds": 0.306438893,
+      "text": "Vědci uvádějí, že exploze způsobena nárazem byla masivní."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "warmup",
+      "sample": "fleurs-013.wav",
+      "audio_seconds": 11.4,
+      "elapsed_seconds": 0.350786451,
+      "text": "Kurs se obvykle vinuje mnohem podrobněji všem zde popsaným problémům obvyklejí formou praktických cvičin."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "warmup",
+      "sample": "fleurs-014.wav",
+      "audio_seconds": 14.52,
+      "elapsed_seconds": 0.426863554,
+      "text": "Vlastnosti, díky kterým se subkultura odlišuje, mohou být lingvistické, estetické, náboženské, politické, sexuální, geografické nebo kombinace faktorů."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "warmup",
+      "sample": "fleurs-015.wav",
+      "audio_seconds": 7.44,
+      "elapsed_seconds": 0.305955043,
+      "text": "Kary může být buď suché nebo mokré podle toho, kolik obsahuje takutiny."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "warmup",
+      "sample": "fleurs-016.wav",
+      "audio_seconds": 15.84,
+      "elapsed_seconds": 0.385764145,
+      "text": "Bývalý mluvčí domu Newt Gingrich, texanský guvernér Rick Perry a kongresmandka Michelle Bachmann skončili na čtvrtém, pátém a šestém míst."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "warmup",
+      "sample": "fleurs-017.wav",
+      "audio_seconds": 13.14,
+      "elapsed_seconds": 0.380421835,
+      "text": "Zpráva začíná prozbou o otevřenou debatu a vytvoření konsenzu ve Spojených státech o politice vůči Blízkému východu."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "warmup",
+      "sample": "fleurs-018.wav",
+      "audio_seconds": 9.36,
+      "elapsed_seconds": 0.304200086,
+      "text": "Španělé zahájeli období kolonizace, které trvalo po tři století."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "warmup",
+      "sample": "fleurs-019.wav",
+      "audio_seconds": 16.74,
+      "elapsed_seconds": 0.460185218,
+      "text": "Ženy by měly mít na paměti, že kvůli kulturným rozdílům se někdy mohou setkat s obtěžováním a že není neobdeklé, když muž ženu při chůzi sleduje, chytá za roku a podobně."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "fleurs-000.wav",
+      "audio_seconds": 8.64,
+      "elapsed_seconds": 0.464078625,
+      "text": "Čím dál víc oblíbenější možnost pro ty, kdo plánují dát si rok pauzu, je cestovat a učit se."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "fleurs-001.wav",
+      "audio_seconds": 6.24,
+      "elapsed_seconds": 0.323496318,
+      "text": "Východoafrické ostrovy se nacházejí v Indickém oceánu u východního pobřeží Afriky."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "fleurs-002.wav",
+      "audio_seconds": 7.56,
+      "elapsed_seconds": 0.346182841,
+      "text": "Jelikož bylo k dispozici pouze 18 medailí denně, některým zemím se nepodařilo dostat na stupně vítězů."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "fleurs-003.wav",
+      "audio_seconds": 14.04,
+      "elapsed_seconds": 0.399740057,
+      "text": "Některá zvířata, jako například sloni a žirafy, mají tendenci se k vozidlům přiblížit a standardní vybavení tak umožní dobrý výhled."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "fleurs-004.wav",
+      "audio_seconds": 12.54,
+      "elapsed_seconds": 0.439244874,
+      "text": "Vědci předpokládají, že i když se jedná o ocaz mladého dinosaura, představuje vzorek o peření dospělého zvířete a několiv prachové peří mláděte."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "fleurs-005.wav",
+      "audio_seconds": 8.52,
+      "elapsed_seconds": 0.408242502,
+      "text": "Pokud navštívíte arktické nebo antarktické oblasti v zimě, budete moci zažít polárení noc, což znamená, že slunce nevýjde na antiobzor."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "fleurs-006.wav",
+      "audio_seconds": 9.12,
+      "elapsed_seconds": 0.316713351,
+      "text": "Výsledek vykreslovací analýzy bude zveřejněn na veřejně přístupném webu."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "fleurs-007.wav",
+      "audio_seconds": 19.68,
+      "elapsed_seconds": 0.486854313,
+      "text": "Napříč Spojenými státy americkými je známo zhruba 400 000 případů roztroušené sklerózy, což z tohoto onamocnění činí přední neurologické onamocnění u dospělých v mladším a středním věku."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "fleurs-008.wav",
+      "audio_seconds": 15.84,
+      "elapsed_seconds": 0.406798115,
+      "text": "Bushův mluvčí Gordon John Rowe nazval slib Soverní Koreje významným krokem k cílí dosažení ověřitelné denuklearizace korejského polostrova."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "fleurs-009.wav",
+      "audio_seconds": 9.36,
+      "elapsed_seconds": 0.378457579,
+      "text": "Dr. Moll si myslí, že někteří pacienti mohli tento virus chytit v nemocnici a nejméně dva z nich byly nemocniční zdravotnictví."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "fleurs-010.wav",
+      "audio_seconds": 19.38,
+      "elapsed_seconds": 0.490372158,
+      "text": "Články vyžadovaly jednomyslný souhlas všech států a teprve poté mohly být doplněny. Státy brali centrální vládu na lehkou váhu, a to natolik, že jejich zástupci často nebyli přítomni."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "fleurs-011.wav",
+      "audio_seconds": 17.16,
+      "elapsed_seconds": 0.534608478,
+      "text": "Struktura peří naznačuje, že nebyla používána za zaletu, ale spíše pro regulaci teploty nebo předvádění. Vědci předpokládají, že i když se jedná o ocaz mladého dinosaura, vzorek ukazuje dospělé peří a několiv mláděte."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "fleurs-012.wav",
+      "audio_seconds": 9.36,
+      "elapsed_seconds": 0.305273077,
+      "text": "Vědci uvádějí, že exploze způsobena nárazem byla masivní."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "fleurs-013.wav",
+      "audio_seconds": 11.4,
+      "elapsed_seconds": 0.350162283,
+      "text": "Kurs se obvykle vinuje mnohem podrobněji všem zde popsaným problémům obvyklejí formou praktických cvičin."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "fleurs-014.wav",
+      "audio_seconds": 14.52,
+      "elapsed_seconds": 0.427982673,
+      "text": "Vlastnosti, díky kterým se subkultura odlišuje, mohou být lingvistické, estetické, náboženské, politické, sexuální, geografické nebo kombinace faktorů."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "fleurs-015.wav",
+      "audio_seconds": 7.44,
+      "elapsed_seconds": 0.30839481,
+      "text": "Kary může být buď suché nebo mokré podle toho, kolik obsahuje takutiny."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "fleurs-016.wav",
+      "audio_seconds": 15.84,
+      "elapsed_seconds": 0.386776367,
+      "text": "Bývalý mluvčí domu Newt Gingrich, texanský guvernér Rick Perry a kongresmandka Michelle Bachmann skončili na čtvrtém, pátém a šestém míst."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "fleurs-017.wav",
+      "audio_seconds": 13.14,
+      "elapsed_seconds": 0.386519194,
+      "text": "Zpráva začíná prozbou o otevřenou debatu a vytvoření konsenzu ve Spojených státech o politice vůči Blízkému východu."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "fleurs-018.wav",
+      "audio_seconds": 9.36,
+      "elapsed_seconds": 0.306089177,
+      "text": "Španělé zahájeli období kolonizace, které trvalo po tři století."
+    },
+    {
+      "block": 2,
+      "flash_attention": true,
+      "phase": "measured",
+      "sample": "fleurs-019.wav",
+      "audio_seconds": 16.74,
+      "elapsed_seconds": 0.464841671,
+      "text": "Ženy by měly mít na paměti, že kvůli kulturným rozdílům se někdy mohou setkat s obtěžováním a že není neobdeklé, když muž ženu při chůzi sleduje, chytá za roku a podobně."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "first_call_with_model_initialization",
+      "sample": "fleurs-000.wav",
+      "audio_seconds": 8.64,
+      "elapsed_seconds": 0.879640811,
+      "text": "Čím dál víc oblíbenější možnost pro ty, kdo plánují dát si rok pauzu, je cestovat a učit se."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "warmup",
+      "sample": "fleurs-000.wav",
+      "audio_seconds": 8.64,
+      "elapsed_seconds": 0.589166627,
+      "text": "Čím dál víc oblíbenější možnost pro ty, kdo plánují dát si rok pauzu, je cestovat a učit se."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "warmup",
+      "sample": "fleurs-001.wav",
+      "audio_seconds": 6.24,
+      "elapsed_seconds": 0.565460169,
+      "text": "Východoafrické ostrovy se nacházejí v Indickém oceánu u východního pobřeží Afriky."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "warmup",
+      "sample": "fleurs-002.wav",
+      "audio_seconds": 7.56,
+      "elapsed_seconds": 0.593828495,
+      "text": "Jelikož bylo k dispozici pouze 18 medailí denně, některým zemím se nepodařilo dostat na stupně vítězů."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "warmup",
+      "sample": "fleurs-003.wav",
+      "audio_seconds": 14.04,
+      "elapsed_seconds": 0.649002289,
+      "text": "Některá zvířata, jako například sloni a žirafy, mají tendenci se k vozidlům přiblížit a standardní vybavení tak umožní dobrý výhled."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "warmup",
+      "sample": "fleurs-004.wav",
+      "audio_seconds": 12.54,
+      "elapsed_seconds": 0.698813346,
+      "text": "Vědci předpokládají, že i když se jedná o ocaz mladého dinosaura, představuje vzorek o peření dospělého zvířete a několiv prachové peří mláděte."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "warmup",
+      "sample": "fleurs-005.wav",
+      "audio_seconds": 8.52,
+      "elapsed_seconds": 0.659269072,
+      "text": "Pokud navštívíte arktické nebo antarktické oblasti v zimě, budete moci zažít polárení noc, což znamená, že slunce nevýjde na antiobzor."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "warmup",
+      "sample": "fleurs-006.wav",
+      "audio_seconds": 9.12,
+      "elapsed_seconds": 0.555724352,
+      "text": "Výsledek vykreslovací analýzy bude zveřejněn na veřejně přístupném webu."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "warmup",
+      "sample": "fleurs-007.wav",
+      "audio_seconds": 19.68,
+      "elapsed_seconds": 0.74449864,
+      "text": "Napříč Spojenými státy americkými je známo zhruba 400 000 případů roztroušené sklerózy, což z tohoto onamocnění činí přední neurologické onamocnění u dospělých v mladším a středním věku."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "warmup",
+      "sample": "fleurs-008.wav",
+      "audio_seconds": 15.84,
+      "elapsed_seconds": 0.656681412,
+      "text": "Bushův mluvčí Gordon John Rowe nazval slib Soverní Koreje významným krokem k cílí dosažení ověřitelné denuklearizace korejského polostrova."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "warmup",
+      "sample": "fleurs-009.wav",
+      "audio_seconds": 9.36,
+      "elapsed_seconds": 0.63316118,
+      "text": "Dr. Moll si myslí, že někteří pacienti mohli tento virus chytit v nemocnici a nejméně dva z nich byly nemocniční zdravotnictví."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "warmup",
+      "sample": "fleurs-010.wav",
+      "audio_seconds": 19.38,
+      "elapsed_seconds": 0.746276006,
+      "text": "Články vyžadovaly jednomyslný souhlas všech států a teprve poté mohly být doplněny. Státy braly centrální vládu na lehkou váhu, a to natolik, že jejich zástupci často nebyli přítomni."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "warmup",
+      "sample": "fleurs-011.wav",
+      "audio_seconds": 17.16,
+      "elapsed_seconds": 0.801819672,
+      "text": "Struktura peří naznačuje, že nebyla používána za zaletu, ale spíše pro regulaci teploty nebo předvádění. Vědci předpokládají, že i když se jedná o ocaz mladého dinosaura, vzorek ukazuje dospělé peří a několiv mláděte."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "warmup",
+      "sample": "fleurs-012.wav",
+      "audio_seconds": 9.36,
+      "elapsed_seconds": 0.540933447,
+      "text": "Vědci uvádějí, že exploze způsobena nárazem byla masivní."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "warmup",
+      "sample": "fleurs-013.wav",
+      "audio_seconds": 11.4,
+      "elapsed_seconds": 0.596232711,
+      "text": "Kurs se obvykle vinuje mnohem podrobněji všem zde popsaným problémům obvyklejí formou praktických cvičin."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "warmup",
+      "sample": "fleurs-014.wav",
+      "audio_seconds": 14.52,
+      "elapsed_seconds": 0.679461408,
+      "text": "Vlastnosti, díky kterým se subkultura odlišuje, mohou být lingvistické, estetické, náboženské, politické, sexuální, geografické nebo kombinace faktorů."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "warmup",
+      "sample": "fleurs-015.wav",
+      "audio_seconds": 7.44,
+      "elapsed_seconds": 0.550904225,
+      "text": "Kary může být buď suché nebo mokré podle toho, kolik obsahujete kutiny."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "warmup",
+      "sample": "fleurs-016.wav",
+      "audio_seconds": 15.84,
+      "elapsed_seconds": 0.6346577,
+      "text": "Bývalý mluvčí domu Newt Gingrich, texanský guvernér Rick Perry a kongresmandka Michelle Bachmann skončili na čtvrtém, pátém a šestém míst."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "warmup",
+      "sample": "fleurs-017.wav",
+      "audio_seconds": 13.14,
+      "elapsed_seconds": 0.629533793,
+      "text": "Zpráva začíná prozbou o otevřenou debatu a vytvoření konsenzu ve Spojených státech o politice vůči Blízkému východu."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "warmup",
+      "sample": "fleurs-018.wav",
+      "audio_seconds": 9.36,
+      "elapsed_seconds": 0.54530727,
+      "text": "Španělé zahájeli období kolonizace, které trvalo po tři století."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "warmup",
+      "sample": "fleurs-019.wav",
+      "audio_seconds": 16.74,
+      "elapsed_seconds": 0.722394247,
+      "text": "Ženy by měly mít na paměti, že kvůli kulturným rozdílům se někdy mohou setkat s obtěžováním a že není neobdeklé, když muž ženu při chůzi sleduje, chytá za roku a podobně."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "fleurs-000.wav",
+      "audio_seconds": 8.64,
+      "elapsed_seconds": 0.595152453,
+      "text": "Čím dál víc oblíbenější možnost pro ty, kdo plánují dát si rok pauzu, je cestovat a učit se."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "fleurs-001.wav",
+      "audio_seconds": 6.24,
+      "elapsed_seconds": 0.564740958,
+      "text": "Východoafrické ostrovy se nacházejí v Indickém oceánu u východního pobřeží Afriky."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "fleurs-002.wav",
+      "audio_seconds": 7.56,
+      "elapsed_seconds": 0.594396219,
+      "text": "Jelikož bylo k dispozici pouze 18 medailí denně, některým zemím se nepodařilo dostat na stupně vítězů."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "fleurs-003.wav",
+      "audio_seconds": 14.04,
+      "elapsed_seconds": 0.652613113,
+      "text": "Některá zvířata, jako například sloni a žirafy, mají tendenci se k vozidlům přiblížit a standardní vybavení tak umožní dobrý výhled."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "fleurs-004.wav",
+      "audio_seconds": 12.54,
+      "elapsed_seconds": 0.708446611,
+      "text": "Vědci předpokládají, že i když se jedná o ocaz mladého dinosaura, představuje vzorek o peření dospělého zvířete a několiv prachové peří mláděte."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "fleurs-005.wav",
+      "audio_seconds": 8.52,
+      "elapsed_seconds": 0.656166566,
+      "text": "Pokud navštívíte arktické nebo antarktické oblasti v zimě, budete moci zažít polárení noc, což znamená, že slunce nevýjde na antiobzor."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "fleurs-006.wav",
+      "audio_seconds": 9.12,
+      "elapsed_seconds": 0.553476558,
+      "text": "Výsledek vykreslovací analýzy bude zveřejněn na veřejně přístupném webu."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "fleurs-007.wav",
+      "audio_seconds": 19.68,
+      "elapsed_seconds": 0.743423955,
+      "text": "Napříč Spojenými státy americkými je známo zhruba 400 000 případů roztroušené sklerózy, což z tohoto onamocnění činí přední neurologické onamocnění u dospělých v mladším a středním věku."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "fleurs-008.wav",
+      "audio_seconds": 15.84,
+      "elapsed_seconds": 0.655239876,
+      "text": "Bushův mluvčí Gordon John Rowe nazval slib Soverní Koreje významným krokem k cílí dosažení ověřitelné denuklearizace korejského polostrova."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "fleurs-009.wav",
+      "audio_seconds": 9.36,
+      "elapsed_seconds": 0.625508065,
+      "text": "Dr. Moll si myslí, že někteří pacienti mohli tento virus chytit v nemocnici a nejméně dva z nich byly nemocniční zdravotnictví."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "fleurs-010.wav",
+      "audio_seconds": 19.38,
+      "elapsed_seconds": 0.746349182,
+      "text": "Články vyžadovaly jednomyslný souhlas všech států a teprve poté mohly být doplněny. Státy braly centrální vládu na lehkou váhu, a to natolik, že jejich zástupci často nebyli přítomni."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "fleurs-011.wav",
+      "audio_seconds": 17.16,
+      "elapsed_seconds": 0.806636432,
+      "text": "Struktura peří naznačuje, že nebyla používána za zaletu, ale spíše pro regulaci teploty nebo předvádění. Vědci předpokládají, že i když se jedná o ocaz mladého dinosaura, vzorek ukazuje dospělé peří a několiv mláděte."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "fleurs-012.wav",
+      "audio_seconds": 9.36,
+      "elapsed_seconds": 0.545464799,
+      "text": "Vědci uvádějí, že exploze způsobena nárazem byla masivní."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "fleurs-013.wav",
+      "audio_seconds": 11.4,
+      "elapsed_seconds": 0.597873771,
+      "text": "Kurs se obvykle vinuje mnohem podrobněji všem zde popsaným problémům obvyklejí formou praktických cvičin."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "fleurs-014.wav",
+      "audio_seconds": 14.52,
+      "elapsed_seconds": 0.679977175,
+      "text": "Vlastnosti, díky kterým se subkultura odlišuje, mohou být lingvistické, estetické, náboženské, politické, sexuální, geografické nebo kombinace faktorů."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "fleurs-015.wav",
+      "audio_seconds": 7.44,
+      "elapsed_seconds": 0.554414961,
+      "text": "Kary může být buď suché nebo mokré podle toho, kolik obsahujete kutiny."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "fleurs-016.wav",
+      "audio_seconds": 15.84,
+      "elapsed_seconds": 0.638625703,
+      "text": "Bývalý mluvčí domu Newt Gingrich, texanský guvernér Rick Perry a kongresmandka Michelle Bachmann skončili na čtvrtém, pátém a šestém míst."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "fleurs-017.wav",
+      "audio_seconds": 13.14,
+      "elapsed_seconds": 0.626493487,
+      "text": "Zpráva začíná prozbou o otevřenou debatu a vytvoření konsenzu ve Spojených státech o politice vůči Blízkému východu."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "fleurs-018.wav",
+      "audio_seconds": 9.36,
+      "elapsed_seconds": 0.546791175,
+      "text": "Španělé zahájeli období kolonizace, které trvalo po tři století."
+    },
+    {
+      "block": 3,
+      "flash_attention": false,
+      "phase": "measured",
+      "sample": "fleurs-019.wav",
+      "audio_seconds": 16.74,
+      "elapsed_seconds": 0.726634693,
+      "text": "Ženy by měly mít na paměti, že kvůli kulturným rozdílům se někdy mohou setkat s obtěžováním a že není neobdeklé, když muž ženu při chůzi sleduje, chytá za roku a podobně."
+    }
+  ]
+}

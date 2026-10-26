@@ -1,0 +1,1 @@
+Dnes zkoušíme rychlost českého diktování. Po ukončení nahrávání se má věta přepsat a vložit do otevřeného terminálu. Příliš žluťoučký kůň úpěl ďábelské ódy.

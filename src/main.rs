@@ -201,8 +201,9 @@ async fn doctor(connection: &Connection, dictation: &DictationConfig) -> Result<
             "Whisper model",
             if dictation.model_path.is_file() {
                 Ok(format!(
-                    "local model; CUDA build: {}",
-                    cfg!(feature = "cuda")
+                    "local model; CUDA build: {}; Flash Attention: {}",
+                    cfg!(feature = "cuda"),
+                    dictation.flash_attention && dictation.use_gpu && cfg!(feature = "cuda")
                 ))
             } else {
                 Err(anyhow::anyhow!("Local model is missing"))

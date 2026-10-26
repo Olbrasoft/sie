@@ -31,7 +31,9 @@ impl SpeechEngine {
             .map_err(|_| anyhow::anyhow!("Speech engine lock unavailable"))?;
         if context.is_none() {
             let mut params = WhisperContextParameters::default();
-            params.use_gpu(self.config.use_gpu && cfg!(feature = "cuda"));
+            let use_gpu = self.config.use_gpu && cfg!(feature = "cuda");
+            params.use_gpu(use_gpu);
+            params.flash_attn(self.config.flash_attention && use_gpu);
             *context = Some(
                 WhisperContext::new_with_params(&self.config.model_path, params)
                     .context("Cannot load local Whisper model")?,

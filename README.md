@@ -1,7 +1,7 @@
 # System Interface Extensions
 
 System Interface Extensions (SIE) is an MIT-licensed Rust desktop companion
-for extending how input devices control a Linux computer. Version 0.8.0 is a
+for extending how input devices control a Linux computer. Version 0.8.1 is a
 GNOME/Wayland proof of concept for the **Razer BlackWidow V4 Pro** (`1532:028d`).
 
 - A top-panel tray opens a Czech menu with **O aplikaci** (the running binary's
@@ -168,6 +168,11 @@ in memory; completed raw/corrected text is stored in the independent SIE history
 Cancel discards the current recording or pending output. During migration,
 VirtualAssistant's Scroll Lock/Pause behavior remains available; use one
 recorder at a time.
+
+The optional CUDA setting `flash_attention = true` can reduce inference latency;
+it defaults to false and requires an application restart. See the
+[local benchmark and reproduction steps](benchmarks/whisper-flash-attention/README.md)
+before choosing it for another GPU or model.
 
 ## Development
 

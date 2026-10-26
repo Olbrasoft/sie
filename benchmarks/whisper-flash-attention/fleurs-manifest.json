@@ -1,0 +1,212 @@
+{
+  "dataset": "google/fleurs",
+  "revision": "70bb2e84b976b7e960aa89f1c648e09c59f894dd",
+  "config": "cs_cz",
+  "split": "validation",
+  "selection": "first 20 rows, no selection based on transcription results",
+  "source": "https://huggingface.co/datasets/google/fleurs",
+  "license": "CC-BY-4.0",
+  "transform": "ffmpeg: 16000 Hz, mono, pcm_s16le",
+  "samples": [
+    {
+      "sample": "fleurs-000.wav",
+      "row_index": 0,
+      "id": 1651,
+      "original_file": "10023071140206119545.wav",
+      "gender": 0,
+      "reference": "čím dál víc oblíbenější možnost pro ty kdo plánují dát si rok pauzu je cestovat a učit se",
+      "raw_reference": "Čím dál víc oblíbenější možnost pro ty, kdo plánují dát si rok pauzu, je cestovat a učit se.",
+      "sha256": "efa8a161c81f0b25c33410c10791262c3a4ddbdc304247041c0eae83da9b0dce"
+    },
+    {
+      "sample": "fleurs-001.wav",
+      "row_index": 1,
+      "id": 1531,
+      "original_file": "10051880807723631411.wav",
+      "gender": 0,
+      "reference": "východoafrické ostrovy se nacházejí v indickém oceánu u východního pobřeží afriky",
+      "raw_reference": "Východoafrické ostrovy se nacházejí v Indickém oceánu u východního pobřeží Afriky.",
+      "sha256": "89422bbda4ccf457866d9fc88ff1e4c84891d431d5ffab1b4d1625859a6cd7ea"
+    },
+    {
+      "sample": "fleurs-002.wav",
+      "row_index": 2,
+      "id": 1658,
+      "original_file": "10089417768150179380.wav",
+      "gender": 0,
+      "reference": "jelikož bylo k dispozici pouze osmnáct medailí denně některým zemím se nepodařilo dostat se na stupně vítězů",
+      "raw_reference": "Jelikož bylo k dispozici pouze osmnáct medailí denně, některým zemím se nepodařilo dostat se na stupně vítězů.",
+      "sha256": "ee16b5ea67e10e9f1ea967567c7a9b66a406eec3e64106a381844b9a0ee7da8d"
+    },
+    {
+      "sample": "fleurs-003.wav",
+      "row_index": 3,
+      "id": 1594,
+      "original_file": "10119794393080711798.wav",
+      "gender": 0,
+      "reference": "některá zvířata jako například sloni a žirafy mají tendenci se k vozidlům přiblížit a standardní vybavení tak umožní dobrý výhled",
+      "raw_reference": "Některá zvířata, jako například sloni a žirafy, mají tendenci se k vozidlům přiblížit, a standardní vybavení tak umožní dobrý výhled.",
+      "sha256": "6789793f86c8050be6dac920b9aa12ebbf9ae27e291b085c854edc76ee811274"
+    },
+    {
+      "sample": "fleurs-004.wav",
+      "row_index": 4,
+      "id": 1563,
+      "original_file": "10125317725603896373.wav",
+      "gender": 0,
+      "reference": "vědci předpokládají že i když se jedná o ocas mladého dinosaura představuje vzorek opeření dospělého zvířete a nikoli prachové peří mláděte",
+      "raw_reference": "Vědci předpokládají, že i když se jedná o ocas mladého dinosaura, představuje vzorek opeření dospělého zvířete a nikoli prachové peří mláděte.",
+      "sha256": "3459b7c72931518fbcfc17a3115068f0fa6c684b1d49dc3decce99c47fde7159"
+    },
+    {
+      "sample": "fleurs-005.wav",
+      "row_index": 5,
+      "id": 1526,
+      "original_file": "10156394800443028290.wav",
+      "gender": 0,
+      "reference": "pokud navštívíte arktické nebo antarktické oblasti v zimě budete moci zažít polární noc což znamená že slunce nevyjde nad obzor",
+      "raw_reference": "Pokud navštívíte arktické nebo antarktické oblasti v zimě, budete moci zažít polární noc, což znamená, že slunce nevyjde nad obzor.",
+      "sha256": "9957ea6c58d38af00e7fda218bc24af7a921f4eebac9d23f6999e997a1bd0088"
+    },
+    {
+      "sample": "fleurs-006.wav",
+      "row_index": 6,
+      "id": 1552,
+      "original_file": "10168382795836113523.wav",
+      "gender": 0,
+      "reference": "výsledek vykreslovací analýzy bude zveřejněn na veřejně přístupném webu",
+      "raw_reference": "Výsledek vykreslovací analýzy bude zveřejněn na veřejně přístupném webu.",
+      "sha256": "768cfa060301265e3d3be9415fb3440819b1a9099aaf300336cd1c2b612490b1"
+    },
+    {
+      "sample": "fleurs-007.wav",
+      "row_index": 7,
+      "id": 1580,
+      "original_file": "10271652573499546371.wav",
+      "gender": 0,
+      "reference": "napříč spojenými státy americkými je známo zhruba 400 000 případů roztroušené sklerózy což z tohoto onemocnění činí přední neurologické onemocnění u dospělých v mladším a středním věku",
+      "raw_reference": "Napříč Spojenými státy americkými je známo zhruba 400 000 případů roztroušené sklerózy, což z tohoto onemocnění činí přední neurologické onemocnění u dospělých v mladším a středním věku.",
+      "sha256": "74cb6883ff9357c4f0a865af26054bb3fd0fc701802032f97acc8fbad4d8d6eb"
+    },
+    {
+      "sample": "fleurs-008.wav",
+      "row_index": 8,
+      "id": 1542,
+      "original_file": "10310248239492377282.wav",
+      "gender": 0,
+      "reference": "bushův mluvčí gordon johndroe nazval slib severní koreje významným krokem k cíli dosažení ověřitelné denuklearizace korejského poloostrova",
+      "raw_reference": "Bushův mluvčí Gordon Johndroe nazval slib Severní Koreje „významným krokem k cíli dosažení ověřitelné denuklearizace Korejského poloostrova.“",
+      "sha256": "be370e6aa667eab3a4dbcca973d1a2bcf126addbb44f19dce558c3e82cbb8f22"
+    },
+    {
+      "sample": "fleurs-009.wav",
+      "row_index": 9,
+      "id": 1564,
+      "original_file": "10516134989534579129.wav",
+      "gender": 0,
+      "reference": "doktor moll si myslí že někteří pacienti mohli tento virus chytit v nemocnici a nejméně dva z nich byli nemocniční zdravotníci",
+      "raw_reference": "Doktor Moll si myslí, že někteří pacienti mohli tento virus chytit v nemocnici, a nejméně dva z nich byli nemocniční zdravotníci.",
+      "sha256": "05efc55727f4e49b3ce23c932181d39971c2fa3cfd9d4f330cb4f9ad589292ed"
+    },
+    {
+      "sample": "fleurs-010.wav",
+      "row_index": 10,
+      "id": 1623,
+      "original_file": "10567413040573386981.wav",
+      "gender": 0,
+      "reference": "články vyžadovaly jednomyslný souhlas všech států a teprve poté mohly být doplněny státy braly centrální vládu na lehkou váhu a to natolik že jejich zástupci často nebyli přítomni",
+      "raw_reference": "Články vyžadovaly jednomyslný souhlas všech států a teprve poté mohly být  doplněny. Státy braly centrální vládu na lehkou váhu, a to natolik, že jejich zástupci často nebyli přítomni.",
+      "sha256": "7fddb411622639e9d000890274d050e7d63ec3b0313b359fb5ea997c3a4842fa"
+    },
+    {
+      "sample": "fleurs-011.wav",
+      "row_index": 11,
+      "id": 1546,
+      "original_file": "10600734060901820962.wav",
+      "gender": 0,
+      "reference": "struktura peří naznačuje že nebyla používána za letu ale spíše pro regulaci teploty nebo předvádění vědci předpokládají že i když se jedná o ocas mladého dinosaura vzorek ukazuje dospělé peří a nikoliv mláděte",
+      "raw_reference": "Struktura peří naznačuje, že nebyla používána za letu, ale spíše pro regulaci teploty nebo předvádění.  Vědci předpokládají, že i když se jedná o ocas mladého dinosaura, vzorek ukazuje dospělé peří a nikoliv mláděte.",
+      "sha256": "6097eefab78cee05bd1b10b405212b3ab8e480ec258abd9a5942507938b57d79"
+    },
+    {
+      "sample": "fleurs-012.wav",
+      "row_index": 12,
+      "id": 1659,
+      "original_file": "10639233237795909207.wav",
+      "gender": 0,
+      "reference": "vědci uvádějí že exploze způsobená nárazem byla masivní",
+      "raw_reference": "Vědci uvádějí, že exploze způsobená nárazem byla masivní.",
+      "sha256": "f9bc651077ec1b3810b50bb7151a49baa297d0ca8a313ec1d5a8dcee0df5492b"
+    },
+    {
+      "sample": "fleurs-013.wav",
+      "row_index": 13,
+      "id": 1576,
+      "original_file": "10689364683140224362.wav",
+      "gender": 0,
+      "reference": "kurz se obvykle věnuje mnohem podrobněji všem zde popsaným problémům obvykle i formou praktických cvičení",
+      "raw_reference": "Kurz se obvykle věnuje mnohem podrobněji všem zde popsaným problémům, obvykle i formou praktických cvičení.",
+      "sha256": "d10f15dd91925df94fbec16edd3c2465e0d4f67ee363e674f4d6649b2c28333c"
+    },
+    {
+      "sample": "fleurs-014.wav",
+      "row_index": 14,
+      "id": 1589,
+      "original_file": "10735653177282507997.wav",
+      "gender": 0,
+      "reference": "vlastnosti díky kterým se subkultura odlišuje mohou být lingvistické estetické náboženské politické sexuální geografické nebo kombinace faktorů",
+      "raw_reference": "Vlastnosti, díky kterým se subkultura odlišuje, mohou být lingvistické, estetické, náboženské, politické, sexuální, geografické nebo kombinace faktorů.",
+      "sha256": "cf0d896c54e4c601731fd8aea57546bf44fa4ab54336d6eda067ed2cae3a60de"
+    },
+    {
+      "sample": "fleurs-015.wav",
+      "row_index": 15,
+      "id": 1545,
+      "original_file": "1081527678450597686.wav",
+      "gender": 0,
+      "reference": "kari může být buď suché nebo mokré podle toho kolik obsahuje tekutiny",
+      "raw_reference": "Kari může být buď „suché“, nebo „mokré“ podle toho, kolik obsahuje tekutiny.",
+      "sha256": "1c9681c281f76e37c60cc168277c3f7fb2ca23f8d59a87c78f6e933023da690c"
+    },
+    {
+      "sample": "fleurs-016.wav",
+      "row_index": 16,
+      "id": 1591,
+      "original_file": "10891525008437044076.wav",
+      "gender": 0,
+      "reference": "bývalý mluvčí domu newt gingrich texaský guvernér rick perry a kongresmanka michele bachmann skončili na čtvrtém pátém a šestém místě",
+      "raw_reference": "Bývalý mluvčí Domu Newt Gingrich, texaský guvernér Rick Perry a kongresmanka Michele Bachmann skončili na čtvrtém, pátém a šestém místě.",
+      "sha256": "f2e19ef82a35a0f576836b1a69458a9d27126d04137d56f24a21e5e02fe2bcab"
+    },
+    {
+      "sample": "fleurs-017.wav",
+      "row_index": 17,
+      "id": 1569,
+      "original_file": "10974794920167353374.wav",
+      "gender": 0,
+      "reference": "zpráva začíná prosbou o otevřenou debatu a vytvoření konsensu ve spojených státech o politice vůči blízkému východu",
+      "raw_reference": "Zpráva začíná prosbou o otevřenou debatu a vytvoření konsensu ve Spojených státech o politice vůči Blízkému východu.",
+      "sha256": "d3e43ea589c0424c41acba06bd0c95a385d45324e620a1545aaadfbd3a8f64ca"
+    },
+    {
+      "sample": "fleurs-018.wav",
+      "row_index": 18,
+      "id": 1636,
+      "original_file": "1110993190785466202.wav",
+      "gender": 0,
+      "reference": "španělé zahájili období kolonizace které trvalo po tři století",
+      "raw_reference": "Španělé zahájili období kolonizace, které trvalo po tři století.",
+      "sha256": "38d6c2ed909e4e1bd36f01c7c94de95dea46ff7f67b402434438fd7600c0a3da"
+    },
+    {
+      "sample": "fleurs-019.wav",
+      "row_index": 19,
+      "id": 1632,
+      "original_file": "11165672813884805805.wav",
+      "gender": 0,
+      "reference": "ženy by měly mít na paměti že kvůli kulturním rozdílům se někdy mohou setkat s obtěžováním a že není neobvyklé když muž ženu při chůzi sleduje chytá za ruku apod",
+      "raw_reference": "Ženy by měly mít na paměti, že kvůli kulturním rozdílům se někdy mohou setkat s obtěžováním a že není neobvyklé, když muž ženu při chůzi sleduje, chytá za ruku apod.",
+      "sha256": "8d292477dabac1ec6af3f3ea18bbb5127b9a545c89f8210f46e5ae8c0b5e68cf"
+    }
+  ]
+}
