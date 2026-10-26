@@ -19,6 +19,7 @@ pub struct DictationConfig {
     pub audio_source: Option<String>,
     pub max_duration_seconds: u64,
     pub use_gpu: bool,
+    pub flash_attention: bool,
     pub virtual_assistant_speech_lock: bool,
     pub sound_effects: bool,
     pub sound_sink: Option<String>,
@@ -40,6 +41,7 @@ impl Default for DictationConfig {
             audio_source: None,
             max_duration_seconds: 300,
             use_gpu: true,
+            flash_attention: false,
             virtual_assistant_speech_lock: false,
             sound_effects: true,
             sound_sink: None,
@@ -74,5 +76,29 @@ impl AppConfig {
             "Dictation language is required"
         );
         Ok(config)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn existing_configuration_keeps_flash_attention_disabled() {
+        let config: AppConfig =
+            toml::from_str("[dictation]\nenabled = true\nuse_gpu = true\nlanguage = \"cs\"\n")
+                .unwrap();
+        assert!(config.dictation.enabled);
+        assert!(config.dictation.use_gpu);
+        assert!(!config.dictation.flash_attention);
+    }
+
+    #[test]
+    fn flash_attention_can_be_enabled_and_disabled_explicitly() {
+        for enabled in [true, false] {
+            let config: AppConfig =
+                toml::from_str(&format!("[dictation]\nflash_attention = {enabled}\n")).unwrap();
+            assert_eq!(config.dictation.flash_attention, enabled);
+        }
     }
 }

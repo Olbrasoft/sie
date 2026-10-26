@@ -1,0 +1,22 @@
+{
+  "provenance": "Locally synthesized repository-owned Czech text using piper-tts 1.8.0, cs_CZ-jirka-medium, default CPU synthesis; ffmpeg 16000 Hz mono pcm_s16le",
+  "voice_model_sha256": "cbd5c900acacc8e8cbecd64347abb8de39c00a9d3104bed06fee92e4f319efc8",
+  "model_sha256": "1fc70f774d38eb169993ac391eea357ef47c88757ef72ee5943879b7e8e2bc69",
+  "samples": [
+    {
+      "sample": "short.wav",
+      "reference": "Dnes zkoušíme rychlost českého diktování. Po ukončení nahrávání se má věta přepsat a vložit do otevřeného terminálu. Příliš žluťoučký kůň úpěl ďábelské ódy.",
+      "sha256": "06aa38075d6d1ecc3df9e7b082c5a9f77164bb02b79740e18d3744e18bfbe39c"
+    },
+    {
+      "sample": "medium.wav",
+      "reference": "Potřebuji upravit nastavení aplikace tak, aby bylo možné rychle zapnout a vypnout diktování. Spodní tlačítko zahájí nahrávání a dalším stisknutím ho ukončí. Prostřední tlačítko všechno zruší a žádný text se potom nesmí vložit. Horní tlačítko naopak dokončí přepis, vloží výsledek a odešle ho klávesou Enter. Během nahrávání má po obvodu klávesnice běžet barevná duha. Jakmile nahrávání skončí, podsvícení se vrátí na bílou. Ostatní klávesy si mají ponechat svoje nastavené barvy. Stejně to musí fungovat v prohlížeči i v terminálu.",
+      "sha256": "d27e6ba2d524a68406a4fa9f97e688323c411921e07f48ddfc5cec5cc909ee6a"
+    },
+    {
+      "sample": "long.wav",
+      "reference": "Při dnešní zkoušce budeme porovnávat dvě nastavení stejného programu. Nejdřív přepíšeme několik připravených českých nahrávek se současným nastavením a potom zapneme rychlejší zpracování pozornosti. Model, jazyk i způsob vyhledávání výsledných slov zůstanou stejné. Samostatně změříme první spuštění, protože při něm program načítá model z disku a připravuje grafickou kartu. Další opakování už použijí model uložený v paměti. Výsledky je potřeba porovnat nejen podle času, ale také podle přesnosti přepsaného textu. Zajímají nás české háčky, čárky, interpunkce a správné hranice jednotlivých vět. Rozdíl v délce čekání nesmí být vykoupený chybějícími slovy. Během měření nebudeme nahrávat mikrofon ani vkládat text do jiných aplikací. Použijeme pouze připravené testovací soubory. Pořadí obou variant několikrát vystřídáme, abychom omezili vliv zahřívání počítače. Pokud nové nastavení přinese opakované zrychlení bez zhoršení výsledku, nasadíme ho do běžného diktování. Původní nastavení zůstane dostupné pro snadný návrat. Ovladač grafické karty ani způsob spouštění operačního systému při tomto testu měnit nebudeme.",
+      "sha256": "829bc4db879ca8841b08b88b339403792888621cbe7dc24525fff941c79604ab"
+    }
+  ]
+}

@@ -3,6 +3,26 @@
 Validated on 2026-10-23 with GNOME Shell 48.7 on Wayland, OpenRazer 3.12.4,
 the connected Razer BlackWidow V4 Pro (`1532:028d`), and Rust 1.99.0.
 
+## Optional Whisper Flash Attention in version 0.8.1
+
+- Formatting, Clippy with warnings denied and 73 isolated Rust tests passed.
+  Existing configurations retain the original inference path; an explicit flag
+  enables CUDA Flash Attention. CPU mode disables it. The diagnostic command
+  reports the selected effective flag without loading or transcribing audio.
+- The explicit CUDA real-model regression passed with Flash Attention off and
+  on: initial transcription, cancellation during inference, then three identical
+  successful transcriptions using the same cached model in each setting.
+- Three locally synthesized Czech clips (14–99 seconds) and 20 public FLEURS
+  Czech validation clips were measured in off/on/on/off blocks. See the
+  [full methodology, timings, transcripts and quality limitations](
+  ../benchmarks/whisper-flash-attention/README.md). The sums of warmed sample
+  medians decreased by 28.3% and 38.1%, respectively. This does not measure
+  microphone-to-paste latency or prove identical accuracy on every utterance.
+- No microphone, clipboard, dictation database or physical keyboard was used
+  by these benchmarks. Driver, firmware and boot configuration were unchanged.
+  Physical microphone dictation and delivery after deployment require the
+  user's separate check.
+
 ## Explicit dictation submission in version 0.7.0
 
 - The top side-button release now finishes only an active recording and passes

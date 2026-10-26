@@ -1,0 +1,247 @@
+{
+  "normalization": "Unicode casefold and word tokens; diacritics retained; CER includes normalized spaces",
+  "results": [
+    {
+      "flash_attention": false,
+      "unique_reference_words": 252,
+      "evaluated_reference_words": 1512,
+      "evaluated_reference_characters": 10632,
+      "word_errors": 54,
+      "character_errors": 72,
+      "wer_percent": 3.5714285714285716,
+      "cer_percent": 0.6772009029345373,
+      "sum_sample_medians_seconds": 6.261600935000001,
+      "calls": [
+        {
+          "sample": "short.wav",
+          "block": 0,
+          "word_errors": 1,
+          "character_errors": 2
+        },
+        {
+          "sample": "medium.wav",
+          "block": 0,
+          "word_errors": 1,
+          "character_errors": 1
+        },
+        {
+          "sample": "long.wav",
+          "block": 0,
+          "word_errors": 7,
+          "character_errors": 9
+        },
+        {
+          "sample": "short.wav",
+          "block": 0,
+          "word_errors": 1,
+          "character_errors": 2
+        },
+        {
+          "sample": "medium.wav",
+          "block": 0,
+          "word_errors": 1,
+          "character_errors": 1
+        },
+        {
+          "sample": "long.wav",
+          "block": 0,
+          "word_errors": 7,
+          "character_errors": 9
+        },
+        {
+          "sample": "short.wav",
+          "block": 0,
+          "word_errors": 1,
+          "character_errors": 2
+        },
+        {
+          "sample": "medium.wav",
+          "block": 0,
+          "word_errors": 1,
+          "character_errors": 1
+        },
+        {
+          "sample": "long.wav",
+          "block": 0,
+          "word_errors": 7,
+          "character_errors": 9
+        },
+        {
+          "sample": "short.wav",
+          "block": 3,
+          "word_errors": 1,
+          "character_errors": 2
+        },
+        {
+          "sample": "medium.wav",
+          "block": 3,
+          "word_errors": 1,
+          "character_errors": 1
+        },
+        {
+          "sample": "long.wav",
+          "block": 3,
+          "word_errors": 7,
+          "character_errors": 9
+        },
+        {
+          "sample": "short.wav",
+          "block": 3,
+          "word_errors": 1,
+          "character_errors": 2
+        },
+        {
+          "sample": "medium.wav",
+          "block": 3,
+          "word_errors": 1,
+          "character_errors": 1
+        },
+        {
+          "sample": "long.wav",
+          "block": 3,
+          "word_errors": 7,
+          "character_errors": 9
+        },
+        {
+          "sample": "short.wav",
+          "block": 3,
+          "word_errors": 1,
+          "character_errors": 2
+        },
+        {
+          "sample": "medium.wav",
+          "block": 3,
+          "word_errors": 1,
+          "character_errors": 1
+        },
+        {
+          "sample": "long.wav",
+          "block": 3,
+          "word_errors": 7,
+          "character_errors": 9
+        }
+      ]
+    },
+    {
+      "flash_attention": true,
+      "unique_reference_words": 252,
+      "evaluated_reference_words": 1512,
+      "evaluated_reference_characters": 10632,
+      "word_errors": 54,
+      "character_errors": 84,
+      "wer_percent": 3.5714285714285716,
+      "cer_percent": 0.7900677200902935,
+      "sum_sample_medians_seconds": 4.488794359,
+      "calls": [
+        {
+          "sample": "short.wav",
+          "block": 1,
+          "word_errors": 2,
+          "character_errors": 4
+        },
+        {
+          "sample": "medium.wav",
+          "block": 1,
+          "word_errors": 1,
+          "character_errors": 1
+        },
+        {
+          "sample": "long.wav",
+          "block": 1,
+          "word_errors": 6,
+          "character_errors": 9
+        },
+        {
+          "sample": "short.wav",
+          "block": 1,
+          "word_errors": 2,
+          "character_errors": 4
+        },
+        {
+          "sample": "medium.wav",
+          "block": 1,
+          "word_errors": 1,
+          "character_errors": 1
+        },
+        {
+          "sample": "long.wav",
+          "block": 1,
+          "word_errors": 6,
+          "character_errors": 9
+        },
+        {
+          "sample": "short.wav",
+          "block": 1,
+          "word_errors": 2,
+          "character_errors": 4
+        },
+        {
+          "sample": "medium.wav",
+          "block": 1,
+          "word_errors": 1,
+          "character_errors": 1
+        },
+        {
+          "sample": "long.wav",
+          "block": 1,
+          "word_errors": 6,
+          "character_errors": 9
+        },
+        {
+          "sample": "short.wav",
+          "block": 2,
+          "word_errors": 2,
+          "character_errors": 4
+        },
+        {
+          "sample": "medium.wav",
+          "block": 2,
+          "word_errors": 1,
+          "character_errors": 1
+        },
+        {
+          "sample": "long.wav",
+          "block": 2,
+          "word_errors": 6,
+          "character_errors": 9
+        },
+        {
+          "sample": "short.wav",
+          "block": 2,
+          "word_errors": 2,
+          "character_errors": 4
+        },
+        {
+          "sample": "medium.wav",
+          "block": 2,
+          "word_errors": 1,
+          "character_errors": 1
+        },
+        {
+          "sample": "long.wav",
+          "block": 2,
+          "word_errors": 6,
+          "character_errors": 9
+        },
+        {
+          "sample": "short.wav",
+          "block": 2,
+          "word_errors": 2,
+          "character_errors": 4
+        },
+        {
+          "sample": "medium.wav",
+          "block": 2,
+          "word_errors": 1,
+          "character_errors": 1
+        },
+        {
+          "sample": "long.wav",
+          "block": 2,
+          "word_errors": 6,
+          "character_errors": 9
+        }
+      ]
+    }
+  ]
+}

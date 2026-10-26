@@ -6,6 +6,8 @@ model_path = "/home/your-user/.local/share/whisper-models/ggml-large-v3-turbo.bi
 language = "cs"
 database_url = "host=/var/run/postgresql dbname=sie user=your-user"
 use_gpu = true
+# Optional CUDA optimization. Default false; restart SIE after changing it.
+flash_attention = false
 max_duration_seconds = 300
 # Omit audio_source to use the default PipeWire microphone.
 # audio_source = "alsa_input.your_microphone"

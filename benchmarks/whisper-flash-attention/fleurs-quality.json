@@ -1,0 +1,511 @@
+{
+  "normalization": "Unicode casefold and word tokens; diacritics retained; CER includes normalized spaces",
+  "results": [
+    {
+      "flash_attention": false,
+      "unique_reference_words": 370,
+      "evaluated_reference_words": 740,
+      "evaluated_reference_characters": 4846,
+      "word_errors": 88,
+      "character_errors": 134,
+      "wer_percent": 11.891891891891891,
+      "cer_percent": 2.765167148163434,
+      "sum_sample_medians_seconds": 12.8104174015,
+      "calls": [
+        {
+          "sample": "fleurs-000.wav",
+          "block": 0,
+          "word_errors": 0,
+          "character_errors": 0
+        },
+        {
+          "sample": "fleurs-001.wav",
+          "block": 0,
+          "word_errors": 0,
+          "character_errors": 0
+        },
+        {
+          "sample": "fleurs-002.wav",
+          "block": 0,
+          "word_errors": 2,
+          "character_errors": 10
+        },
+        {
+          "sample": "fleurs-003.wav",
+          "block": 0,
+          "word_errors": 0,
+          "character_errors": 0
+        },
+        {
+          "sample": "fleurs-004.wav",
+          "block": 0,
+          "word_errors": 4,
+          "character_errors": 4
+        },
+        {
+          "sample": "fleurs-005.wav",
+          "block": 0,
+          "word_errors": 4,
+          "character_errors": 7
+        },
+        {
+          "sample": "fleurs-006.wav",
+          "block": 0,
+          "word_errors": 0,
+          "character_errors": 0
+        },
+        {
+          "sample": "fleurs-007.wav",
+          "block": 0,
+          "word_errors": 2,
+          "character_errors": 2
+        },
+        {
+          "sample": "fleurs-008.wav",
+          "block": 0,
+          "word_errors": 5,
+          "character_errors": 5
+        },
+        {
+          "sample": "fleurs-009.wav",
+          "block": 0,
+          "word_errors": 3,
+          "character_errors": 9
+        },
+        {
+          "sample": "fleurs-010.wav",
+          "block": 0,
+          "word_errors": 0,
+          "character_errors": 0
+        },
+        {
+          "sample": "fleurs-011.wav",
+          "block": 0,
+          "word_errors": 3,
+          "character_errors": 4
+        },
+        {
+          "sample": "fleurs-012.wav",
+          "block": 0,
+          "word_errors": 1,
+          "character_errors": 1
+        },
+        {
+          "sample": "fleurs-013.wav",
+          "block": 0,
+          "word_errors": 5,
+          "character_errors": 6
+        },
+        {
+          "sample": "fleurs-014.wav",
+          "block": 0,
+          "word_errors": 0,
+          "character_errors": 0
+        },
+        {
+          "sample": "fleurs-015.wav",
+          "block": 0,
+          "word_errors": 3,
+          "character_errors": 3
+        },
+        {
+          "sample": "fleurs-016.wav",
+          "block": 0,
+          "word_errors": 4,
+          "character_errors": 4
+        },
+        {
+          "sample": "fleurs-017.wav",
+          "block": 0,
+          "word_errors": 2,
+          "character_errors": 2
+        },
+        {
+          "sample": "fleurs-018.wav",
+          "block": 0,
+          "word_errors": 1,
+          "character_errors": 1
+        },
+        {
+          "sample": "fleurs-019.wav",
+          "block": 0,
+          "word_errors": 5,
+          "character_errors": 9
+        },
+        {
+          "sample": "fleurs-000.wav",
+          "block": 3,
+          "word_errors": 0,
+          "character_errors": 0
+        },
+        {
+          "sample": "fleurs-001.wav",
+          "block": 3,
+          "word_errors": 0,
+          "character_errors": 0
+        },
+        {
+          "sample": "fleurs-002.wav",
+          "block": 3,
+          "word_errors": 2,
+          "character_errors": 10
+        },
+        {
+          "sample": "fleurs-003.wav",
+          "block": 3,
+          "word_errors": 0,
+          "character_errors": 0
+        },
+        {
+          "sample": "fleurs-004.wav",
+          "block": 3,
+          "word_errors": 4,
+          "character_errors": 4
+        },
+        {
+          "sample": "fleurs-005.wav",
+          "block": 3,
+          "word_errors": 4,
+          "character_errors": 7
+        },
+        {
+          "sample": "fleurs-006.wav",
+          "block": 3,
+          "word_errors": 0,
+          "character_errors": 0
+        },
+        {
+          "sample": "fleurs-007.wav",
+          "block": 3,
+          "word_errors": 2,
+          "character_errors": 2
+        },
+        {
+          "sample": "fleurs-008.wav",
+          "block": 3,
+          "word_errors": 5,
+          "character_errors": 5
+        },
+        {
+          "sample": "fleurs-009.wav",
+          "block": 3,
+          "word_errors": 3,
+          "character_errors": 9
+        },
+        {
+          "sample": "fleurs-010.wav",
+          "block": 3,
+          "word_errors": 0,
+          "character_errors": 0
+        },
+        {
+          "sample": "fleurs-011.wav",
+          "block": 3,
+          "word_errors": 3,
+          "character_errors": 4
+        },
+        {
+          "sample": "fleurs-012.wav",
+          "block": 3,
+          "word_errors": 1,
+          "character_errors": 1
+        },
+        {
+          "sample": "fleurs-013.wav",
+          "block": 3,
+          "word_errors": 5,
+          "character_errors": 6
+        },
+        {
+          "sample": "fleurs-014.wav",
+          "block": 3,
+          "word_errors": 0,
+          "character_errors": 0
+        },
+        {
+          "sample": "fleurs-015.wav",
+          "block": 3,
+          "word_errors": 3,
+          "character_errors": 3
+        },
+        {
+          "sample": "fleurs-016.wav",
+          "block": 3,
+          "word_errors": 4,
+          "character_errors": 4
+        },
+        {
+          "sample": "fleurs-017.wav",
+          "block": 3,
+          "word_errors": 2,
+          "character_errors": 2
+        },
+        {
+          "sample": "fleurs-018.wav",
+          "block": 3,
+          "word_errors": 1,
+          "character_errors": 1
+        },
+        {
+          "sample": "fleurs-019.wav",
+          "block": 3,
+          "word_errors": 5,
+          "character_errors": 9
+        }
+      ]
+    },
+    {
+      "flash_attention": true,
+      "unique_reference_words": 370,
+      "evaluated_reference_words": 740,
+      "evaluated_reference_characters": 4846,
+      "word_errors": 88,
+      "character_errors": 134,
+      "wer_percent": 11.891891891891891,
+      "cer_percent": 2.765167148163434,
+      "sum_sample_medians_seconds": 7.9286394375,
+      "calls": [
+        {
+          "sample": "fleurs-000.wav",
+          "block": 1,
+          "word_errors": 0,
+          "character_errors": 0
+        },
+        {
+          "sample": "fleurs-001.wav",
+          "block": 1,
+          "word_errors": 0,
+          "character_errors": 0
+        },
+        {
+          "sample": "fleurs-002.wav",
+          "block": 1,
+          "word_errors": 2,
+          "character_errors": 10
+        },
+        {
+          "sample": "fleurs-003.wav",
+          "block": 1,
+          "word_errors": 0,
+          "character_errors": 0
+        },
+        {
+          "sample": "fleurs-004.wav",
+          "block": 1,
+          "word_errors": 4,
+          "character_errors": 4
+        },
+        {
+          "sample": "fleurs-005.wav",
+          "block": 1,
+          "word_errors": 4,
+          "character_errors": 7
+        },
+        {
+          "sample": "fleurs-006.wav",
+          "block": 1,
+          "word_errors": 0,
+          "character_errors": 0
+        },
+        {
+          "sample": "fleurs-007.wav",
+          "block": 1,
+          "word_errors": 2,
+          "character_errors": 2
+        },
+        {
+          "sample": "fleurs-008.wav",
+          "block": 1,
+          "word_errors": 5,
+          "character_errors": 5
+        },
+        {
+          "sample": "fleurs-009.wav",
+          "block": 1,
+          "word_errors": 3,
+          "character_errors": 9
+        },
+        {
+          "sample": "fleurs-010.wav",
+          "block": 1,
+          "word_errors": 1,
+          "character_errors": 1
+        },
+        {
+          "sample": "fleurs-011.wav",
+          "block": 1,
+          "word_errors": 3,
+          "character_errors": 4
+        },
+        {
+          "sample": "fleurs-012.wav",
+          "block": 1,
+          "word_errors": 1,
+          "character_errors": 1
+        },
+        {
+          "sample": "fleurs-013.wav",
+          "block": 1,
+          "word_errors": 5,
+          "character_errors": 6
+        },
+        {
+          "sample": "fleurs-014.wav",
+          "block": 1,
+          "word_errors": 0,
+          "character_errors": 0
+        },
+        {
+          "sample": "fleurs-015.wav",
+          "block": 1,
+          "word_errors": 2,
+          "character_errors": 2
+        },
+        {
+          "sample": "fleurs-016.wav",
+          "block": 1,
+          "word_errors": 4,
+          "character_errors": 4
+        },
+        {
+          "sample": "fleurs-017.wav",
+          "block": 1,
+          "word_errors": 2,
+          "character_errors": 2
+        },
+        {
+          "sample": "fleurs-018.wav",
+          "block": 1,
+          "word_errors": 1,
+          "character_errors": 1
+        },
+        {
+          "sample": "fleurs-019.wav",
+          "block": 1,
+          "word_errors": 5,
+          "character_errors": 9
+        },
+        {
+          "sample": "fleurs-000.wav",
+          "block": 2,
+          "word_errors": 0,
+          "character_errors": 0
+        },
+        {
+          "sample": "fleurs-001.wav",
+          "block": 2,
+          "word_errors": 0,
+          "character_errors": 0
+        },
+        {
+          "sample": "fleurs-002.wav",
+          "block": 2,
+          "word_errors": 2,
+          "character_errors": 10
+        },
+        {
+          "sample": "fleurs-003.wav",
+          "block": 2,
+          "word_errors": 0,
+          "character_errors": 0
+        },
+        {
+          "sample": "fleurs-004.wav",
+          "block": 2,
+          "word_errors": 4,
+          "character_errors": 4
+        },
+        {
+          "sample": "fleurs-005.wav",
+          "block": 2,
+          "word_errors": 4,
+          "character_errors": 7
+        },
+        {
+          "sample": "fleurs-006.wav",
+          "block": 2,
+          "word_errors": 0,
+          "character_errors": 0
+        },
+        {
+          "sample": "fleurs-007.wav",
+          "block": 2,
+          "word_errors": 2,
+          "character_errors": 2
+        },
+        {
+          "sample": "fleurs-008.wav",
+          "block": 2,
+          "word_errors": 5,
+          "character_errors": 5
+        },
+        {
+          "sample": "fleurs-009.wav",
+          "block": 2,
+          "word_errors": 3,
+          "character_errors": 9
+        },
+        {
+          "sample": "fleurs-010.wav",
+          "block": 2,
+          "word_errors": 1,
+          "character_errors": 1
+        },
+        {
+          "sample": "fleurs-011.wav",
+          "block": 2,
+          "word_errors": 3,
+          "character_errors": 4
+        },
+        {
+          "sample": "fleurs-012.wav",
+          "block": 2,
+          "word_errors": 1,
+          "character_errors": 1
+        },
+        {
+          "sample": "fleurs-013.wav",
+          "block": 2,
+          "word_errors": 5,
+          "character_errors": 6
+        },
+        {
+          "sample": "fleurs-014.wav",
+          "block": 2,
+          "word_errors": 0,
+          "character_errors": 0
+        },
+        {
+          "sample": "fleurs-015.wav",
+          "block": 2,
+          "word_errors": 2,
+          "character_errors": 2
+        },
+        {
+          "sample": "fleurs-016.wav",
+          "block": 2,
+          "word_errors": 4,
+          "character_errors": 4
+        },
+        {
+          "sample": "fleurs-017.wav",
+          "block": 2,
+          "word_errors": 2,
+          "character_errors": 2
+        },
+        {
+          "sample": "fleurs-018.wav",
+          "block": 2,
+          "word_errors": 1,
+          "character_errors": 1
+        },
+        {
+          "sample": "fleurs-019.wav",
+          "block": 2,
+          "word_errors": 5,
+          "character_errors": 9
+        }
+      ]
+    }
+  ]
+}
