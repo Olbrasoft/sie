@@ -179,6 +179,7 @@ impl Transport for Hidraw {
 struct Mouse<T> {
     transport: T,
     feature: u8,
+    static_effect: u8,
     applied: Option<LightingMode>,
 }
 
@@ -205,9 +206,19 @@ impl<T: Transport> Mouse<T> {
             cluster[0] == 0 && cluster[2..4] == [0, 2] && (1..=16).contains(&cluster[4]),
             "Unsupported mouse lighting cluster"
         );
+        let mut static_effect = None;
+        for index in 0..cluster[4] {
+            let effect = reply(transport.request(feature, 0, &[0, index, 0])?, 4)?;
+            ensure!(effect[..2] == [0, index], "Malformed mouse effect index");
+            if effect[2..4] == [0, 1] {
+                static_effect = Some(index);
+                break;
+            }
+        }
         let mut mouse = Self {
             transport,
             feature,
+            static_effect: static_effect.context("Mouse does not advertise static RGB lighting")?,
             applied: None,
         };
         mouse.power_mode()?;
@@ -242,9 +253,11 @@ impl<T: Transport> Mouse<T> {
     }
 
     fn set_software_mode(&mut self, mode: u8) -> Result<()> {
-        let result = reply(self.transport.request(self.feature, 0x50, &[1, mode])?, 2)?;
+        // G203's real LED pipeline requires the event-enable handshake as well.
+        let parameters = [1, mode, if mode == 3 { 5 } else { 0 }];
+        let result = reply(self.transport.request(self.feature, 0x50, &parameters)?, 3)?;
         ensure!(
-            result[..2] == [1, mode],
+            result[..3] == parameters,
             "Mouse did not acknowledge LED control mode"
         );
         Ok(())
@@ -258,8 +271,14 @@ impl<T: Transport> Mouse<T> {
         match mode {
             LightingMode::Off => {
                 self.set_software_mode(3)?;
-                // PowerOff covers every LED and preserves both stored and RAM effects.
-                self.set_power_mode(3)?;
+                // PowerOff read-back is not an optical guarantee on G203 firmware.
+                // Paint a volatile static-black effect with the tested G203 layout.
+                self.set_power_mode(1)?;
+                let mut black = [0; 13];
+                black[1] = self.static_effect;
+                black[5] = 2;
+                black[12] = 1; // Volatile RAM only, never EEPROM.
+                self.transport.request(self.feature, 0x10, &black)?;
                 ensure!(
                     self.software_mode()? == 3,
                     "Mouse did not retain software LED control"
@@ -458,6 +477,8 @@ mod tests {
             Step(0, 0, vec![0x80, 0x71], vec![14, 0, 0]),
             step(0, &[0xff, 0xff, 0], &[0xff, 0, 1, 0, 3, 0, 4]),
             step(0, &[0, 0xff, 0], &[0, 0, 0, 2, 7, 1]),
+            step(0, &[0, 0, 0], &[0, 0, 0, 0]),
+            step(0, &[0, 1, 0], &[0, 1, 0, 1]),
             step(0x80, &[0], &[0, 1]),
         ]
     }
@@ -501,14 +522,26 @@ mod tests {
         steps.extend([
             step(0x50, &[0], &[0, 0]),
             step(0x50, &[0], &[0, 0]),
-            step(0x50, &[1, 3], &[1, 3]),
-            step(0x80, &[1, 3], &[1, 0]),
-            step(0x80, &[0], &[0, 3]),
+            step(0x50, &[1, 3, 5], &[1, 3, 5]),
+            step(0x80, &[1, 1], &[1, 0]),
+            step(0x80, &[0], &[0, 1]),
+            step(0x10, &[0, 1, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 1], &[0, 0]),
             step(0x50, &[0], &[0, 3]),
             step(0x50, &[0], &[0, 3]),
             step(0x80, &[1, 1], &[1, 0]),
             step(0x80, &[0], &[0, 1]),
-            step(0x50, &[1, 0], &[1, 0]),
+            step(0x50, &[1, 0, 0], &[1, 0, 0]),
+            step(0x50, &[0], &[0, 0]),
+            // After restore, every later Off must paint black again.
+            step(0x50, &[1, 3, 5], &[1, 3, 5]),
+            step(0x80, &[1, 1], &[1, 0]),
+            step(0x80, &[0], &[0, 1]),
+            step(0x10, &[0, 1, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 1], &[0, 0]),
+            step(0x50, &[0], &[0, 3]),
+            step(0x50, &[0], &[0, 3]),
+            step(0x80, &[1, 1], &[1, 0]),
+            step(0x80, &[0], &[0, 1]),
+            step(0x50, &[1, 0, 0], &[1, 0, 0]),
             step(0x50, &[0], &[0, 0]),
         ]);
         let mut mouse = Mouse::discover(Fake(steps.into())).unwrap();
@@ -518,6 +551,18 @@ mod tests {
         mouse.apply(LightingMode::Off).unwrap();
         mouse.apply(LightingMode::On).unwrap();
         mouse.apply(LightingMode::On).unwrap();
+        mouse.apply(LightingMode::Off).unwrap();
+        mouse.apply(LightingMode::On).unwrap();
+        assert!(mouse.transport.0.is_empty());
+    }
+
+    #[test]
+    fn a_missing_activation_flag_is_rejected_before_painting_or_caching() {
+        let mut steps = discovery();
+        steps.push(step(0x50, &[1, 3, 5], &[1, 3, 0]));
+        let mut mouse = Mouse::discover(Fake(steps.into())).unwrap();
+        assert!(mouse.apply(LightingMode::Off).is_err());
+        assert_eq!(mouse.applied, None);
         assert!(mouse.transport.0.is_empty());
     }
 
@@ -529,7 +574,7 @@ mod tests {
             step(0x50, &[0], &[0, 3]),
             step(0x80, &[1, 1], &[1, 0]),
             step(0x80, &[0], &[0, 1]),
-            step(0x50, &[1, 0], &[1, 0]),
+            step(0x50, &[1, 0, 0], &[1, 0, 0]),
             step(0x50, &[0], &[0, 0]),
         ]);
         let mut mouse = Mouse::discover(Fake(steps.into())).unwrap();
@@ -547,9 +592,11 @@ mod tests {
             (2, vec![0, 0, 0, 1, 7, 1]),
             (2, vec![0, 0, 0, 2, 0, 1]),
             (2, vec![0, 0, 0, 2, 17, 1]),
-            (3, vec![0, 0]),
-            (3, vec![1, 3]),
-            (3, vec![]),
+            (3, vec![0, 1, 0, 0]),
+            (4, vec![0, 0, 0, 1]),
+            (5, vec![0, 0]),
+            (5, vec![1, 3]),
+            (5, vec![]),
         ] {
             let mut steps = discovery();
             steps.truncate(position + 1);
@@ -562,12 +609,13 @@ mod tests {
     fn a_failed_off_acknowledgement_is_not_cached_as_success() {
         let mut steps = discovery();
         steps.extend([
-            step(0x50, &[1, 3], &[1, 3]),
-            step(0x80, &[1, 3], &[1, 0]),
-            step(0x80, &[0], &[0, 1]),
-            step(0x50, &[1, 3], &[1, 3]),
-            step(0x80, &[1, 3], &[1, 0]),
+            step(0x50, &[1, 3, 5], &[1, 3, 5]),
+            step(0x80, &[1, 1], &[1, 0]),
             step(0x80, &[0], &[0, 3]),
+            step(0x50, &[1, 3, 5], &[1, 3, 5]),
+            step(0x80, &[1, 1], &[1, 0]),
+            step(0x80, &[0], &[0, 1]),
+            step(0x10, &[0, 1, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 1], &[0, 0]),
             step(0x50, &[0], &[0, 3]),
         ]);
         let mut mouse = Mouse::discover(Fake(steps.into())).unwrap();

@@ -3,12 +3,18 @@
 Validated on 2026-10-23 with GNOME Shell 48.7 on Wayland, OpenRazer 3.12.4,
 the connected Razer BlackWidow V4 Pro (`1532:028d`), and Rust 1.99.0.
 
-## Combined lighting in version 0.9.0
+## Combined lighting in versions 0.9.0 and 0.9.1
 
 - The workstation mouse is a Logitech G203 LIGHTSYNC (`046d:c092`) with HID++ RGB
   Effects version 0 and one Logo cluster. Direct read-only discovery and reversible
   RGB power commands succeeded; read-back confirmed PowerOff 3 and restored
   FullRgb 1/device control 0. Onboard-profile mode remained 1 throughout.
+- That read-back was not enough: the user reported that the 0.9.0 menu did not
+  visibly darken the mouse. A direct G203 activation handshake and volatile
+  static-black command did darken it, and the user confirmed restoration through
+  the existing On action. Version 0.9.1 uses that explicit frame for every Off,
+  with regression coverage for a second Off after enabling. Read-back alone is
+  not claimed as physical validation.
 - A scoped udev rule grants the active desktop user access to USB interface 1
   only. After applying it to that node, its control descriptor became readable/
   writable without sudo, and the separate pointer hidraw node stayed inaccessible.
