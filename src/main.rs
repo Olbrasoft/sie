@@ -17,7 +17,7 @@ use sie::{
     lighting::{LightingMode, State as LightingState},
     macros::InputAction,
     media::{self, Status as MediaStatus},
-    media_focus, openrazer,
+    media_focus, mouse_lighting, openrazer,
     tray::{Action, AppTray},
 };
 use tokio::{sync::mpsc, task::JoinSet};
@@ -139,6 +139,10 @@ async fn doctor(connection: &Connection, dictation: &DictationConfig) -> Result<
             );
             Ok(format!("{} interface(s)", devices.len()))
         })
+    );
+    check!(
+        "Mouse lighting",
+        tokio::task::spawn_blocking(mouse_lighting::check_available).await?
     );
     check!(
         "Workspace tracker",
@@ -280,6 +284,8 @@ async fn run(
     let (lighting_requests, lighting_request_rx) =
         tokio::sync::watch::channel(LightingState::default());
     let (lighting_status, mut lighting_status_rx) = tokio::sync::watch::channel(String::new());
+    let (mouse_requests, mouse_request_rx) = tokio::sync::watch::channel(lighting_mode);
+    let (mouse_status, mut mouse_status_rx) = tokio::sync::watch::channel(String::new());
     let broker = Arc::new(browser::Broker::default());
     browser::export(&connection, broker.clone()).await?;
     let (focus_requests, focus_rx) = mpsc::channel(8);
@@ -307,6 +313,12 @@ async fn run(
         }
         .into(),
         lighting_mode,
+        mouse_lighting_status: if tray_only {
+            "Řízení osvětlení myši vypnuté"
+        } else {
+            "Připojuji myš…"
+        }
+        .into(),
         media_status: MediaStatus::default().label(),
         focus_status: None,
         lighting_controls_available: !tray_only,
@@ -336,6 +348,14 @@ async fn run(
             connection.clone(),
             lighting_request_rx,
             lighting_status,
+        )))
+    };
+    let mouse_task = if tray_only {
+        None
+    } else {
+        Some(tokio::spawn(mouse_lighting::run(
+            mouse_request_rx,
+            mouse_status,
         )))
     };
     if !tray_only {
@@ -398,6 +418,9 @@ async fn run(
                 Some(Action::Quit) | None => break,
                 Some(Action::SetLightingMode(mode)) => if !tray_only {
                     lighting_mode = mode;
+                    mouse_requests.send_if_modified(|old| {
+                        if *old == mode { false } else { *old = mode; true }
+                    });
                     let media=media_rx.borrow_and_update().clone();
                     let recording = dictation_status_rx.borrow().phase == Phase::Recording;
                     refresh_lighting(&connection, &tray, lighting_mode, &media, recording, &lighting_requests, &mut last_status).await;
@@ -458,6 +481,10 @@ async fn run(
                 let status = lighting_status_rx.borrow_and_update().clone();
                 tray.update(move |tray| tray.lighting_status = status).await;
             },
+            Ok(()) = mouse_status_rx.changed(), if !tray_only => {
+                let status = mouse_status_rx.borrow_and_update().clone();
+                tray.update(move |tray| tray.mouse_lighting_status = status).await;
+            },
             _ = async {
                 tokio::select! {
                     _ = refresh.tick() => {},
@@ -476,6 +503,15 @@ async fn run(
     }
     drop(dictation_commands);
     drop(lighting_requests);
+    drop(mouse_requests);
+    if let Some(mut task) = mouse_task
+        && tokio::time::timeout(Duration::from_secs(3), &mut task)
+            .await
+            .is_err()
+    {
+        task.abort();
+        let _ = task.await;
+    }
     if let Some(mut task) = lighting_task
         && tokio::time::timeout(Duration::from_secs(3), &mut task)
             .await
