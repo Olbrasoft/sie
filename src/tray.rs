@@ -31,6 +31,7 @@ pub enum Action {
 pub struct AppTray {
     pub actions: mpsc::Sender<Action>,
     pub lighting_status: String,
+    pub mouse_lighting_status: String,
     pub lighting_mode: LightingMode,
     pub lighting_controls_available: bool,
     pub workspace_status: String,
@@ -61,7 +62,13 @@ impl Tray for AppTray {
     fn menu(&self) -> Vec<MenuItem<Self>> {
         let mut menu = vec![
             StandardItem {
-                label: self.lighting_status.clone(),
+                label: format!("Klávesnice: {}", self.lighting_status),
+                enabled: false,
+                ..Default::default()
+            }
+            .into(),
+            StandardItem {
+                label: self.mouse_lighting_status.clone(),
                 enabled: false,
                 ..Default::default()
             }
@@ -87,8 +94,8 @@ impl Tray for AppTray {
             MenuItem::Separator,
             StandardItem {
                 label: match self.lighting_mode {
-                    LightingMode::On => "✅ Vypnout osvětlení klávesnice",
-                    LightingMode::Off => "❌ Zapnout osvětlení klávesnice",
+                    LightingMode::On => "✅ Vypnout osvětlení klávesnice a myši",
+                    LightingMode::Off => "❌ Zapnout osvětlení klávesnice a myši",
                 }
                 .into(),
                 enabled: self.lighting_controls_available,
@@ -235,6 +242,7 @@ mod tests {
         let mut tray = AppTray {
             actions: tx,
             lighting_status: "Ready".into(),
+            mouse_lighting_status: "Podsvícení myši aktivní".into(),
             lighting_mode: LightingMode::On,
             lighting_controls_available: true,
             workspace_status: "Ready".into(),
@@ -259,6 +267,7 @@ mod tests {
         let mut tray = AppTray {
             actions: tx,
             lighting_status: "Ready".into(),
+            mouse_lighting_status: "Podsvícení myši nedostupné".into(),
             lighting_mode: LightingMode::On,
             lighting_controls_available: true,
             workspace_status: "Ready".into(),
@@ -268,8 +277,9 @@ mod tests {
             dictation_controls_available: true,
         };
         let menu = tray.menu();
+        assert!(!item(&menu, "Podsvícení myši nedostupné").enabled);
         let toggle = item(&menu, "osvětlení klávesnice");
-        assert_eq!(toggle.label, "✅ Vypnout osvětlení klávesnice");
+        assert_eq!(toggle.label, "✅ Vypnout osvětlení klávesnice a myši");
         assert!(toggle.enabled);
         (toggle.activate)(&mut tray);
         assert_eq!(
@@ -281,7 +291,7 @@ mod tests {
         tray.lighting_mode = LightingMode::Off;
         let menu = tray.menu();
         let toggle = item(&menu, "osvětlení klávesnice");
-        assert_eq!(toggle.label, "❌ Zapnout osvětlení klávesnice");
+        assert_eq!(toggle.label, "❌ Zapnout osvětlení klávesnice a myši");
         assert!(
             toggle.enabled,
             "Off must remain clickable to enable lighting again"
@@ -300,6 +310,7 @@ mod tests {
         let mut tray = AppTray {
             actions: tx,
             lighting_status: "Ready".into(),
+            mouse_lighting_status: "Podsvícení myši aktivní".into(),
             lighting_mode: LightingMode::On,
             lighting_controls_available: true,
             workspace_status: "Ready".into(),

@@ -1,0 +1,4 @@
+# Grant the active local desktop user access only to the G203 LIGHTSYNC
+# vendor-control interface (USB interface 1), never the pointer interface.
+ACTION!="remove", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c092", IMPORT{builtin}="path_id"
+ACTION!="remove", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c092", ENV{ID_PATH}=="*-usb-*:1.1", TAG+="uaccess"

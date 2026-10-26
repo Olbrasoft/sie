@@ -3,6 +3,20 @@
 Validated on 2026-10-23 with GNOME Shell 48.7 on Wayland, OpenRazer 3.12.4,
 the connected Razer BlackWidow V4 Pro (`1532:028d`), and Rust 1.99.0.
 
+## Combined lighting in version 0.9.0
+
+- The workstation mouse is a Logitech G203 LIGHTSYNC (`046d:c092`) with HID++ RGB
+  Effects version 0 and one Logo cluster. Direct read-only discovery and reversible
+  RGB power commands succeeded; read-back confirmed PowerOff 3 and restored
+  FullRgb 1/device control 0. Onboard-profile mode remained 1 throughout.
+- A scoped udev rule grants the active desktop user access to USB interface 1
+  only. After applying it to that node, its control descriptor became readable/
+  writable without sudo, and the separate pointer hidraw node stayed inaccessible.
+- Mouse protocol/fake worker tests are isolated from actual hardware. Existing
+  private D-Bus checks continue to validate the keyboard's matrix and dark mode.
+  See [the design and physical checks](mouse-lighting.md). Real tray/visual
+  verification after deployment is reported separately from automated tests.
+
 ## Optional Whisper Flash Attention in version 0.8.1
 
 - Formatting, Clippy with warnings denied and 73 isolated Rust tests passed.

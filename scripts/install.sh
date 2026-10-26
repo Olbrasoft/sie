@@ -23,4 +23,8 @@ install -Dm644 "$project_root/LICENSE" "$data_dir/sie/licenses/SIE.txt"
 install -Dm644 "$project_root/assets/sounds/LICENSE.VirtualAssistant" \
     "$data_dir/sie/licenses/VirtualAssistant.txt"
 systemctl --user daemon-reload
+if ! cmp -s "$project_root/packaging/70-sie-logitech-mouse.rules" \
+    /etc/udev/rules.d/70-sie-logitech-mouse.rules; then
+    printf '%s\n' 'For G203 mouse lighting access, install packaging/70-sie-logitech-mouse.rules once; see docs/mouse-lighting.md.'
+fi
 printf '%s\n' 'SIE installed. Start with: systemctl --user start sie.service'
