@@ -48,7 +48,8 @@ The session-bus interface `cz.olbrasoft.SIE.Switcher`, object
 `/cz/olbrasoft/SIE/Switcher`, offers `Open`, `Move`, `Finish` and `Active`.
 Each popup belongs to its caller's unique bus name and generation token, so
 another caller or stale token cannot move/confirm it. Caller disappearance or
-extension disable cancels. The extension resets its eight-second cancellation
+extension disable cancels. Like the native keybinding, opening requires the
+normal unlocked desktop; locking cancels any owned popup. The extension resets its eight-second cancellation
 timer during activity; Rust checks popup state every 100 ms while global mode
 is active to restore white after native dismissal. Dial disconnect and SIE
 shutdown request cancellation too. Communication errors clear feedback, while

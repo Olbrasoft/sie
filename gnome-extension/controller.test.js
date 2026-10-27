@@ -112,4 +112,8 @@ test('missing applications/modal refusal and workspace-only preference fail clea
     assert.throws(() => c.open(':1.5'), /could not open/);
     assert.equal(popups[0].canceled, 1);
     assert.equal(timers.size, 0);
+    c._createPopup = () => { throw new Error('Desktop is locked or busy'); };
+    assert.throws(() => c.open(':1.5'), /locked or busy/);
+    assert.equal(c.active(':1.5', 1), false);
+    assert.equal(timers.size, 0);
 });

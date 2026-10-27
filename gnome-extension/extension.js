@@ -2,8 +2,10 @@
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import Clutter from 'gi://Clutter';
+import Shell from 'gi://Shell';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as AltTab from 'resource:///org/gnome/shell/ui/altTab.js';
+import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {Controller} from './controller.js';
 
 const BUS = 'cz.olbrasoft.SIE.Switcher';
@@ -16,6 +18,10 @@ const XML = `<node><interface name="${BUS}">
 </interface></node>`;
 
 function createPopup() {
+    // Match the native Alt+Tab keybinding's normal-session action mode.
+    if (Main.sessionMode.isLocked || Main.sessionMode.isGreeter ||
+        Main.actionMode !== Shell.ActionMode.NORMAL)
+        throw new Error('The native switcher requires the normal unlocked desktop');
     const popup = new AltTab.AppSwitcherPopup();
     let activity = () => {};
     // Use GNOME's no-modifier mode, with our cancellation-only idle timeout.
@@ -73,8 +79,12 @@ export default class NativeSwitcherExtension extends Extension {
             (_connection, _sender, _path, _iface, _signal, params) => {
                 const [name, , next] = params.deep_unpack();
                 if (next === '')
-                    this._controller.ownerGone(name);
+                    this._controller?.ownerGone(name);
             });
+        this._sessionSignal = Main.sessionMode.connect('updated', () => {
+            if (Main.sessionMode.isLocked || Main.sessionMode.isGreeter)
+                this._controller?.close(false);
+        });
     }
 
     _reply(invocation, type, action) {
@@ -103,6 +113,7 @@ export default class NativeSwitcherExtension extends Extension {
 
     disable() {
         this._controller.close(false);
+        Main.sessionMode.disconnect(this._sessionSignal);
         Gio.DBus.session.signal_unsubscribe(this._ownerSignal);
         Gio.DBus.session.unown_name(this._name);
         this._impl.unexport();
