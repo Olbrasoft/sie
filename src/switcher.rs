@@ -67,7 +67,7 @@ pub fn local_target(windows: &[Window], delta: i32) -> Option<u32> {
     Some(windows[next].id)
 }
 
-async fn windows(connection: &Connection) -> Result<Vec<Window>> {
+pub(crate) async fn windows(connection: &Connection) -> Result<Vec<Window>> {
     let proxy = Proxy::new(
         connection,
         "org.gnome.Shell",
