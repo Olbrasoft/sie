@@ -15,7 +15,14 @@ else
 fi
 install -Dm755 "$project_root/target/release/sie" "$HOME/.local/bin/sie"
 install -Dm755 "$project_root/target/release/sie-browser-host" "$HOME/.local/bin/sie-browser-host"
+install -Dm755 "$project_root/target/release/sie-agent-notify" "$HOME/.local/bin/sie-agent-notify"
+question_observer="${CODEX_HOME:-$HOME/.codex}/codex-question-notify.py"
+if [[ -f "$question_observer" ]]; then
+    install -m755 "$project_root/scripts/codex-question-notify.py" "$question_observer"
+    printf '%s\n' 'Question observer updated. Restart codex-question-notify.service to enable desktop actions.'
+fi
 python3 "$project_root/scripts/install-browser-bridge.py"
+python3 "$project_root/scripts/install-native-switcher.py"
 install -Dm644 "$project_root/packaging/sie.service" "$config_dir/systemd/user/sie.service"
 install -Dm644 "$project_root/packaging/cz.olbrasoft.SystemInterfaceExtensions.desktop" \
     "$data_dir/applications/cz.olbrasoft.SystemInterfaceExtensions.desktop"
@@ -23,6 +30,10 @@ install -Dm644 "$project_root/LICENSE" "$data_dir/sie/licenses/SIE.txt"
 install -Dm644 "$project_root/assets/sounds/LICENSE.VirtualAssistant" \
     "$data_dir/sie/licenses/VirtualAssistant.txt"
 systemctl --user daemon-reload
+if ! cmp -s "$project_root/packaging/70-sie-dial-uinput.rules" \
+    /etc/udev/rules.d/70-sie-dial-uinput.rules; then
+    printf '%s\n' 'For Command Dial passthrough, install packaging/70-sie-dial-uinput.rules once; see docs/command-dial.md.'
+fi
 if ! cmp -s "$project_root/packaging/70-sie-logitech-mouse.rules" \
     /etc/udev/rules.d/70-sie-logitech-mouse.rules; then
     printf '%s\n' 'For G203 mouse lighting access, install packaging/70-sie-logitech-mouse.rules once; see docs/mouse-lighting.md.'

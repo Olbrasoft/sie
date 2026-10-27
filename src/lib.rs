@@ -1,11 +1,14 @@
 //! Linux desktop adapters and independently testable keyboard behavior.
 
+pub mod agent_notifications;
+pub mod agent_origin;
 pub mod audio;
 pub mod browser;
 pub mod config;
 pub mod context;
 pub mod corrections;
 pub mod desktop;
+pub mod dial_input;
 pub mod dictation;
 mod ducking;
 pub mod input;
@@ -19,6 +22,7 @@ pub mod openrazer;
 mod sounds;
 pub mod speech;
 mod speech_lock;
+pub mod switcher;
 pub mod terminal;
 pub mod tray;
 

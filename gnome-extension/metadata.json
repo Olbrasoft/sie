@@ -1,0 +1,8 @@
+{
+  "uuid": "sie-switcher@olbrasoft.cz",
+  "name": "SIE Native Application Switcher",
+  "description": "Lets SIE control GNOME's native Alt+Tab strip with the Command Dial.",
+  "shell-version": ["48"],
+  "version": 2,
+  "url": "https://github.com/Olbrasoft/sie"
+}

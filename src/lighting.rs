@@ -6,6 +6,7 @@ pub const COLS: usize = 23;
 pub type Rgb = [u8; 3];
 pub type Frame = [[Rgb; COLS]; ROWS];
 pub const PLAY_PAUSE_KEY: (usize, usize) = (0, 20);
+pub const COMMAND_DIAL: (usize, usize) = (0, 1);
 pub const MEDIA_PLAYING_GREEN: Rgb = [0, 255, 0];
 pub const MEDIA_PAUSED_RED: Rgb = [255, 0, 0];
 pub const WHITE: Rgb = [255, 255, 255];
@@ -21,6 +22,15 @@ pub struct State {
     pub workspace: Option<i32>,
     pub playback: crate::media::Playback,
     pub recording: bool,
+    pub dial: DialFeedback,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum DialFeedback {
+    #[default]
+    Idle,
+    Local,
+    Global,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -31,6 +41,23 @@ pub enum LightingMode {
 }
 
 impl LightingMode {
+    pub fn frame_with_dial(
+        self,
+        workspace: Option<i32>,
+        playback: crate::media::Playback,
+        elapsed: Option<Duration>,
+        dial: DialFeedback,
+    ) -> Frame {
+        let mut frame = self.frame_with_recording(workspace, playback, elapsed);
+        if self == Self::On {
+            frame[COMMAND_DIAL.0][COMMAND_DIAL.1] = match dial {
+                DialFeedback::Idle => WHITE,
+                DialFeedback::Local => [0, 255, 0],
+                DialFeedback::Global => [255, 128, 0],
+            };
+        }
+        frame
+    }
     pub fn toggled(self) -> Self {
         match self {
             Self::On => Self::Off,
@@ -158,6 +185,48 @@ pub fn encode_frame(frame: &Frame) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn dial_feedback_changes_only_its_led_and_lighting_off_always_wins() {
+        for elapsed in [None, Some(Duration::from_millis(725))] {
+            let baseline = LightingMode::On.frame_with_recording(
+                Some(3),
+                crate::media::Playback::Playing,
+                elapsed,
+            );
+            for (dial, color) in [
+                (DialFeedback::Idle, WHITE),
+                (DialFeedback::Local, [0, 255, 0]),
+                (DialFeedback::Global, [255, 128, 0]),
+            ] {
+                let frame = LightingMode::On.frame_with_dial(
+                    Some(3),
+                    crate::media::Playback::Playing,
+                    elapsed,
+                    dial,
+                );
+                for row in 0..ROWS {
+                    for column in 0..COLS {
+                        assert_eq!(
+                            frame[row][column],
+                            if (row, column) == COMMAND_DIAL {
+                                color
+                            } else {
+                                baseline[row][column]
+                            }
+                        );
+                    }
+                }
+                assert!(
+                    LightingMode::Off
+                        .frame_with_dial(Some(3), crate::media::Playback::Playing, elapsed, dial)
+                        .iter()
+                        .flatten()
+                        .all(|rgb| *rgb == [0, 0, 0])
+                );
+            }
+        }
+    }
 
     #[test]
     fn recording_rainbow_moves_only_the_38_physical_ambient_leds_and_repeats() {
