@@ -1,5 +1,7 @@
 //! Linux desktop adapters and independently testable keyboard behavior.
 
+pub mod agent_notifications;
+pub mod agent_origin;
 pub mod audio;
 pub mod browser;
 pub mod config;

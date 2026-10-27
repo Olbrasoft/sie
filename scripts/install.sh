@@ -15,6 +15,12 @@ else
 fi
 install -Dm755 "$project_root/target/release/sie" "$HOME/.local/bin/sie"
 install -Dm755 "$project_root/target/release/sie-browser-host" "$HOME/.local/bin/sie-browser-host"
+install -Dm755 "$project_root/target/release/sie-agent-notify" "$HOME/.local/bin/sie-agent-notify"
+question_observer="${CODEX_HOME:-$HOME/.codex}/codex-question-notify.py"
+if [[ -f "$question_observer" ]]; then
+    install -m755 "$project_root/scripts/codex-question-notify.py" "$question_observer"
+    printf '%s\n' 'Question observer updated. Restart codex-question-notify.service to enable desktop actions.'
+fi
 python3 "$project_root/scripts/install-browser-bridge.py"
 python3 "$project_root/scripts/install-native-switcher.py"
 install -Dm644 "$project_root/packaging/sie.service" "$config_dir/systemd/user/sie.service"
