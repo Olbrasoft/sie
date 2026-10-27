@@ -19,9 +19,14 @@ finish-and-submit.
 - Bottom release: idle → recording → local transcription → paste → idle.
 - Middle release: cancel recording or transcription; discard pending output.
 - Top release while recording: stop → local transcription → paste → one Enter.
-  Idle, disabled and transcribing states ignore it; it cannot arm a future session.
+- Since 0.11.0, top release during transcription queues one submission for that
+  job, after successful paste and another window/pane/cancellation check. Repeated
+  requests coalesce and cannot arm a later session. Submission remains cancelable.
+- Top release while idle, disabled or in error sends a literal Enter to the
+  currently focused input, leaving the clipboard and dictation state untouched.
 - Automatic recording-limit completion and bottom/tray completion remain
-  paste-only. Submission belongs only to the recording finished with the top button.
+  paste-only unless the user explicitly requests submission with the top button
+  while that job is still active. An idle top press can submit already pasted text.
 - Repeats and presses are ignored for side buttons. Bottom during transcription
   is ignored. M1–M5 continue to use presses for workspace switching.
 - Tray actions provide start/stop, cancel, module enable/disable and phase status.
@@ -216,7 +221,8 @@ For a terminal attached to the default local tmux server, SIE associates the
 terminal process tree with its actual tmux client and active pane. It refuses
 ambiguous matches. A private named tmux buffer delivers UTF-8 directly into that
 pane with bracketed paste; the clipboard stays untouched. Default completion
-sends no Enter. Explicit top-button completion waits for the paste event, rechecks
+sends no Enter. A top-button request during recording or transcription waits for
+the paste event, rechecks
 cancellation and the same focused window/pane, and sends Enter to that exact pane.
 Only the target pane's copy-mode is canceled, and focus/pane identity and
 cancellation are rechecked before paste. Each private buffer is removed after
@@ -226,8 +232,8 @@ Non-tmux clipboard staging retries transient ownership loss up to four times,
 with compositor setup completed first. Prior text or PNG contents are restored
 if still owned by the dictation; newer user selections are preserved. Arbitrary
 multi-format bundles are not preserved. Keep the intended input field focused
-until delivery. Default completion does not submit; explicit top-button
-completion waits for paste, rechecks focus/cancellation, and sends a separate
+until delivery. Default completion does not submit; a top-button request for the
+current job waits for paste, rechecks focus/cancellation, and sends a separate
 Enter. The transcript and clipboard text do not get a synthetic newline. Empty
 output, cancellation, paste failure or changed focus/pane suppress Enter. If
 text was inserted but submission fails, the tray says so; it does not retry
@@ -245,7 +251,9 @@ unavailable. Cancel, completion and normal shutdown release it; after a crash it
 expires automatically. The default is false for standalone installations.
 VirtualAssistant remains running for existing features and legacy hotkeys.
 LLM processing and automatic agent-window focusing were not ported. Submission
-is an explicit per-recording top-button action.
+is an explicit top-button action. Outside an active job the same button sends
+literal Enter to the current input, so it can send text already inserted by a
+previous paste-only completion.
 
 ## Reproducible checks
 

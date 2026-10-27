@@ -254,7 +254,7 @@ impl Desktop {
         target: &FocusTarget,
         mode: DeliveryMode,
         cancelled: &AtomicBool,
-    ) -> Result<()> {
+    ) -> Result<PasteReceipt> {
         ensure!(!cancelled.load(Ordering::SeqCst), "Dictation canceled");
         ensure!(
             focused_window(&self.connection).await?.id == target.id,
@@ -278,8 +278,66 @@ impl Desktop {
             .await;
             submitted.context("Text pasted; submission was not sent")?;
         }
-        Ok(())
+        Ok(PasteReceipt {
+            target: target.clone(),
+            pane: None,
+            ready_at: tokio::time::Instant::now(),
+        })
     }
+}
+
+/// Proof of a successful paste, retaining its exact target for deferred Enter.
+pub struct PasteReceipt {
+    target: FocusTarget,
+    pane: Option<String>,
+    ready_at: tokio::time::Instant,
+}
+
+impl PasteReceipt {
+    pub async fn submit(self, connection: &Connection, cancelled: &AtomicBool) -> Result<()> {
+        let result = async {
+            ensure!(!cancelled.load(Ordering::SeqCst), "Dictation canceled");
+            tokio::time::sleep_until(self.ready_at).await;
+            ensure!(!cancelled.load(Ordering::SeqCst), "Dictation canceled");
+            if let Some(pane) = self.pane {
+                crate::terminal::submit(connection, &self.target, &pane, cancelled).await
+            } else {
+                send_enter_to(connection, &self.target, cancelled).await
+            }
+        }
+        .await;
+        result.context("Text pasted; submission was not sent")
+    }
+}
+
+/// A literal Enter at the current focus; no clipboard or dictation is involved.
+pub async fn press_enter(connection: &Connection) -> Result<()> {
+    let target = focused_window(connection).await?;
+    send_enter_to(connection, &target, &AtomicBool::new(false)).await
+}
+
+pub async fn send_enter_to(
+    connection: &Connection,
+    target: &FocusTarget,
+    cancelled: &AtomicBool,
+) -> Result<()> {
+    ensure!(!cancelled.load(Ordering::SeqCst), "Dictation canceled");
+    let desktop = Desktop::connect(connection).await?;
+    let result = async {
+        ensure!(!cancelled.load(Ordering::SeqCst), "Dictation canceled");
+        ensure!(
+            focused_window(connection).await?.id == target.id,
+            "Target window changed before Enter"
+        );
+        ensure!(!cancelled.load(Ordering::SeqCst), "Dictation canceled");
+        desktop.send_keys(&[28]).await?;
+        tokio::time::sleep(Duration::from_millis(50)).await;
+        anyhow::Ok(())
+    }
+    .await;
+    let stopped = desktop.stop().await;
+    result?;
+    stopped
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -458,9 +516,30 @@ pub async fn paste_text_with_mode(
     mode: DeliveryMode,
     cancelled: Arc<AtomicBool>,
 ) -> Result<()> {
+    paste_with_receipt(connection, target, text, mode, cancelled)
+        .await
+        .map(|_| ())
+}
+
+pub async fn paste_text_with_receipt(
+    connection: &Connection,
+    target: &FocusTarget,
+    text: &str,
+    cancelled: Arc<AtomicBool>,
+) -> Result<Option<PasteReceipt>> {
+    paste_with_receipt(connection, target, text, DeliveryMode::PasteOnly, cancelled).await
+}
+
+async fn paste_with_receipt(
+    connection: &Connection,
+    target: &FocusTarget,
+    text: &str,
+    mode: DeliveryMode,
+    cancelled: Arc<AtomicBool>,
+) -> Result<Option<PasteReceipt>> {
     ensure!(!cancelled.load(Ordering::SeqCst), "Dictation canceled");
     if text.trim().is_empty() {
-        return Ok(());
+        return Ok(None);
     }
     let current = focused_window(connection).await?;
     ensure!(
@@ -476,7 +555,12 @@ pub async fn paste_text_with_mode(
         .as_ref()
         .and_then(|context| context.pane.as_deref())
     {
-        return crate::terminal::paste(connection, &current, pane, text, mode, cancelled).await;
+        crate::terminal::paste(connection, &current, pane, text, mode, cancelled).await?;
+        return Ok(Some(PasteReceipt {
+            target: current.clone(),
+            pane: Some(pane.to_owned()),
+            ready_at: tokio::time::Instant::now() + Duration::from_millis(200),
+        }));
     }
     let primary = terminal.as_ref().is_some_and(|context| context.agent);
     let keys: &[u32] = if primary {
@@ -491,12 +575,9 @@ pub async fn paste_text_with_mode(
     // the smallest possible interval in which to replace the selection.
     let desktop = Desktop::connect(connection).await?;
     let mut owner = None;
-    let result: Result<()> = async {
+    let result: Result<PasteReceipt> = async {
         owner = Some(stage_selection(primary, text, &cancelled).await?);
-        desktop
-            .paste_shortcut(keys, target, mode, &cancelled)
-            .await?;
-        Ok(())
+        desktop.paste_shortcut(keys, target, mode, &cancelled).await
     }
     .await;
     let stopped = desktop.stop().await;
@@ -512,8 +593,9 @@ pub async fn paste_text_with_mode(
     if let Some(mut owner) = owner {
         let _ = owner.kill().await;
     }
-    result?;
-    stopped
+    let receipt = result?;
+    stopped?;
+    Ok(Some(receipt))
 }
 
 #[cfg(test)]

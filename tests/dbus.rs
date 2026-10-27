@@ -66,6 +66,7 @@ struct State {
     focused_window: u32,
     switch_on_paste: bool,
     cancel_on_paste: Option<Arc<AtomicBool>>,
+    switch_on_start: bool,
     missing_keyboard: bool,
 }
 type Shared = Arc<Mutex<State>>;
@@ -105,7 +106,11 @@ struct Session(Shared);
 #[zbus::interface(name = "org.gnome.Mutter.RemoteDesktop.Session")]
 impl Session {
     fn start(&self) {
-        self.0.lock().unwrap().starts += 1;
+        let mut state = self.0.lock().unwrap();
+        state.starts += 1;
+        if state.switch_on_start {
+            state.focused_window = 2;
+        }
     }
     fn stop(&self) {
         self.0.lock().unwrap().stops += 1;
@@ -650,6 +655,79 @@ async fn submit_sends_one_enter_after_each_successful_clipboard_paste_path() {
 }
 
 #[tokio::test]
+async fn standalone_enter_sends_only_enter_and_cleans_up_failures_or_changed_focus() {
+    for scenario in ["normal", "press-failure", "refocus", "cancel-before"] {
+        let bus = Bus::start();
+        let state = Arc::new(Mutex::new(State {
+            focused_window: 1,
+            fail_key: (scenario == "press-failure").then_some(28),
+            switch_on_start: scenario == "refocus",
+            ..Default::default()
+        }));
+        let _server = services(&bus, state.clone(), vec![8, 23]).await;
+        let connection = bus.connection().await;
+        let result = if scenario == "cancel-before" {
+            let target = sie::desktop::focused_window(&connection).await.unwrap();
+            sie::desktop::send_enter_to(&connection, &target, &AtomicBool::new(true)).await
+        } else {
+            sie::desktop::press_enter(&connection).await
+        };
+        assert_eq!(result.is_ok(), scenario == "normal", "{scenario}");
+        let state = state.lock().unwrap();
+        if ["normal", "press-failure"].contains(&scenario) {
+            assert_eq!(state.keys, [(28, true), (28, false)]);
+        } else {
+            assert!(state.keys.is_empty());
+        }
+        let sessions = usize::from(scenario != "cancel-before");
+        assert_eq!((state.starts, state.stops), (sessions, sessions));
+    }
+}
+
+#[tokio::test]
+async fn successful_paste_receipt_submits_later_but_cancel_or_refocus_suppresses_enter() {
+    use sie::desktop::{DeliveryMode, FocusTarget};
+    for scenario in ["submit-later", "cancel-later", "refocus-later"] {
+        let bus = Bus::start();
+        let state = Arc::new(Mutex::new(State {
+            focused_window: 1,
+            ..Default::default()
+        }));
+        let _server = services(&bus, state.clone(), vec![8, 23]).await;
+        let connection = bus.connection().await;
+        let target: FocusTarget =
+            serde_json::from_value(serde_json::json!({"id":1,"wm_class":"org.gnome.TextEditor"}))
+                .unwrap();
+        let cancelled = AtomicBool::new(false);
+        let desktop = Desktop::connect(&connection).await.unwrap();
+        let receipt = desktop
+            .paste_shortcut(&[29, 47], &target, DeliveryMode::PasteOnly, &cancelled)
+            .await
+            .unwrap();
+        desktop.stop().await.unwrap();
+        assert!(!state.lock().unwrap().keys.iter().any(|(key, _)| *key == 28));
+        if scenario == "cancel-later" {
+            cancelled.store(true, Ordering::SeqCst);
+        }
+        if scenario == "refocus-later" {
+            state.lock().unwrap().focused_window = 2;
+        }
+        let result = receipt.submit(&connection, &cancelled).await;
+        assert_eq!(result.is_ok(), scenario == "submit-later");
+        let state = state.lock().unwrap();
+        assert_eq!(
+            state
+                .keys
+                .iter()
+                .filter(|(key, pressed)| *key == 28 && *pressed)
+                .count(),
+            usize::from(scenario == "submit-later")
+        );
+        assert_eq!(state.starts, state.stops);
+    }
+}
+
+#[tokio::test]
 async fn failed_canceled_refocused_and_paste_only_deliveries_never_send_enter() {
     use sie::desktop::{DeliveryMode, FocusTarget};
     for scenario in [
@@ -709,6 +787,17 @@ async fn empty_or_canceled_submit_cannot_stage_text_or_start_input() {
         serde_json::from_value(serde_json::json!({"id":1,"wm_class":"org.gnome.TextEditor"}))
             .unwrap();
     for text in ["", " \n\t"] {
+        assert!(
+            sie::desktop::paste_text_with_receipt(
+                &connection,
+                &target,
+                text,
+                Arc::new(AtomicBool::new(false))
+            )
+            .await
+            .unwrap()
+            .is_none()
+        );
         sie::desktop::paste_text_with_mode(
             &connection,
             &target,

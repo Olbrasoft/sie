@@ -133,15 +133,48 @@ pub async fn paste(
     mode: DeliveryMode,
     cancelled: Arc<AtomicBool>,
 ) -> Result<()> {
-    paste_checked(None, pane, text, mode, cancelled, || async {
-        let current = crate::desktop::focused_window(connection).await?;
-        ensure!(
-            current.id == target.id && resolve(&current).await.pane.as_deref() == Some(pane),
-            "Target window changed; transcription was not pasted"
-        );
-        Ok(())
+    paste_checked(None, pane, text, mode, cancelled, || {
+        verify_target(connection, target, pane)
     })
     .await
+}
+
+async fn verify_target(
+    connection: &zbus::Connection,
+    target: &FocusTarget,
+    pane: &str,
+) -> Result<()> {
+    let current = crate::desktop::focused_window(connection).await?;
+    ensure!(
+        current.id == target.id && resolve(&current).await.pane.as_deref() == Some(pane),
+        "Target window changed or terminal pane changed"
+    );
+    Ok(())
+}
+
+pub async fn submit(
+    connection: &zbus::Connection,
+    target: &FocusTarget,
+    pane: &str,
+    cancelled: &AtomicBool,
+) -> Result<()> {
+    submit_checked(None, pane, cancelled, || {
+        verify_target(connection, target, pane)
+    })
+    .await
+}
+
+async fn submit_checked<F: std::future::Future<Output = Result<()>>>(
+    socket: Option<&Path>,
+    pane: &str,
+    cancelled: &AtomicBool,
+    mut verify: impl FnMut() -> F,
+) -> Result<()> {
+    ensure!(!cancelled.load(Ordering::SeqCst), "Dictation canceled");
+    verify().await?;
+    ensure!(!cancelled.load(Ordering::SeqCst), "Dictation canceled");
+    query_on(socket, &["send-keys", "-t", pane, "Enter"]).await?;
+    Ok(())
 }
 
 async fn paste_checked<F: std::future::Future<Output = Result<()>>>(
@@ -202,14 +235,7 @@ async fn paste_checked<F: std::future::Future<Output = Result<()>>>(
         if mode == DeliveryMode::Submit {
             // Let terminal UIs finish their bracketed-paste event before Enter.
             tokio::time::sleep(Duration::from_millis(200)).await;
-            let submitted: Result<()> = async {
-                ensure!(!cancelled.load(Ordering::SeqCst), "Dictation canceled");
-                verify().await?;
-                ensure!(!cancelled.load(Ordering::SeqCst), "Dictation canceled");
-                query_on(socket, &["send-keys", "-t", pane, "Enter"]).await?;
-                Ok(())
-            }
-            .await;
+            let submitted = submit_checked(socket, pane, &cancelled, &mut verify).await;
             submitted.context("Text pasted; submission was not sent")?;
         }
         Ok(())
@@ -346,6 +372,9 @@ mod tests {
         for scenario in [
             "submit",
             "paste-only",
+            "deferred-submit",
+            "deferred-cancel",
+            "deferred-refocus",
             "refocus-after",
             "cancel-after",
             "empty",
@@ -390,13 +419,13 @@ mod tests {
             } else {
                 "Příliš žluťoučký kůň."
             };
-            let mode = if scenario == "paste-only" {
+            let mode = if scenario == "paste-only" || scenario.starts_with("deferred-") {
                 DeliveryMode::PasteOnly
             } else {
                 DeliveryMode::Submit
             };
             let mut checks = 0;
-            let result = paste_checked(socket, "%0", text, mode, cancelled.clone(), || {
+            let mut result = paste_checked(socket, "%0", text, mode, cancelled.clone(), || {
                 checks += 1;
                 let check = checks;
                 let cancelled = cancelled.clone();
@@ -411,9 +440,18 @@ mod tests {
                 }
             })
             .await;
+            if scenario.starts_with("deferred-") {
+                assert!(result.is_ok());
+                cancelled.store(scenario == "deferred-cancel", Ordering::SeqCst);
+                result = submit_checked(socket, "%0", &cancelled, || async {
+                    ensure!(scenario != "deferred-refocus", "Target pane changed");
+                    Ok(())
+                })
+                .await;
+            }
             assert_eq!(
                 result.is_ok(),
-                ["submit", "paste-only", "empty"].contains(&scenario),
+                ["submit", "paste-only", "empty", "deferred-submit"].contains(&scenario),
                 "{scenario}"
             );
             tokio::time::sleep(Duration::from_millis(80)).await;
@@ -424,7 +462,7 @@ mod tests {
                 .lines()
                 .filter(|line| !line.trim().is_empty())
                 .collect();
-            if scenario == "submit" {
+            if ["submit", "deferred-submit"].contains(&scenario) {
                 assert_eq!(
                     lines.len(),
                     2,
