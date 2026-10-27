@@ -23,6 +23,8 @@ pub struct DictationConfig {
     pub virtual_assistant_speech_lock: bool,
     pub sound_effects: bool,
     pub sound_sink: Option<String>,
+    pub duck_sink: Option<String>,
+    pub duck_volume_percent: u8,
 }
 
 impl Default for DictationConfig {
@@ -45,6 +47,8 @@ impl Default for DictationConfig {
             virtual_assistant_speech_lock: false,
             sound_effects: true,
             sound_sink: None,
+            duck_sink: None,
+            duck_volume_percent: 20,
         }
     }
 }
@@ -75,6 +79,20 @@ impl AppConfig {
             !config.dictation.language.is_empty(),
             "Dictation language is required"
         );
+        ensure!(
+            config.dictation.duck_volume_percent <= 100,
+            "Ducking volume must be 0–100 percent of the original volume"
+        );
+        if let Some(sink) = &config.dictation.duck_sink {
+            ensure!(
+                !sink.trim().is_empty() && !sink.starts_with('@') && sink.parse::<u32>().is_err(),
+                "Ducking requires an explicit stable output name"
+            );
+            ensure!(
+                config.dictation.sound_sink.as_ref() != Some(sink),
+                "Ducking output must differ from the feedback output"
+            );
+        }
         Ok(config)
     }
 }
@@ -82,6 +100,29 @@ impl AppConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn ducking_is_opt_in_and_requires_a_separate_stable_output_and_valid_percentage() {
+        use std::io::Write;
+        let defaults = AppConfig::default();
+        assert!(defaults.dictation.duck_sink.is_none());
+        assert_eq!(defaults.dictation.duck_volume_percent, 20);
+        for (settings, valid) in [
+            ("duck_sink = 'test.bose'\nduck_volume_percent = 20", true),
+            ("duck_volume_percent = 101", false),
+            ("duck_sink = ''", false),
+            ("duck_sink = '@DEFAULT_SINK@'", false),
+            ("duck_sink = '7'", false),
+            (
+                "duck_sink = 'test.monitor'\nsound_sink = 'test.monitor'",
+                false,
+            ),
+        ] {
+            let mut file = tempfile::NamedTempFile::new().unwrap();
+            write!(file, "[dictation]\n{settings}\n").unwrap();
+            assert_eq!(AppConfig::load(Some(file.path().into())).is_ok(), valid);
+        }
+    }
 
     #[test]
     fn existing_configuration_keeps_flash_attention_disabled() {

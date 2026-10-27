@@ -7,6 +7,7 @@ pub mod context;
 pub mod corrections;
 pub mod desktop;
 pub mod dictation;
+mod ducking;
 pub mod input;
 mod keymap;
 pub mod lighting;

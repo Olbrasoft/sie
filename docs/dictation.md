@@ -116,6 +116,36 @@ running, instead of becoming suspended. Repeat recording starts separated by
 quiet intervals and confirm each cue through the physical monitor speakers;
 automated Rust tests do not use desktop audio or a microphone.
 
+## Media volume while recording
+
+Since 0.10.0, an optional `duck_sink` names the one playback output to attenuate
+during microphone capture. The portable default is unset, so other installations
+do not change any output volume. On the development workstation it selects Bose
+(`alsa_output.pci-0000_0a_00.4.playback.0.0`), separate from ViewSonic feedback.
+
+`duck_volume_percent = 20` scales each channel's existing PulseAudio volume value
+to one fifth, preserving channel balance and the mute flag. This is relative to
+the volume at recording start, not an absolute output level. Values from 0 to 100
+are accepted. Use an explicit stable sink name, not an index or `@DEFAULT_SINK@`;
+the configured feedback output must be different.
+
+The dictation actor only signals a separate serialized volume worker. It requests
+restoration before awaiting capture shutdown on normal finish, finish-and-submit
+and the recording deadline, and also on cancellation, disable or graceful exit.
+Transcription can proceed concurrently and does not prolong attenuation. Failed
+recording starts never request attenuation. Missing outputs or volume errors are
+logged or ignored without preventing dictation; volume subprocesses have bounded
+timeouts and failed restoration is retried.
+
+Restoration uses the exact saved per-channel values while the same output still
+has SIE's attenuated volume. A manual volume change supersedes that saved state;
+it is preserved rather than overwritten. Output name, index, channel map and
+PipeWire serial guard against restoring into a replacement device. Force-killing
+the process or losing the audio server cannot guarantee restoration.
+
+Tests use in-memory output controls, including delayed/failed writes, and never
+change real desktop audio or record a microphone.
+
 ## Independent database and setup
 
 Install runtime tools `pipewire-bin`, `pulseaudio-utils`, `wl-clipboard`, and a
