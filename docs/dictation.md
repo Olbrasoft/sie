@@ -58,14 +58,20 @@ first stage is time-based, not reactive to voice intensity; see the separate
 
 ## Sound cues
 
-The three existing VirtualAssistant MP3 assets and their MIT notice are included
-in `assets/sounds` and embedded in SIE's executable. Successful recording start
+The three original VirtualAssistant MP3 assets and their MIT notice are included
+in `assets/sounds`. SIE embeds the optimized recording WAV and the two other MP3s.
+Successful recording start
 plays `recording-start`; transcription loops `write`; active cancellation plays
 `paper-rip`. Idle cancellation and failed starts are silent. Completion, error,
 cancel, disable and shutdown stop the previous playback, including the long
 writing loop. The same actor transitions drive side-button and tray sounds.
 Playback runs asynchronously via `pw-play`, with only that child killed on
-cancellation. The recording-start cue can be audible to the microphone, matching
+cancellation. Since 0.9.2 the recording cue uses decoded PCM WAV with its first
+280 ms of near-silence removed: audio above -50 dB starts at about 10 ms instead
+of 290 ms. Playback requests a 20 ms buffer instead of the client's default
+100 ms. The selected output is unchanged; actual onset also depends on the
+audio device waking from idle. Capture still starts before the cue is queued.
+The recording-start cue can be audible to the microphone, matching
 the source behavior; start speaking after it ends.
 
 On the development workstation, SIE explicitly uses the StreamCam analog-stereo
@@ -75,8 +81,9 @@ The system-wide TONOR input/Bose analog output defaults were left unchanged.
 
 `sound_effects = false` disables feedback. `sound_sink` can select a PipeWire
 output; by default SIE uses the current system output. Missing playback support
-is logged without preventing dictation. Sound tests select cues with playback
-disabled; CI never plays real audio. Escape/Pause remain VirtualAssistant keys;
+is logged without preventing dictation. Sound tests inspect the embedded PCM
+onset and command arguments and select cues with playback disabled; CI never
+plays real audio. Escape/Pause remain VirtualAssistant keys;
 SIE cancellation is the middle side button or its tray action.
 
 ## Independent database and setup
