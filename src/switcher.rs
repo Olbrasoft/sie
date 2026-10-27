@@ -40,7 +40,7 @@ pub fn choices(windows: &[Window], workspace: Option<i32>, excluded: Option<u32>
                 && !w.wm_class.is_empty()
                 && w.wm_class != "sie-switcher"
                 && matches!(w.window_type, 0 | 3 | 4)
-                && !excluded.is_some_and(|pid| w.pid == pid)
+                && excluded.is_none_or(|pid| w.pid != pid)
                 && workspace.is_none_or(|index| w.workspace == Some(index))
                 && seen.insert(w.id)
         })
