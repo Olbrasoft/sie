@@ -211,10 +211,10 @@ impl Origin {
             (self.pane_pid, self.pane_started),
             (self.client_pid, self.client_started),
         ] {
-            if !snapshot
+            if snapshot
                 .processes
                 .get(&pid)
-                .is_some_and(|p| p.started == start)
+                .is_none_or(|p| p.started != start)
             {
                 return false;
             }
