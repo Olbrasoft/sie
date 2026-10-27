@@ -86,6 +86,36 @@ onset and command arguments and select cues with playback disabled; CI never
 plays real audio. Escape/Pause remain VirtualAssistant keys;
 SIE cancellation is the middle side button or its tray action.
 
+### Short cues after monitor audio has been idle
+
+The development workstation's ViewSonic VX3276-QHD output was automatically
+suspended after five seconds of inactivity. After trimming the recording cue,
+the user reported that the first cue after silence sometimes went unheard,
+while immediate repeated cues worked. Successful PipeWire playback and active
+graph links do not establish whether the monitor speakers were already awake.
+
+The optional [ViewSonic WirePlumber fragment](../packaging/60-sie-viewsonic-awake.conf)
+keeps that specific stereo output open by setting
+`session.suspend-timeout-seconds = 0`. The shortened cue and 20 ms latency request
+remain unchanged. This follows the existing session manager's
+[per-node suspend policy](https://pipewire.pages.freedesktop.org/wireplumber/daemon/configuration/alsa.html#node-properties).
+It trades idle audio power saving for prompt short-cue playback. It does not
+change the default output, any microphone policy or playback volume.
+
+On this workstation, install the fragment in
+`~/.config/wireplumber/wireplumber.conf.d/60-sie-viewsonic-awake.conf`, then restart
+the user `wireplumber.service` while dictation and other audio sessions are idle.
+The installer does not apply this machine-specific policy automatically. On
+other machines, identify the intended sink with `pactl list short sinks` and
+adjust the exact `node.name` match first. Remove the fragment and reload
+WirePlumber to restore its normal idle suspension policy.
+
+For manual verification, leave the output without playback for at least ten
+seconds. The matched PipeWire node should remain idle with the ALSA PCM endpoint
+running, instead of becoming suspended. Repeat recording starts separated by
+quiet intervals and confirm each cue through the physical monitor speakers;
+automated Rust tests do not use desktop audio or a microphone.
+
 ## Independent database and setup
 
 Install runtime tools `pipewire-bin`, `pulseaudio-utils`, `wl-clipboard`, and a
