@@ -19,3 +19,9 @@ virtual_assistant_speech_lock = false
 sound_effects = true
 # Omit sound_sink to use the default audio output.
 # sound_sink = "alsa_output.your_speakers"
+
+# Optional recording-only attenuation of a different, explicitly named output.
+# Omit duck_sink to disable it. Preserve monitor feedback by selecting a separate sink.
+# duck_sink = "alsa_output.your_media_speakers"
+# Relative to each channel's volume at recording start; 20 means one fifth.
+duck_volume_percent = 20

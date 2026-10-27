@@ -1,7 +1,7 @@
 # System Interface Extensions
 
 System Interface Extensions (SIE) is an MIT-licensed Rust desktop companion
-for extending how input devices control a Linux computer. Version 0.9.2 is a
+for extending how input devices control a Linux computer. Version 0.10.0 is a
 GNOME/Wayland proof of concept for the **Razer BlackWidow V4 Pro** (`1532:028d`).
 
 - A top-panel tray opens a Czech menu with **O aplikaci** (the running binary's
@@ -40,6 +40,8 @@ GNOME/Wayland proof of concept for the **Razer BlackWidow V4 Pro** (`1532:028d`)
   The tray offers normal start/stop and cancellation.
   Original VirtualAssistant sound cues mark recording start, transcription
   (looping typing) and cancellation (paper rip).
+  Optional recording-only volume ducking quiets one explicitly selected media
+  output and restores its prior channel volumes as recording ends.
 - An independent PostgreSQL database holds a one-time copy of VirtualAssistant's
   text corrections. No audio or transcript is sent to an LLM or remote API.
 - Existing GNOME integrations are reused; no additional Shell extension is needed

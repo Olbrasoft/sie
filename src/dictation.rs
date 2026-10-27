@@ -20,6 +20,7 @@ use crate::{
     config::DictationConfig,
     corrections::Database,
     desktop::{self, FocusTarget},
+    ducking::Ducking,
     sounds::Feedback,
     speech::SpeechEngine,
     speech_lock::SpeechLock,
@@ -161,6 +162,7 @@ pub async fn run(
         },
     );
     let mut speech_lock = SpeechLock::new(config.virtual_assistant_speech_lock);
+    let ducking = Ducking::new(config.duck_sink.clone(), config.duck_volume_percent);
     let mut recording: Option<(Recording, FocusTarget)> = None;
     let mut deadline: Option<Instant> = None;
     let mut active: Option<(u64, Arc<AtomicBool>)> = None;
@@ -184,6 +186,7 @@ pub async fn run(
                     enabled = value;
                 }
                 if command == Command::Cancel || !enabled {
+                    ducking.set_recording(false);
                     feedback.transition(if enabled { Phase::Idle } else { Phase::Disabled }, true);
                     if let Some((recording, _)) = recording.take() { recording.cancel().await; }
                     if let Some((_, cancelled)) = active.take() { cancelled.store(true, Ordering::SeqCst); }
@@ -202,6 +205,9 @@ pub async fn run(
                 // with this command; it cannot arm a future or running job.
                 if command == Command::FinishAndSubmit && recording.is_none() { continue; }
                 if let Some((capture, target)) = recording.take() {
+                    // Restore media independently while capture drains; never
+                    // wait for transcription to finish before requesting it.
+                    ducking.set_recording(false);
                     deadline = None;
                     match capture.stop().await {
                         Ok((pcm, duration)) => {
@@ -240,6 +246,7 @@ pub async fn run(
                     match result {
                         Ok(session) => {
                             recording = Some(session);
+                            ducking.set_recording(true);
                             deadline = Some(Instant::now() + Duration::from_secs(config.max_duration_seconds));
                             feedback.transition(Phase::Recording, false);
                             status.send_replace(Status::new(true, Phase::Recording));
@@ -254,6 +261,7 @@ pub async fn run(
             } => {
                 // Reuse the normal stop/transcribe path at the recording limit.
                 if let Some((capture, target)) = recording.take() {
+                    ducking.set_recording(false);
                     deadline = None;
                     match capture.stop().await {
                         Ok((pcm,duration)) => {
@@ -300,6 +308,7 @@ pub async fn run(
             },
         }
     }
+    ducking.set_recording(false);
     if let Some((recording, _)) = recording.take() {
         recording.cancel().await;
     }
@@ -307,6 +316,7 @@ pub async fn run(
         cancelled.store(true, Ordering::SeqCst);
     }
     speech_lock.release().await;
+    ducking.shutdown().await;
     jobs.abort_all();
     while jobs.join_next().await.is_some() {}
 }
