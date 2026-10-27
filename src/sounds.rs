@@ -14,7 +14,7 @@ pub(crate) enum Cue {
 impl Cue {
     fn bytes(self) -> &'static [u8] {
         match self {
-            Self::Recording => include_bytes!("../assets/sounds/recording-start.mp3"),
+            Self::Recording => include_bytes!("../assets/sounds/recording-start.wav"),
             Self::Transcribing => include_bytes!("../assets/sounds/write.mp3"),
             Self::Cancel => include_bytes!("../assets/sounds/paper-rip.mp3"),
         }
@@ -85,18 +85,23 @@ impl Drop for Feedback {
     }
 }
 
-async fn play(cue: Cue, sink: Option<&str>) -> anyhow::Result<()> {
+fn playback_command(sink: Option<&str>) -> Command {
     let mut command = Command::new("pw-play");
+    command.args(["--latency", "20ms"]);
     if let Some(sink) = sink {
         command.args(["--target", sink]);
     }
-    let mut child = command
+    command
         .arg("-")
         .stdin(Stdio::piped())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
-        .kill_on_drop(true)
-        .spawn()?;
+        .kill_on_drop(true);
+    command
+}
+
+async fn play(cue: Cue, sink: Option<&str>) -> anyhow::Result<()> {
+    let mut child = playback_command(sink).spawn()?;
     let mut stdin = child
         .stdin
         .take()
@@ -114,6 +119,38 @@ async fn play(cue: Cue, sink: Option<&str>) -> anyhow::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn recording_cue_has_an_immediate_audible_onset() {
+        let mut reader = hound::WavReader::new(std::io::Cursor::new(Cue::Recording.bytes()))
+            .expect("Recording cue must be decoded PCM audio");
+        let spec = reader.spec();
+        assert_eq!(spec.sample_format, hound::SampleFormat::Int);
+        assert_eq!(spec.bits_per_sample, 16);
+        assert_eq!(spec.channels, 2);
+        let onset = reader
+            .samples::<i16>()
+            .position(|sample| sample.unwrap().unsigned_abs() > 104)
+            .expect("Recording cue must contain audible audio");
+        let onset_frame = onset / usize::from(spec.channels);
+        assert!(onset_frame * 1000 <= spec.sample_rate as usize * 15);
+        let duration_ms = u64::from(reader.duration()) * 1000 / u64::from(spec.sample_rate);
+        assert!((200..400).contains(&duration_ms));
+    }
+
+    #[test]
+    fn playback_requests_low_latency_and_preserves_output_selection() {
+        for sink in [None, Some("test.monitor.stereo")] {
+            let command = playback_command(sink);
+            let mut expected = vec!["--latency", "20ms"];
+            if let Some(sink) = sink {
+                expected.extend(["--target", sink]);
+            }
+            expected.push("-");
+            assert_eq!(command.as_std().get_program(), "pw-play");
+            assert_eq!(command.as_std().get_args().collect::<Vec<_>>(), expected);
+        }
+    }
 
     #[test]
     fn cues_follow_real_state_changes_and_idle_cancel_is_silent() {
