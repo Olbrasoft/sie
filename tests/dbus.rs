@@ -68,6 +68,8 @@ struct State {
     cancel_on_paste: Option<Arc<AtomicBool>>,
     switch_on_start: bool,
     missing_keyboard: bool,
+    switcher_windows: Option<Vec<serde_json::Value>>,
+    activated_windows: Vec<u32>,
 }
 type Shared = Arc<Mutex<State>>;
 
@@ -147,12 +149,39 @@ struct Windows(Shared);
 #[zbus::interface(name = "org.gnome.Shell.Extensions.Windows")]
 impl Windows {
     fn list(&self) -> String {
-        let focus = self.0.lock().unwrap().focused_window;
+        let state = self.0.lock().unwrap();
+        if let Some(windows) = &state.switcher_windows {
+            let mut windows = windows.clone();
+            for window in &mut windows {
+                window["focus"] =
+                    (window["id"].as_u64() == Some(u64::from(state.focused_window))).into();
+            }
+            return serde_json::to_string(&windows).unwrap();
+        }
+        let focus = state.focused_window;
         serde_json::json!([
-            {"id":1,"wm_class":"org.gnome.TextEditor","focus":focus==1},
-            {"id":2,"wm_class":"OtherApplication","focus":focus==2}
+            {"id":1,"wm_class":"org.gnome.TextEditor","workspace":0,"focus":focus==1},
+            {"id":2,"wm_class":"OtherApplication","workspace":1,"focus":focus==2}
         ])
         .to_string()
+    }
+
+    fn activate(&self, id: u32) {
+        let mut state = self.0.lock().unwrap();
+        state.activated_windows.push(id);
+        state.focused_window = id;
+        let workspace = if let Some(windows) = &state.switcher_windows {
+            windows
+                .iter()
+                .find(|w| w["id"].as_u64() == Some(u64::from(id)))
+                .and_then(|w| w["workspace"].as_i64())
+                .map(|w| w as i32)
+        } else {
+            Some(id as i32 - 1)
+        };
+        if let Some(workspace) = workspace {
+            state.current = workspace;
+        }
     }
 }
 
@@ -832,6 +861,85 @@ async fn wait_for_frames(state: &Shared, minimum: usize) {
     })
     .await
     .unwrap();
+}
+
+#[tokio::test]
+async fn local_dial_activation_validates_workspace_and_window_before_activation() {
+    let bus = Bus::start();
+    let state = Shared::default();
+    let _server = services(&bus, state.clone(), vec![8, 23]).await;
+    let connection = bus.connection().await;
+    for (id, workspace) in [(2, Some(0)), (1, Some(1)), (99, None)] {
+        assert!(
+            sie::switcher::activate(&connection, id, workspace)
+                .await
+                .is_err()
+        );
+    }
+    assert!(state.lock().unwrap().activated_windows.is_empty());
+    sie::switcher::activate(&connection, 1, Some(0))
+        .await
+        .unwrap();
+    assert_eq!(state.lock().unwrap().activated_windows, [1]);
+    sie::switcher::activate(&connection, 2, None).await.unwrap();
+    let state = state.lock().unwrap();
+    assert_eq!(state.current, 1);
+    assert_eq!(state.focused_window, 2);
+    assert_eq!(state.activated_windows, [1, 2]);
+    assert!(
+        state.keys.is_empty(),
+        "Window activation never holds synthetic Alt"
+    );
+    assert_eq!(state.starts, 0);
+}
+
+#[tokio::test]
+async fn local_dial_worker_cycles_only_current_windows_and_restores_white_feedback() {
+    use sie::{lighting::DialFeedback, switcher};
+    use tokio::sync::{mpsc, watch};
+    let bus = Bus::start();
+    let state = Arc::new(Mutex::new(State {
+        focused_window: 1,
+        switcher_windows: Some(vec![
+            serde_json::json!({"id":1,"wm_class":"First","workspace":0}),
+            serde_json::json!({"id":2,"wm_class":"Second","workspace":0}),
+            serde_json::json!({"id":3,"wm_class":"OtherWorkspace","workspace":4}),
+        ]),
+        ..Default::default()
+    }));
+    let _server = services(&bus, state.clone(), vec![8, 23]).await;
+    let (commands, receiver) = mpsc::channel(4);
+    let (feedback, mut feedback_rx) = watch::channel(DialFeedback::Idle);
+    let task = tokio::spawn(switcher::run(bus.connection().await, receiver, feedback));
+    commands.send(switcher::Command::Turn(1)).await.unwrap();
+    tokio::time::timeout(
+        std::time::Duration::from_secs(2),
+        feedback_rx.wait_for(|v| *v == DialFeedback::Local),
+    )
+    .await
+    .unwrap()
+    .unwrap();
+    tokio::time::timeout(
+        std::time::Duration::from_secs(2),
+        feedback_rx.wait_for(|v| *v == DialFeedback::Idle),
+    )
+    .await
+    .unwrap()
+    .unwrap();
+    assert_eq!(state.lock().unwrap().activated_windows, [2]);
+    commands.send(switcher::Command::Turn(-1)).await.unwrap();
+    tokio::time::timeout(std::time::Duration::from_secs(2), async {
+        while state.lock().unwrap().activated_windows.len() < 2 {
+            tokio::time::sleep(std::time::Duration::from_millis(5)).await;
+        }
+    })
+    .await
+    .unwrap();
+    drop(commands);
+    task.await.unwrap();
+    assert_eq!(state.lock().unwrap().activated_windows, [2, 1]);
+    assert_eq!(*feedback_rx.borrow(), DialFeedback::Idle);
+    assert_eq!(state.lock().unwrap().current, 0);
 }
 
 #[tokio::test]

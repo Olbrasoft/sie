@@ -337,6 +337,18 @@ async fn run(
     let mut tasks = JoinSet::new();
     let mut about = JoinSet::new();
     let (macros, mut macro_rx) = mpsc::channel(8);
+    let (dial_requests, dial_rx) = mpsc::channel(16);
+    let (dial_feedback, mut dial_feedback_rx) =
+        tokio::sync::watch::channel(sie::lighting::DialFeedback::Idle);
+    let dial_task = if tray_only {
+        None
+    } else {
+        Some(tokio::spawn(sie::switcher::run(
+            connection.clone(),
+            dial_rx,
+            dial_feedback,
+        )))
+    };
     let (workspace_changes, mut workspace_rx) = mpsc::channel(1);
     let mut refresh = tokio::time::interval(Duration::from_secs(2));
     refresh.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
@@ -359,7 +371,8 @@ async fn run(
         )))
     };
     if !tray_only {
-        tasks.spawn(input::monitor(macros));
+        tasks.spawn(input::monitor(macros.clone()));
+        tasks.spawn(sie::dial_input::monitor(macros));
         tasks.spawn(media_focus::run(
             connection.clone(),
             broker,
@@ -433,6 +446,9 @@ async fn run(
             Some(_) = about.join_next(), if !about.is_empty() => {},
             Some((action, at)) = macro_rx.recv(), if !tray_only => {
                 let index = match action {
+                    InputAction::DialTurn(delta)=>{let _=dial_requests.try_send(sie::switcher::Command::Turn(delta));continue;},
+                    InputAction::DialClick=>{let _=dial_requests.try_send(sie::switcher::Command::Click);continue;},
+                    InputAction::DialDisconnected=>{let _=dial_requests.try_send(sie::switcher::Command::Cancel);continue;},
                     InputAction::Workspace(index) => index,
                     InputAction::MediaReveal => {
                         if let Some(fallback) = media_rx.borrow().target.clone() {
@@ -465,6 +481,12 @@ async fn run(
             Ok(()) = focus_status_rx.changed(), if !tray_only => {
                 let status = focus_status_rx.borrow_and_update().clone();
                 tray.update(move |tray| tray.focus_status = status).await;
+            },
+            Ok(()) = dial_feedback_rx.changed(), if !tray_only => {
+                let dial=*dial_feedback_rx.borrow_and_update();
+                lighting_requests.send_if_modified(|state| {
+                    if state.dial==dial {false} else {state.dial=dial;true}
+                });
             },
             Ok(()) = dictation_status_rx.changed(), if !tray_only => {
                 let status=dictation_status_rx.borrow_and_update().clone();
@@ -502,6 +524,15 @@ async fn run(
         }
     }
     drop(dictation_commands);
+    drop(dial_requests);
+    if let Some(mut task) = dial_task
+        && tokio::time::timeout(Duration::from_secs(3), &mut task)
+            .await
+            .is_err()
+    {
+        task.abort();
+        let _ = task.await;
+    }
     drop(lighting_requests);
     drop(mouse_requests);
     if let Some(mut task) = mouse_task
@@ -553,6 +584,7 @@ async fn refresh_lighting(
         workspace: active,
         playback: media.playback,
         recording,
+        dial: lighting_requests.borrow().dial,
     };
     lighting_requests.send_if_modified(|old| {
         if *old == next {

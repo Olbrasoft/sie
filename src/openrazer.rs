@@ -68,12 +68,36 @@ pub async fn apply_recording(
     playback: crate::media::Playback,
     elapsed: Option<Duration>,
 ) -> Result<usize> {
+    apply_state(
+        connection,
+        State {
+            workspace: active_workspace,
+            mode,
+            playback,
+            recording: elapsed.is_some(),
+            ..Default::default()
+        },
+        elapsed,
+    )
+    .await
+}
+
+async fn apply_state(
+    connection: &Connection,
+    state: State,
+    elapsed: Option<Duration>,
+) -> Result<usize> {
     let paths = devices(connection)
         .await
         .context("OpenRazer discovery failed")?;
     // A complete black custom frame also covers macro and ambient LEDs without
     // changing the user's saved brightness or disabling keyboard input.
-    let payload = encode_frame(&mode.frame_with_recording(active_workspace, playback, elapsed));
+    let payload = encode_frame(&state.mode.frame_with_dial(
+        state.workspace,
+        state.playback,
+        elapsed,
+        state.dial,
+    ));
     for path in &paths {
         let lighting = Proxy::new(
             connection,
@@ -115,15 +139,7 @@ pub async fn run(
             started = None;
             None
         };
-        let label = match apply_recording(
-            &connection,
-            state.workspace,
-            state.mode,
-            state.playback,
-            elapsed,
-        )
-        .await
-        {
+        let label = match apply_state(&connection, state, elapsed).await {
             Ok(count) => {
                 last_error.clear();
                 if count == 0 {

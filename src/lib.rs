@@ -6,6 +6,7 @@ pub mod config;
 pub mod context;
 pub mod corrections;
 pub mod desktop;
+pub mod dial_input;
 pub mod dictation;
 mod ducking;
 pub mod input;
@@ -19,6 +20,7 @@ pub mod openrazer;
 mod sounds;
 pub mod speech;
 mod speech_lock;
+pub mod switcher;
 pub mod terminal;
 pub mod tray;
 

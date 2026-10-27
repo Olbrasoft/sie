@@ -1,0 +1,2 @@
+# evdev opens uinput read/write; grant access only to the active desktop user.
+SUBSYSTEM=="misc", KERNEL=="uinput", TAG+="uaccess"

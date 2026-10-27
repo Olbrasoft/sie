@@ -11,6 +11,9 @@ pub enum InputAction {
     DictationCancel,
     DictationSubmit,
     MediaReveal,
+    DialTurn(i32),
+    DialClick,
+    DialDisconnected,
 }
 
 pub fn action_for_event(event: InputEvent) -> Option<InputAction> {
@@ -27,6 +30,9 @@ pub fn action_for_event(event: InputEvent) -> Option<InputAction> {
         return None;
     }
     match event.code() {
+        code if code == KeyCode::KEY_F24.code() || code == MACRO1 + 8 => {
+            Some(InputAction::DialClick)
+        }
         code if code == KeyCode::KEY_F18.code() || code == MACRO1 + 5 => {
             Some(InputAction::DictationSubmit)
         }
@@ -61,6 +67,24 @@ pub fn workspace_exists(index: u32, count: i32) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn dial_click_uses_only_release_and_cannot_trigger_other_controls() {
+        for code in [KeyCode::KEY_F24.code(), MACRO1 + 8] {
+            assert_eq!(
+                action_for_event(InputEvent::new(1, code, 0)),
+                Some(InputAction::DialClick)
+            );
+            for value in [1, 2] {
+                assert_eq!(action_for_event(InputEvent::new(1, code, value)), None);
+            }
+            assert_eq!(workspace_for_event(InputEvent::new(1, code, 1)), None);
+        }
+        assert_eq!(
+            action_for_event(InputEvent::new(2, KeyCode::KEY_F24.code(), 0)),
+            None
+        );
+    }
 
     #[test]
     fn media_reveal_uses_only_the_physical_play_pause_press() {

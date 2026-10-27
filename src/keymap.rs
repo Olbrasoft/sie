@@ -51,10 +51,17 @@ impl<T: Keymap> MacroKeymap<T> {
             changed: Vec::new(),
         };
         for (keycode, scancode) in entries {
-            if (u32::from(KeyCode::KEY_F13.code())..=u32::from(KeyCode::KEY_F20.code()))
+            let replacement = if (u32::from(KeyCode::KEY_F13.code())
+                ..=u32::from(KeyCode::KEY_F20.code()))
                 .contains(&keycode)
             {
-                let replacement = MACRO1 + (keycode as u16 - KeyCode::KEY_F13.code());
+                Some(MACRO1 + (keycode as u16 - KeyCode::KEY_F13.code()))
+            } else if keycode == u32::from(KeyCode::KEY_F24.code()) {
+                Some(MACRO1 + 8)
+            } else {
+                None
+            };
+            if let Some(replacement) = replacement {
                 // Record before writing so partial failures are rolled back as well.
                 guard.changed.push((keycode, scancode.clone()));
                 guard.device.write(&scancode, replacement)?;
@@ -146,6 +153,22 @@ mod tests {
         let original = keymap.entries().unwrap();
         keymap.fail_code = Some(658);
         assert!(MacroKeymap::install_on(keymap.clone()).is_err());
+        assert_eq!(keymap.entries().unwrap(), original);
+    }
+
+    #[test]
+    fn command_dial_is_isolated_without_remapping_other_function_keys() {
+        let keymap = fixture();
+        keymap.entries.lock().unwrap().extend([
+            (u32::from(KeyCode::KEY_F24.code()), vec![24]),
+            (u32::from(KeyCode::KEY_F23.code()), vec![23]),
+        ]);
+        let original = keymap.entries().unwrap();
+        let guard = MacroKeymap::install_on(keymap.clone()).unwrap();
+        let mapped = keymap.entries().unwrap();
+        assert_eq!(mapped[mapped.len() - 2].0, u32::from(MACRO1 + 8));
+        assert_eq!(mapped.last(), original.last());
+        drop(guard);
         assert_eq!(keymap.entries().unwrap(), original);
     }
 

@@ -1,7 +1,7 @@
 # System Interface Extensions
 
 System Interface Extensions (SIE) is an MIT-licensed Rust desktop companion
-for extending how input devices control a Linux computer. Version 0.11.0 is a
+for extending how input devices control a Linux computer. Version 0.12.0 is a
 GNOME/Wayland proof of concept for the **Razer BlackWidow V4 Pro** (`1532:028d`).
 
 - A top-panel tray opens a Czech menu with **O aplikaci** (the running binary's
@@ -32,6 +32,11 @@ GNOME/Wayland proof of concept for the **Razer BlackWidow V4 Pro** (`1532:028d`)
   releases, autorepeat and ordinary typing are ignored.
 - On workspace 6 or higher, all five macro keys stay white. The tray uses
   workspace numbers starting at one; the diagnostic CLI explicitly uses indices.
+- The **Command Dial beside Escape** cycles windows on the current workspace
+  when rotated, briefly lighting green. Press it to open a picker of windows
+  from all workspaces (orange); rotate to select and press again to activate.
+  Escape or leaving the picker cancels; idle is white. See
+  [Command Dial setup and behavior](docs/command-dial.md).
 - Local Czech dictation uses Whisper large-v3-turbo, with CUDA or CPU inference.
   The **bottom side button** starts recording, then stops and transcribes.
   The **middle side button** cancels recording or transcription without delivery;
@@ -66,6 +71,9 @@ supported keyboard, and:
 - `gsettings` for shortcut inspection and `zenity` for the About dialog.
 - The installed Window Calls GNOME extension for revealing player windows;
   browser tab selection additionally needs the [local SIE browser bridge](docs/media-reveal.md).
+- Command Dial selection uses the same Window Calls extension, Python 3 with
+  PyGObject/GTK 3 (`python3-gi`, `gir1.2-gtk-3.0`), and desktop-user access to
+  `/dev/uinput` via the supplied [udev rule](docs/command-dial.md#local-access).
 
 Tests additionally need `dbus-daemon` and `glib-compile-schemas` (Debian packages
 `dbus-daemon` and `libglib2.0-bin`), `tmux`, CMake and a C/C++ compiler for whisper.cpp.
