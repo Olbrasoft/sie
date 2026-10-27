@@ -1,13 +1,10 @@
-//! Rust selection policy with an owned GTK view and existing GNOME window calls.
+//! Local window policy and a client for the native GNOME application switcher.
 use crate::{desktop, lighting::DialFeedback};
 use anyhow::{Context, Result, ensure};
 use serde::{Deserialize, Serialize};
-use std::{collections::HashSet, process::Stdio, time::Duration};
+use std::{collections::HashSet, time::Duration};
 use tokio::{
-    io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
-    process::{Child, ChildStdin, Command as Process},
     sync::{mpsc, watch},
-    task::JoinHandle,
     time::Instant,
 };
 use zbus::{Connection, Proxy};
@@ -123,141 +120,58 @@ pub enum Command {
     Click,
     Cancel,
 }
-#[derive(Deserialize)]
-struct Message {
-    event: String,
-    #[serde(default)]
-    index: usize,
-    #[serde(default)]
-    revision: u64,
-}
-struct UiEvent {
-    epoch: u64,
-    message: Message,
+pub const NATIVE_BUS: &str = "cz.olbrasoft.SIE.Switcher";
+pub const NATIVE_PATH: &str = "/cz/olbrasoft/SIE/Switcher";
+const NATIVE_TIMEOUT: Duration = Duration::from_millis(750);
+
+pub async fn available(connection: &Connection) -> bool {
+    tokio::time::timeout(NATIVE_TIMEOUT, async {
+        let proxy = zbus::fdo::DBusProxy::new(connection).await?;
+        Ok::<_, anyhow::Error>(proxy.name_has_owner(NATIVE_BUS.try_into()?).await?)
+    })
+    .await
+    .ok()
+    .and_then(Result::ok)
+    .unwrap_or(false)
 }
 
-struct Selection {
-    index: usize,
-    len: usize,
-    revision: u64,
+struct NativePicker {
+    token: u32,
 }
 
-impl Selection {
-    fn turn(&mut self, delta: i32) -> serde_json::Value {
-        self.index = step(self.index, self.len, delta).unwrap_or(0);
-        self.revision = self.revision.wrapping_add(1);
-        serde_json::json!({"selected":self.index,"revision":self.revision})
+async fn native_proxy(connection: &Connection) -> Result<Proxy<'_>> {
+    Ok(Proxy::new(connection, NATIVE_BUS, NATIVE_PATH, NATIVE_BUS).await?)
+}
+
+impl NativePicker {
+    async fn open(connection: &Connection) -> Result<Self> {
+        let proxy = native_proxy(connection).await?;
+        let token: u32 = tokio::time::timeout(NATIVE_TIMEOUT, proxy.call("Open", &()))
+            .await?
+            .context("Enable the SIE Native Application Switcher GNOME extension; first installation requires logout/login")?;
+        ensure!(token != 0, "Native switcher returned an invalid token");
+        Ok(Self { token })
     }
 
-    fn observe(&mut self, message: &Message) {
-        // Programmatic selection echoes may arrive after another turn.
-        if message.revision == self.revision && message.index < self.len {
-            self.index = message.index;
-        }
+    async fn turn(&self, connection: &Connection, delta: i32) -> Result<bool> {
+        let proxy = native_proxy(connection).await?;
+        Ok(
+            tokio::time::timeout(NATIVE_TIMEOUT, proxy.call("Move", &(self.token, delta)))
+                .await??,
+        )
     }
-}
 
-struct Picker {
-    child: Child,
-    stdin: ChildStdin,
-    reader: JoinHandle<()>,
-    epoch: u64,
-    items: Vec<Window>,
-    selection: Selection,
-}
+    async fn active(&self, connection: &Connection) -> Result<bool> {
+        let proxy = native_proxy(connection).await?;
+        Ok(tokio::time::timeout(NATIVE_TIMEOUT, proxy.call("Active", &(self.token,))).await??)
+    }
 
-impl Picker {
-    async fn send(&mut self, value: serde_json::Value) -> Result<()> {
-        let mut bytes = serde_json::to_vec(&value)?;
-        bytes.push(b'\n');
-        tokio::time::timeout(Duration::from_secs(1), self.stdin.write_all(&bytes)).await??;
+    async fn close(self, connection: &Connection, confirm: bool) -> Result<()> {
+        let proxy = native_proxy(connection).await?;
+        let _: bool =
+            tokio::time::timeout(NATIVE_TIMEOUT, proxy.call("Finish", &(self.token, confirm)))
+                .await??;
         Ok(())
-    }
-    async fn close(mut self) {
-        let _ = self.child.kill().await;
-        self.reader.abort();
-    }
-
-    async fn open(
-        connection: &Connection,
-        epoch: u64,
-        events: mpsc::Sender<UiEvent>,
-    ) -> Result<Self> {
-        let mut items = choices(&windows(connection).await?, None, None);
-        ensure!(!items.is_empty(), "No application windows to select");
-        items.sort_by_key(|w| (w.workspace.unwrap_or(-1), w.wm_class.to_lowercase(), w.id));
-        let selected = items.iter().position(|w| w.focus).unwrap_or(0);
-        let mut child = Process::new("/usr/bin/python3")
-            .args(["-u", "-c", include_str!("../assets/dial-picker.py")])
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::inherit())
-            .kill_on_drop(true)
-            .spawn()?;
-        let pid = child.id().context("Missing picker process")?;
-        let stdin = child.stdin.take().context("Missing picker input")?;
-        let stdout = child.stdout.take().context("Missing picker events")?;
-        let reader = tokio::spawn(async move {
-            let mut lines = BufReader::new(stdout).lines();
-            while let Ok(Some(line)) = lines.next_line().await {
-                if line.len() > 4096 {
-                    break;
-                }
-                if let Ok(message) = serde_json::from_str(&line)
-                    && events.send(UiEvent { epoch, message }).await.is_err()
-                {
-                    return;
-                }
-            }
-            let _ = events
-                .send(UiEvent {
-                    epoch,
-                    message: Message {
-                        event: "cancel".into(),
-                        index: 0,
-                        revision: 0,
-                    },
-                })
-                .await;
-        });
-        let mut picker = Self {
-            child,
-            stdin,
-            reader,
-            epoch,
-            selection: Selection {
-                index: selected,
-                len: items.len(),
-                revision: 0,
-            },
-            items,
-        };
-        // Only display metadata is passed to the view; no typing is inspected.
-        let rows: Vec<_> = picker
-            .items
-            .iter()
-            .map(|w| {
-                serde_json::json!({
-                    "wm_class": w.wm_class,
-                    "title": w.title.chars().take(240).collect::<String>(),
-                    "workspace": w.workspace.unwrap_or(0)
-                })
-            })
-            .collect();
-        picker
-            .send(serde_json::json!({"windows":rows,"selected":selected}))
-            .await?;
-        for _ in 0..40 {
-            if let Some(window) = windows(connection).await?.iter().find(|w| w.pid == pid) {
-                activate(connection, window.id, None).await?;
-                return Ok(picker);
-            }
-            if picker.child.try_wait()?.is_some() {
-                anyhow::bail!("Application picker exited during startup");
-            }
-            tokio::time::sleep(Duration::from_millis(50)).await;
-        }
-        anyhow::bail!("Application picker did not appear")
     }
 }
 
@@ -266,15 +180,15 @@ pub async fn run(
     mut requests: mpsc::Receiver<Command>,
     feedback: watch::Sender<DialFeedback>,
 ) {
-    let (ui_events, mut ui) = mpsc::channel::<UiEvent>(16);
-    let mut picker: Option<Picker> = None;
-    let mut epoch = 0u64;
+    let mut picker: Option<NativePicker> = None;
     let mut green_until: Option<Instant> = None;
+    let mut poll = tokio::time::interval(Duration::from_millis(100));
+    poll.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
     loop {
-        let event = tokio::select! {
+        let command = tokio::select! {
             biased;
-            event=ui.recv()=>event.map(Ok),
-            request=requests.recv()=>match request {Some(request)=>Some(Err(request)),None=>break},
+            request=requests.recv()=>match request {Some(request)=>Some(request),None=>break},
+            _=poll.tick(), if picker.is_some()=>None,
             _=async {if let Some(at)=green_until {tokio::time::sleep_until(at).await;} else {std::future::pending::<()>().await;}}=>{
                 green_until=None;
                 feedback.send_replace(DialFeedback::Idle);
@@ -282,8 +196,8 @@ pub async fn run(
             },
         };
         let result: Result<()> = async {
-            match event {
-                Some(Err(Command::Turn(delta))) if picker.is_none() => {
+            match command {
+                Some(Command::Turn(delta)) if picker.is_none() => {
                     let workspace = desktop::current_workspace(&connection).await?;
                     let list = choices(&windows(&connection).await?, Some(workspace), None);
                     if let Some(id) = local_target(&list, delta) {
@@ -292,69 +206,50 @@ pub async fn run(
                         green_until = Some(Instant::now() + Duration::from_millis(150));
                     }
                 }
-                Some(Err(Command::Turn(delta))) => {
-                    let picker = picker.as_mut().unwrap();
-                    let update = picker.selection.turn(delta);
-                    picker.send(update).await?;
-                }
-                Some(Err(Command::Click)) => {
-                    if let Some(picker) = &mut picker {
-                        picker.send(serde_json::json!({"confirm":true})).await?;
-                    } else {
-                        green_until = None;
-                        epoch = epoch.wrapping_add(1);
-                        feedback.send_replace(DialFeedback::Global);
-                        picker = Some(Picker::open(&connection, epoch, ui_events.clone()).await?);
+                Some(Command::Turn(delta)) => {
+                    if !picker.as_ref().unwrap().turn(&connection, delta).await? {
+                        picker = None;
+                        feedback.send_replace(DialFeedback::Idle);
                     }
                 }
-                Some(Err(Command::Cancel)) => {
+                Some(Command::Click) => {
+                    green_until = None;
                     if let Some(picker) = picker.take() {
-                        picker.close().await;
+                        picker.close(&connection, true).await?;
+                        feedback.send_replace(DialFeedback::Idle);
+                    } else {
+                        picker = Some(NativePicker::open(&connection).await?);
+                        feedback.send_replace(DialFeedback::Global);
+                    }
+                }
+                Some(Command::Cancel) => {
+                    if let Some(picker) = picker.take() {
+                        picker.close(&connection, false).await?;
                     }
                     green_until = None;
                     feedback.send_replace(DialFeedback::Idle);
                 }
-                Some(Ok(event)) if picker.as_ref().is_some_and(|p| p.epoch == event.epoch) => {
-                    match event.message.event.as_str() {
-                        "selected" => {
-                            picker.as_mut().unwrap().selection.observe(&event.message);
-                        }
-                        "confirm" => {
-                            let p = picker.take().unwrap();
-                            let focused = windows(&connection)
-                                .await?
-                                .iter()
-                                .any(|w| w.focus && Some(w.pid) == p.child.id());
-                            let target = p.items.get(event.message.index).map(|w| w.id);
-                            p.close().await;
-                            if focused && let Some(id) = target {
-                                activate(&connection, id, None).await?;
-                            }
-                            feedback.send_replace(DialFeedback::Idle);
-                        }
-                        "cancel" => {
-                            picker.take().unwrap().close().await;
-                            feedback.send_replace(DialFeedback::Idle);
-                        }
-                        _ => {}
+                None => {
+                    if !picker.as_ref().unwrap().active(&connection).await? {
+                        picker = None;
+                        feedback.send_replace(DialFeedback::Idle);
                     }
                 }
-                _ => {}
             }
             Ok(())
         }
         .await;
         if let Err(error) = result {
-            tracing::warn!(%error,"Command Dial switching unavailable");
+            tracing::warn!(error=%format!("{error:#}"), "Command Dial switching unavailable");
             if let Some(picker) = picker.take() {
-                picker.close().await;
+                let _ = picker.close(&connection, false).await;
             }
             green_until = None;
             feedback.send_replace(DialFeedback::Idle);
         }
     }
     if let Some(picker) = picker {
-        picker.close().await;
+        let _ = picker.close(&connection, false).await;
     }
     feedback.send_replace(DialFeedback::Idle);
 }
@@ -362,27 +257,6 @@ pub async fn run(
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn rapid_global_turns_ignore_stale_view_echoes_but_accept_current_mouse_selection() {
-        let mut selection = Selection {
-            index: 0,
-            len: 5,
-            revision: 0,
-        };
-        assert_eq!(selection.turn(1)["selected"], 1);
-        assert_eq!(selection.turn(1)["selected"], 2);
-        let stale = serde_json::from_str(r#"{"event":"selected","index":1,"revision":1}"#).unwrap();
-        selection.observe(&stale);
-        assert_eq!(selection.turn(1)["selected"], 3);
-        let mouse = serde_json::from_str(r#"{"event":"selected","index":0,"revision":3}"#).unwrap();
-        selection.observe(&mouse);
-        assert_eq!(selection.turn(-1)["selected"], 4);
-        let invalid =
-            serde_json::from_str(r#"{"event":"selected","index":99,"revision":4}"#).unwrap();
-        selection.observe(&invalid);
-        assert_eq!(selection.turn(-1)["selected"], 3);
-    }
 
     fn window(id: u32, workspace: Option<i32>, focus: bool) -> Window {
         Window {

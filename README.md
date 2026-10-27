@@ -1,7 +1,7 @@
 # System Interface Extensions
 
 System Interface Extensions (SIE) is an MIT-licensed Rust desktop companion
-for extending how input devices control a Linux computer. Version 0.12.0 is a
+for extending how input devices control a Linux computer. Version 0.13.0 is a
 GNOME/Wayland proof of concept for the **Razer BlackWidow V4 Pro** (`1532:028d`).
 
 - A top-panel tray opens a Czech menu with **O aplikaci** (the running binary's
@@ -33,9 +33,9 @@ GNOME/Wayland proof of concept for the **Razer BlackWidow V4 Pro** (`1532:028d`)
 - On workspace 6 or higher, all five macro keys stay white. The tray uses
   workspace numbers starting at one; the diagnostic CLI explicitly uses indices.
 - The **Command Dial beside Escape** cycles windows on the current workspace
-  when rotated, briefly lighting green. Press it to open a picker of windows
-  from all workspaces (orange); rotate to select and press again to activate.
-  Escape or leaving the picker cancels; idle is white. See
+  when rotated, briefly lighting green. Press it to open GNOME's native Alt+Tab
+  application strip across workspaces (orange); rotate to select and press again
+  to activate. Escape or eight seconds of inactivity cancels; idle is white. See
   [Command Dial setup and behavior](docs/command-dial.md).
 - Local Czech dictation uses Whisper large-v3-turbo, with CUDA or CPU inference.
   The **bottom side button** starts recording, then stops and transcribes.
@@ -50,8 +50,9 @@ GNOME/Wayland proof of concept for the **Razer BlackWidow V4 Pro** (`1532:028d`)
   output and restores its prior channel volumes as recording ends.
 - An independent PostgreSQL database holds a one-time copy of VirtualAssistant's
   text corrections. No audio or transcript is sent to an LLM or remote API.
-- Existing GNOME integrations are reused; no additional Shell extension is needed
-  on the development workstation. Legacy VirtualAssistant shortcuts remain independent.
+- Existing GNOME integrations are reused. A small Shell adapter controls the native
+  Alt+Tab strip without holding virtual modifiers. Legacy VirtualAssistant
+  shortcuts remain independent.
 
 See [the proof of concept and architecture](docs/proof-of-concept.md) for scope,
 the Rust decision, integration boundaries and the future voice roadmap.
@@ -71,9 +72,12 @@ supported keyboard, and:
 - `gsettings` for shortcut inspection and `zenity` for the About dialog.
 - The installed Window Calls GNOME extension for revealing player windows;
   browser tab selection additionally needs the [local SIE browser bridge](docs/media-reveal.md).
-- Command Dial selection uses the same Window Calls extension, Python 3 with
-  PyGObject/GTK 3 (`python3-gi`, `gir1.2-gtk-3.0`), and desktop-user access to
-  `/dev/uinput` via the supplied [udev rule](docs/command-dial.md#local-access).
+- Local Command Dial cycling uses Window Calls. Global selection needs the bundled
+  `sie-switcher@olbrasoft.cz` adapter for GNOME 48, installed by `scripts/install.sh`.
+  Its first activation requires one logout/login; the tray reports readiness.
+  No separate GTK picker or GTK runtime is used. The installer needs Python 3 with
+  PyGObject (`python3-gi`) to enable the adapter. Dial passthrough needs desktop-user
+  access to `/dev/uinput` via the supplied [udev rule](docs/command-dial.md#local-access).
 
 Tests additionally need `dbus-daemon` and `glib-compile-schemas` (Debian packages
 `dbus-daemon` and `libglib2.0-bin`), `tmux`, CMake and a C/C++ compiler for whisper.cpp.

@@ -16,6 +16,7 @@ fi
 install -Dm755 "$project_root/target/release/sie" "$HOME/.local/bin/sie"
 install -Dm755 "$project_root/target/release/sie-browser-host" "$HOME/.local/bin/sie-browser-host"
 python3 "$project_root/scripts/install-browser-bridge.py"
+python3 "$project_root/scripts/install-native-switcher.py"
 install -Dm644 "$project_root/packaging/sie.service" "$config_dir/systemd/user/sie.service"
 install -Dm644 "$project_root/packaging/cz.olbrasoft.SystemInterfaceExtensions.desktop" \
     "$data_dir/applications/cz.olbrasoft.SystemInterfaceExtensions.desktop"

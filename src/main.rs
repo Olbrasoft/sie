@@ -321,6 +321,7 @@ async fn run(
         .into(),
         media_status: MediaStatus::default().label(),
         focus_status: None,
+        switcher_status: (!tray_only).then(|| "Přepínání aplikací: kontroluji…".into()),
         lighting_controls_available: !tray_only,
         dictation_status: initial,
         dictation_controls_available: !tray_only,
@@ -514,6 +515,12 @@ async fn run(
                     Ok(()) = media_rx.changed() => {},
                 }
             }, if !tray_only => {
+                let ready = sie::switcher::available(&connection).await;
+                tray.update(move |tray| tray.switcher_status = Some(if ready {
+                    "Přepínání aplikací: připraveno"
+                } else {
+                    "Přepínání aplikací: odhlaste se a znovu přihlaste"
+                }.into())).await;
                 let media=media_rx.borrow_and_update().clone();
                 let recording = dictation_status_rx.borrow().phase == Phase::Recording;
                 refresh_lighting(&connection, &tray, lighting_mode, &media, recording, &lighting_requests, &mut last_status).await;

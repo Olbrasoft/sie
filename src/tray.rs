@@ -37,6 +37,7 @@ pub struct AppTray {
     pub workspace_status: String,
     pub media_status: String,
     pub focus_status: Option<String>,
+    pub switcher_status: Option<String>,
     pub dictation_status: DictationStatus,
     pub dictation_controls_available: bool,
 }
@@ -179,7 +180,10 @@ impl Tray for AppTray {
             }
             .into(),
         ];
-        if let Some(label) = &self.focus_status {
+        for label in [&self.focus_status, &self.switcher_status]
+            .into_iter()
+            .flatten()
+        {
             menu.insert(
                 0,
                 StandardItem {
@@ -248,6 +252,7 @@ mod tests {
             workspace_status: "Ready".into(),
             media_status: "Média nedostupná".into(),
             focus_status: None,
+            switcher_status: None,
             dictation_status: DictationStatus::new(false, Phase::Disabled),
             dictation_controls_available: true,
         };
@@ -273,6 +278,7 @@ mod tests {
             workspace_status: "Ready".into(),
             media_status: "Média nedostupná".into(),
             focus_status: None,
+            switcher_status: None,
             dictation_status: DictationStatus::new(false, Phase::Disabled),
             dictation_controls_available: true,
         };
@@ -316,6 +322,7 @@ mod tests {
             workspace_status: "Ready".into(),
             media_status: "Média nedostupná".into(),
             focus_status: None,
+            switcher_status: None,
             dictation_status: DictationStatus::new(true, Phase::Recording),
             dictation_controls_available: true,
         };
