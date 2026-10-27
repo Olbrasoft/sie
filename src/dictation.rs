@@ -93,7 +93,39 @@ pub fn completion_is_current(active: Option<u64>, completed: u64, cancelled: boo
 
 struct Delivery {
     target: FocusTarget,
-    mode: desktop::DeliveryMode,
+}
+
+struct Completed {
+    characters: usize,
+    receipt: Option<desktop::PasteReceipt>,
+}
+
+struct ActiveJob {
+    id: u64,
+    cancelled: Arc<AtomicBool>,
+    submit_requested: bool,
+}
+
+impl ActiveJob {
+    fn new(id: u64, cancelled: Arc<AtomicBool>, submit_requested: bool) -> Self {
+        Self {
+            id,
+            cancelled,
+            submit_requested,
+        }
+    }
+
+    fn request_submit(&mut self) {
+        self.submit_requested = true;
+    }
+
+    fn accepts(&self, completed: u64) -> bool {
+        completion_is_current(
+            Some(self.id),
+            completed,
+            self.cancelled.load(Ordering::SeqCst),
+        )
+    }
 }
 
 async fn complete(
@@ -104,7 +136,7 @@ async fn complete(
     duration: i64,
     delivery: Delivery,
     cancelled: Arc<AtomicBool>,
-) -> Result<usize> {
+) -> Result<Completed> {
     let abort = cancelled.clone();
     let raw = tokio::task::spawn_blocking(move || engine.transcribe(&pcm, abort)).await??;
     ensure!(!cancelled.load(Ordering::SeqCst), "Dictation canceled");
@@ -113,13 +145,15 @@ async fn complete(
     let (corrected, used) = processor.apply(&raw);
     ensure!(!cancelled.load(Ordering::SeqCst), "Dictation canceled");
     if corrected.trim().is_empty() {
-        return Ok(0);
+        return Ok(Completed {
+            characters: 0,
+            receipt: None,
+        });
     }
-    let pasted = desktop::paste_text_with_mode(
+    let pasted = desktop::paste_text_with_receipt(
         &connection,
         &delivery.target,
         &corrected,
-        delivery.mode,
         cancelled.clone(),
     )
     .await;
@@ -141,8 +175,10 @@ async fn complete(
     {
         tracing::warn!(%error, "Could not save dictation history");
     }
-    pasted?;
-    Ok(corrected.chars().count())
+    Ok(Completed {
+        characters: corrected.chars().count(),
+        receipt: pasted?,
+    })
 }
 
 pub async fn run(
@@ -165,7 +201,7 @@ pub async fn run(
     let ducking = Ducking::new(config.duck_sink.clone(), config.duck_volume_percent);
     let mut recording: Option<(Recording, FocusTarget)> = None;
     let mut deadline: Option<Instant> = None;
-    let mut active: Option<(u64, Arc<AtomicBool>)> = None;
+    let mut active: Option<ActiveJob> = None;
     let mut generation = 0;
     let engine = Arc::new(SpeechEngine::new(config.clone()));
     let mut jobs = JoinSet::new();
@@ -179,8 +215,19 @@ pub async fn run(
     ));
     loop {
         tokio::select! {
+            // Process queued control requests before a simultaneous completion,
+            // so a pending submit stays attached to the job that is finishing.
+            biased;
             command = commands.recv() => {
                 let Some(command) = command else { break; };
+                if command == Command::FinishAndSubmit && recording.is_none() && active.is_none() {
+                    if let Err(error) = desktop::press_enter(&connection).await {
+                        tracing::warn!(%error, "Top side button could not send Enter");
+                    } else {
+                        tracing::info!("Top side button sent standalone Enter");
+                    }
+                    continue;
+                }
                 if let Command::SetEnabled(value) = command {
                     if value == enabled { continue; }
                     enabled = value;
@@ -189,7 +236,7 @@ pub async fn run(
                     ducking.set_recording(false);
                     feedback.transition(if enabled { Phase::Idle } else { Phase::Disabled }, true);
                     if let Some((recording, _)) = recording.take() { recording.cancel().await; }
-                    if let Some((_, cancelled)) = active.take() { cancelled.store(true, Ordering::SeqCst); }
+                    if let Some(job) = active.take() { job.cancelled.store(true, Ordering::SeqCst); }
                     deadline = None;
                     speech_lock.release().await;
                     status.send_replace(Status::new(enabled, if enabled { Phase::Idle } else { Phase::Disabled }));
@@ -200,10 +247,13 @@ pub async fn run(
                     status.send_replace(Status::new(true, Phase::Idle));
                     continue;
                 }
-                if active.is_some() { continue; }
-                // Submission belongs only to the recording explicitly finished
-                // with this command; it cannot arm a future or running job.
-                if command == Command::FinishAndSubmit && recording.is_none() { continue; }
+                if let Some(job) = &mut active {
+                    if command == Command::FinishAndSubmit {
+                        job.request_submit();
+                        tracing::info!(job=job.id, "Top side button queued current dictation submission");
+                    }
+                    continue;
+                }
                 if let Some((capture, target)) = recording.take() {
                     // Restore media independently while capture drains; never
                     // wait for transcription to finish before requesting it.
@@ -214,13 +264,12 @@ pub async fn run(
                             generation += 1;
                             let id = generation;
                             let cancelled = Arc::new(AtomicBool::new(false));
-                            active = Some((id, cancelled.clone()));
+                            active = Some(ActiveJob::new(id, cancelled.clone(), command == Command::FinishAndSubmit));
                             let config = config.clone();
                             let connection = connection.clone();
                             let engine = engine.clone();
                             let delivery = Delivery {
                                 target,
-                                mode: if command == Command::FinishAndSubmit { desktop::DeliveryMode::Submit } else { desktop::DeliveryMode::PasteOnly },
                             };
                             feedback.transition(Phase::Transcribing, false);
                             status.send_replace(Status::new(true, Phase::Transcribing));
@@ -268,13 +317,13 @@ pub async fn run(
                             generation += 1;
                             let id = generation;
                             let cancelled = Arc::new(AtomicBool::new(false));
-                            active = Some((id,cancelled.clone()));
+                            active = Some(ActiveJob::new(id,cancelled.clone(),false));
                             let config=config.clone(); let connection=connection.clone(); let engine=engine.clone();
                             feedback.transition(Phase::Transcribing, false);
                             status.send_replace(Status::new(true,Phase::Transcribing));
                             jobs.spawn(async move {
                                 let mut abort=AbortOnDrop::new(cancelled.clone());
-                                let delivery=Delivery{target,mode:desktop::DeliveryMode::PasteOnly};
+                                let delivery=Delivery{target};
                                 let result=complete(config,connection,engine,pcm,duration,delivery,cancelled).await;
                                 abort.disarm();
                                 (id,result)
@@ -286,13 +335,30 @@ pub async fn run(
             },
             Some(result) = jobs.join_next(), if !jobs.is_empty() => {
                 match result {
-                    Ok((id, result)) if completion_is_current(active.as_ref().map(|(id,_)| *id), id, active.as_ref().is_some_and(|(_, flag)| flag.load(Ordering::SeqCst))) => {
+                    Ok((id, result)) if active.as_ref().is_some_and(|job| job.accepts(id)) => {
+                        let result = match result {
+                            Ok(mut completed) if active.as_ref().is_some_and(|job| job.submit_requested) && completed.receipt.is_some() => {
+                                let receipt = completed.receipt.take().unwrap();
+                                let cancelled = active.as_ref().unwrap().cancelled.clone();
+                                let connection = connection.clone();
+                                // Keep the job active and cancellable through deferred Enter.
+                                // The consumed receipt prevents repeated presses from sending twice.
+                                jobs.spawn(async move {
+                                    let mut abort = AbortOnDrop::new(cancelled.clone());
+                                    let result = receipt.submit(&connection, &cancelled).await.map(|()| completed);
+                                    abort.disarm();
+                                    (id, result)
+                                });
+                                continue;
+                            }
+                            result => result,
+                        };
                         active = None;
                         feedback.transition(Phase::Idle, false);
                         speech_lock.release().await;
                         match result {
-                            Ok(length) => {
-                                tracing::info!(characters=length, "Local dictation completed");
+                            Ok(completed) => {
+                                tracing::info!(characters=completed.characters, "Local dictation completed");
                                 status.send_replace(Status::new(enabled, Phase::Idle));
                             }
                             Err(error) => { speech_lock.release().await; publish_error(&status, &mut feedback, enabled, error); },
@@ -300,7 +366,7 @@ pub async fn run(
                     }
                     Ok(_) => {},
                     Err(error) => {
-                        if let Some((_,cancelled))=active.take() { cancelled.store(true,Ordering::SeqCst); }
+                        if let Some(job)=active.take() { job.cancelled.store(true,Ordering::SeqCst); }
                         speech_lock.release().await;
                         publish_error(&status,&mut feedback,enabled,error.into());
                     },
@@ -312,8 +378,8 @@ pub async fn run(
     if let Some((recording, _)) = recording.take() {
         recording.cancel().await;
     }
-    if let Some((_, cancelled)) = active.take() {
-        cancelled.store(true, Ordering::SeqCst);
+    if let Some(job) = active.take() {
+        job.cancelled.store(true, Ordering::SeqCst);
     }
     speech_lock.release().await;
     ducking.shutdown().await;
@@ -355,6 +421,23 @@ fn publish_error(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn queued_submission_coalesces_and_cannot_cross_a_canceled_or_later_job() {
+        let cancelled = Arc::new(AtomicBool::new(false));
+        let mut first = ActiveJob::new(7, cancelled.clone(), false);
+        first.request_submit();
+        first.request_submit();
+        assert!(first.submit_requested);
+        assert!(first.accepts(7));
+        assert!(!first.accepts(8));
+        cancelled.store(true, Ordering::SeqCst);
+        assert!(!first.accepts(7));
+        let next = ActiveJob::new(8, Arc::new(AtomicBool::new(false)), false);
+        assert!(!next.submit_requested);
+        assert!(!next.accepts(7));
+        assert!(next.accepts(8));
+    }
     #[test]
     fn canceled_and_stale_transcriptions_cannot_complete_a_new_session() {
         assert!(completion_is_current(Some(7), 7, false));
