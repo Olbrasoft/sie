@@ -74,10 +74,16 @@ export class Controller {
         const popup = this._popup;
         this._clear();
         if (popup) {
-            if (confirm)
-                popup.confirm();
-            else
+            if (confirm) {
+                try {
+                    popup.confirm();
+                } catch (error) {
+                    popup.cancel();
+                    throw error;
+                }
+            } else {
                 popup.cancel();
+            }
         }
     }
 

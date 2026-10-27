@@ -1,6 +1,6 @@
 # Command Dial window switching
 
-SIE 0.13.0 supports the top-left Command Dial beside Escape on the full-size
+SIE 0.13.1 supports the top-left Command Dial beside Escape on the full-size
 Razer BlackWidow V4 Pro (`1532:028d`, OpenRazer matrix 8 × 23).
 
 | Action | Behavior | Dial color |
@@ -45,7 +45,10 @@ prototypes. No additional daemon is installed. GNOME handles application
 selection and activation, Escape, mouse cancellation and popup destruction.
 
 The session-bus interface `cz.olbrasoft.SIE.Switcher`, object
-`/cz/olbrasoft/SIE/Switcher`, offers `Open`, `Move`, `Finish` and `Active`.
+`/cz/olbrasoft/SIE/Switcher`, offers `Version`, `Open`, `Move`, `Finish` and
+`Active`. SIE 0.13.1 requires protocol version 2, which includes fresh-timestamp
+confirmation. An older already-loaded adapter is reported as requiring a new
+login rather than being treated as ready just because its bus name exists.
 Each popup belongs to its caller's unique bus name and generation token, so
 another caller or stale token cannot move/confirm it. Caller disappearance or
 extension disable cancels. Like the native keybinding, opening requires the
@@ -54,6 +57,16 @@ timer during activity; Rust checks popup state every 100 ms while global mode
 is active to restore white after native dismissal. Dial disconnect and SIE
 shutdown request cancellation too. Communication errors clear feedback, while
 the Shell-side timer bounds a popup whose caller can no longer reach it.
+
+Dial confirmation runs in a D-Bus callback rather than an input-event handler.
+It obtains a fresh compositor timestamp with
+`Meta.Display.get_current_time_roundtrip()` immediately before the native
+`_finish()` call. `global.get_current_time()` may return zero or stale time in
+this context, causing GNOME's activation guard to leave the old window focused
+even though the strip closes. Escape and idle cancellation never activate a
+window. Failed confirmation cancels the popup and clears its timer/ownership.
+See the upstream [event timestamp contract](https://github.com/GNOME/gnome-shell/blob/48.7/src/shell-global.c#L1285)
+and [application activation guard](https://github.com/GNOME/gnome-shell/blob/48.7/src/shell-app.c).
 
 GNOME's `org.gnome.shell.app-switcher current-workspace-only` setting must be
 false for global application switching; that is the workstation's existing

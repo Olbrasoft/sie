@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {Controller, IDLE_TIMEOUT_MS} from './controller.js';
+import {confirmPopup} from './confirmation.js';
 
 function fixture(workspaceOnly = false) {
     const timers = new Map();
@@ -43,6 +44,65 @@ test('native selection moves both directions and confirms only on click', () => 
     assert.equal(popups[0].confirmed, 1);
     assert.equal(c.active(':1.5', token), false);
     assert.equal(timers.size, 0);
+});
+
+test('dial confirmation outside an input event uses fresh compositor time to activate the selected workspace', () => {
+    const {controller:c, popups} = fixture();
+    const token = c.open(':1.5');
+    c.move(':1.5', token, 2);
+    const popup = popups[0];
+    const lastUserTime = 9000;
+    let freshTime = 9001;
+    let requested = 0;
+    let focusedWorkspace = 0;
+    let received = 0;
+    const native = {
+        _finish(timestamp) {
+            received = timestamp;
+            // Model GNOME's focus-stealing guard and the selected window.
+            if (timestamp >= lastUserTime)
+                focusedWorkspace = popup.position;
+        },
+    };
+    const display = {get_current_time_roundtrip() { requested++; return freshTime; }};
+    // Establish the old failure: closing with CURRENT_TIME does not activate.
+    native._finish(0);
+    assert.equal(focusedWorkspace, 0);
+    popup.confirm = () => confirmPopup(native, display);
+    freshTime = 9010; // Obtain time at confirmation, not when the strip opened.
+    c.finish(':1.5', token, true);
+    assert.equal(requested, 1);
+    assert.equal(received, 9010);
+    assert.equal(focusedWorkspace, 3);
+});
+
+test('invalid timestamps and native activation errors cancel and clear ownership/timers', () => {
+    for (const timestamp of [0, -1, NaN, 0x100000000, 42]) {
+        const {controller:c, popups, timers} = fixture();
+        const token = c.open(':1.5');
+        popups[0].confirm = () => confirmPopup({
+            _finish() {
+                assert.equal(timestamp, 42, 'Invalid timestamps must not reach GNOME');
+                throw new Error('Selected window has closed');
+            },
+        }, {get_current_time_roundtrip: () => timestamp});
+        assert.throws(() => c.finish(':1.5', token, true));
+        assert.equal(popups[0].canceled, 1);
+        assert.equal(c.active(':1.5', token), false);
+        assert.equal(timers.size, 0);
+    }
+});
+
+test('native Escape and inactivity never request an activation timestamp', () => {
+    for (const finish of ['escape', 'idle', 'cancel']) {
+        const {controller:c, popups, timers} = fixture();
+        const token = c.open(':1.5');
+        popups[0].confirm = () => assert.fail('Cancellation must not activate a window');
+        if (finish === 'escape') popups[0].closed();
+        else if (finish === 'idle') [...timers.values()][0]();
+        else c.finish(':1.5', token, false);
+        assert.equal(c.active(':1.5', token), false);
+    }
 });
 
 test('eight-second inactivity cancels without activating; activity resets it', () => {

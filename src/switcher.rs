@@ -123,11 +123,13 @@ pub enum Command {
 pub const NATIVE_BUS: &str = "cz.olbrasoft.SIE.Switcher";
 pub const NATIVE_PATH: &str = "/cz/olbrasoft/SIE/Switcher";
 const NATIVE_TIMEOUT: Duration = Duration::from_millis(750);
+const NATIVE_PROTOCOL_VERSION: u32 = 2;
 
 pub async fn available(connection: &Connection) -> bool {
     tokio::time::timeout(NATIVE_TIMEOUT, async {
-        let proxy = zbus::fdo::DBusProxy::new(connection).await?;
-        Ok::<_, anyhow::Error>(proxy.name_has_owner(NATIVE_BUS.try_into()?).await?)
+        let proxy = native_proxy(connection).await?;
+        let version: u32 = proxy.call("Version", &()).await?;
+        Ok::<_, anyhow::Error>(version == NATIVE_PROTOCOL_VERSION)
     })
     .await
     .ok()
@@ -145,6 +147,10 @@ async fn native_proxy(connection: &Connection) -> Result<Proxy<'_>> {
 
 impl NativePicker {
     async fn open(connection: &Connection) -> Result<Self> {
+        ensure!(
+            available(connection).await,
+            "The native switcher adapter needs activation or an update; log out and back in"
+        );
         let proxy = native_proxy(connection).await?;
         let token: u32 = tokio::time::timeout(NATIVE_TIMEOUT, proxy.call("Open", &()))
             .await?

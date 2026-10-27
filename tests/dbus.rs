@@ -75,6 +75,7 @@ struct State {
     native_finishes: Vec<bool>,
     native_opens: usize,
     native_fail_move: bool,
+    native_version: Option<u32>,
 }
 type Shared = Arc<Mutex<State>>;
 
@@ -195,6 +196,9 @@ struct RazerManager(Shared);
 struct NativeSwitcher(Shared);
 #[zbus::interface(name = "cz.olbrasoft.SIE.Switcher")]
 impl NativeSwitcher {
+    fn version(&self) -> u32 {
+        self.0.lock().unwrap().native_version.unwrap_or(2)
+    }
     fn open(&self) -> u32 {
         let mut state = self.0.lock().unwrap();
         state.native_active = true;
@@ -1044,38 +1048,44 @@ async fn native_move_failure_cancels_the_owned_popup_and_restores_white() {
 }
 
 #[tokio::test]
-async fn missing_native_extension_leaves_local_rotation_available_without_synthetic_keys() {
+async fn missing_or_outdated_native_extension_leaves_local_rotation_available_without_synthetic_keys()
+ {
     use sie::{
         lighting::DialFeedback,
         switcher::{self, Command},
     };
     use tokio::sync::{mpsc, watch};
-    let bus = Bus::start();
-    let state = Arc::new(Mutex::new(State {
-        focused_window: 1,
-        switcher_windows: Some(vec![
-            serde_json::json!({"id":1,"wm_class":"First","workspace":0}),
-            serde_json::json!({"id":2,"wm_class":"Second","workspace":0}),
-        ]),
-        ..Default::default()
-    }));
-    let server = services(&bus, state.clone(), vec![8, 23]).await;
-    server.release_name(switcher::NATIVE_BUS).await.unwrap();
-    let connection = bus.connection().await;
-    assert!(!switcher::available(&connection).await);
-    let (commands, receiver) = mpsc::channel(4);
-    let (feedback, feedback_rx) = watch::channel(DialFeedback::Idle);
-    let task = tokio::spawn(switcher::run(connection, receiver, feedback));
-    commands.send(Command::Click).await.unwrap();
-    commands.send(Command::Turn(1)).await.unwrap();
-    wait_for_native(&state, |s| !s.activated_windows.is_empty()).await;
-    drop(commands);
-    task.await.unwrap();
-    let state = state.lock().unwrap();
-    assert_eq!(state.native_opens, 0);
-    assert_eq!(state.activated_windows, [2]);
-    assert!(state.keys.is_empty());
-    assert_eq!(*feedback_rx.borrow(), DialFeedback::Idle);
+    for version in [None, Some(1)] {
+        let bus = Bus::start();
+        let state = Arc::new(Mutex::new(State {
+            focused_window: 1,
+            native_version: version,
+            switcher_windows: Some(vec![
+                serde_json::json!({"id":1,"wm_class":"First","workspace":0}),
+                serde_json::json!({"id":2,"wm_class":"Second","workspace":0}),
+            ]),
+            ..Default::default()
+        }));
+        let server = services(&bus, state.clone(), vec![8, 23]).await;
+        if version.is_none() {
+            server.release_name(switcher::NATIVE_BUS).await.unwrap();
+        }
+        let connection = bus.connection().await;
+        assert!(!switcher::available(&connection).await);
+        let (commands, receiver) = mpsc::channel(4);
+        let (feedback, feedback_rx) = watch::channel(DialFeedback::Idle);
+        let task = tokio::spawn(switcher::run(connection, receiver, feedback));
+        commands.send(Command::Click).await.unwrap();
+        commands.send(Command::Turn(1)).await.unwrap();
+        wait_for_native(&state, |s| !s.activated_windows.is_empty()).await;
+        drop(commands);
+        task.await.unwrap();
+        let state = state.lock().unwrap();
+        assert_eq!(state.native_opens, 0);
+        assert_eq!(state.activated_windows, [2]);
+        assert!(state.keys.is_empty());
+        assert_eq!(*feedback_rx.borrow(), DialFeedback::Idle);
+    }
 }
 
 #[tokio::test]

@@ -7,10 +7,12 @@ import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as AltTab from 'resource:///org/gnome/shell/ui/altTab.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {Controller} from './controller.js';
+import {confirmPopup} from './confirmation.js';
 
 const BUS = 'cz.olbrasoft.SIE.Switcher';
 const PATH = '/cz/olbrasoft/SIE/Switcher';
 const XML = `<node><interface name="${BUS}">
+  <method name="Version"><arg type="u" direction="out"/></method>
   <method name="Open"><arg type="u" direction="out"/></method>
   <method name="Move"><arg type="u" direction="in"/><arg type="i" direction="in"/><arg type="b" direction="out"/></method>
   <method name="Finish"><arg type="u" direction="in"/><arg type="b" direction="in"/><arg type="b" direction="out"/></method>
@@ -53,7 +55,7 @@ function createPopup() {
             for (let i = 0; i < Math.abs(delta); i++)
                 popup._select(delta > 0 ? popup._next() : popup._previous());
         },
-        confirm() { popup._finish(global.get_current_time()); },
+        confirm() { confirmPopup(popup, global.display); },
         cancel() { popup.destroy(); },
     };
 }
@@ -97,6 +99,10 @@ export default class NativeSwitcherExtension extends Extension {
 
     OpenAsync(_args, invocation) {
         this._reply(invocation, '(u)', () => this._controller.open(invocation.get_sender()));
+    }
+
+    Version() {
+        return 2;
     }
 
     MoveAsync([token, delta], invocation) {
