@@ -74,6 +74,8 @@ struct State {
     native_steps: Vec<i32>,
     native_finishes: Vec<bool>,
     native_opens: usize,
+    native_local_opens: Vec<i32>,
+    native_fail_open: bool,
     native_fail_move: bool,
     native_version: Option<u32>,
 }
@@ -197,13 +199,22 @@ struct NativeSwitcher(Shared);
 #[zbus::interface(name = "cz.olbrasoft.SIE.Switcher")]
 impl NativeSwitcher {
     fn version(&self) -> u32 {
-        self.0.lock().unwrap().native_version.unwrap_or(2)
+        self.0.lock().unwrap().native_version.unwrap_or(3)
     }
     fn open(&self) -> u32 {
         let mut state = self.0.lock().unwrap();
         state.native_active = true;
         state.native_opens += 1;
         1
+    }
+    fn open_local(&self, delta: i32) -> zbus::fdo::Result<u32> {
+        let mut state = self.0.lock().unwrap();
+        if state.native_fail_open {
+            return Err(zbus::fdo::Error::Failed("No local applications".into()));
+        }
+        state.native_active = true;
+        state.native_local_opens.push(delta);
+        Ok(1)
     }
     fn active(&self, token: u32) -> bool {
         token == 1 && self.0.lock().unwrap().native_active
@@ -1048,14 +1059,13 @@ async fn native_move_failure_cancels_the_owned_popup_and_restores_white() {
 }
 
 #[tokio::test]
-async fn missing_or_outdated_native_extension_leaves_local_rotation_available_without_synthetic_keys()
- {
+async fn missing_or_outdated_native_extension_never_falls_back_to_immediate_local_activation() {
     use sie::{
         lighting::DialFeedback,
         switcher::{self, Command},
     };
     use tokio::sync::{mpsc, watch};
-    for version in [None, Some(1)] {
+    for version in [None, Some(1), Some(2), Some(4)] {
         let bus = Bus::start();
         let state = Arc::new(Mutex::new(State {
             focused_window: 1,
@@ -1076,13 +1086,14 @@ async fn missing_or_outdated_native_extension_leaves_local_rotation_available_wi
         let (feedback, feedback_rx) = watch::channel(DialFeedback::Idle);
         let task = tokio::spawn(switcher::run(connection, receiver, feedback));
         commands.send(Command::Click).await.unwrap();
+        commands.send(Command::Cancel).await.unwrap();
         commands.send(Command::Turn(1)).await.unwrap();
-        wait_for_native(&state, |s| !s.activated_windows.is_empty()).await;
         drop(commands);
         task.await.unwrap();
         let state = state.lock().unwrap();
-        assert_eq!(state.native_opens, 0);
-        assert_eq!(state.activated_windows, [2]);
+        assert_eq!(state.native_opens, usize::from(version == Some(2)));
+        assert!(state.native_local_opens.is_empty());
+        assert!(state.activated_windows.is_empty());
         assert!(state.keys.is_empty());
         assert_eq!(*feedback_rx.borrow(), DialFeedback::Idle);
     }
@@ -1119,19 +1130,11 @@ async fn local_dial_activation_validates_workspace_and_window_before_activation(
 }
 
 #[tokio::test]
-async fn local_dial_worker_cycles_only_current_windows_and_restores_white_feedback() {
+async fn local_dial_worker_previews_without_activation_and_confirms_on_click() {
     use sie::{lighting::DialFeedback, switcher};
     use tokio::sync::{mpsc, watch};
     let bus = Bus::start();
-    let state = Arc::new(Mutex::new(State {
-        focused_window: 1,
-        switcher_windows: Some(vec![
-            serde_json::json!({"id":1,"wm_class":"First","workspace":0}),
-            serde_json::json!({"id":2,"wm_class":"Second","workspace":0}),
-            serde_json::json!({"id":3,"wm_class":"OtherWorkspace","workspace":4}),
-        ]),
-        ..Default::default()
-    }));
+    let state = Shared::default();
     let _server = services(&bus, state.clone(), vec![8, 23]).await;
     let (commands, receiver) = mpsc::channel(4);
     let (feedback, mut feedback_rx) = watch::channel(DialFeedback::Idle);
@@ -1144,27 +1147,108 @@ async fn local_dial_worker_cycles_only_current_windows_and_restores_white_feedba
     .await
     .unwrap()
     .unwrap();
-    tokio::time::timeout(
-        std::time::Duration::from_secs(2),
-        feedback_rx.wait_for(|v| *v == DialFeedback::Idle),
-    )
-    .await
-    .unwrap()
-    .unwrap();
-    assert_eq!(state.lock().unwrap().activated_windows, [2]);
+    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+    assert_eq!(*feedback_rx.borrow(), DialFeedback::Local);
+    assert!(state.lock().unwrap().activated_windows.is_empty());
+    assert!(state.lock().unwrap().native_finishes.is_empty());
     commands.send(switcher::Command::Turn(-1)).await.unwrap();
-    tokio::time::timeout(std::time::Duration::from_secs(2), async {
-        while state.lock().unwrap().activated_windows.len() < 2 {
-            tokio::time::sleep(std::time::Duration::from_millis(5)).await;
-        }
-    })
-    .await
-    .unwrap();
+    wait_for_native(&state, |s| !s.native_steps.is_empty()).await;
+    commands.send(switcher::Command::Click).await.unwrap();
+    wait_for_native(&state, |s| !s.native_finishes.is_empty()).await;
     drop(commands);
     task.await.unwrap();
-    assert_eq!(state.lock().unwrap().activated_windows, [2, 1]);
+    let state = state.lock().unwrap();
+    assert_eq!(state.native_local_opens, [1]);
+    assert_eq!(state.native_steps, [-1]);
+    assert_eq!(state.native_finishes, [true]);
+    assert_eq!(state.native_opens, 0);
+    assert!(state.activated_windows.is_empty());
+    assert!(state.keys.is_empty());
     assert_eq!(*feedback_rx.borrow(), DialFeedback::Idle);
-    assert_eq!(state.lock().unwrap().current, 0);
+    assert_eq!(state.current, 0);
+}
+
+#[tokio::test]
+async fn local_first_delta_is_forwarded_once_and_zero_does_not_open_a_picker() {
+    use sie::{
+        lighting::DialFeedback,
+        switcher::{self, Command},
+    };
+    use tokio::sync::{mpsc, watch};
+    for delta in [0, -1, -3, 2] {
+        let bus = Bus::start();
+        let state = Shared::default();
+        let _server = services(&bus, state.clone(), vec![8, 23]).await;
+        let (commands, receiver) = mpsc::channel(4);
+        let (feedback, feedback_rx) = watch::channel(DialFeedback::Idle);
+        let task = tokio::spawn(switcher::run(bus.connection().await, receiver, feedback));
+        commands.send(Command::Turn(delta)).await.unwrap();
+        drop(commands);
+        task.await.unwrap();
+        let state = state.lock().unwrap();
+        assert_eq!(
+            state.native_local_opens,
+            if delta == 0 { vec![] } else { vec![delta] }
+        );
+        assert!(state.native_steps.is_empty());
+        assert_eq!(
+            state.native_finishes,
+            if delta == 0 { vec![] } else { vec![false] }
+        );
+        assert!(state.activated_windows.is_empty());
+        assert_eq!(*feedback_rx.borrow(), DialFeedback::Idle);
+    }
+}
+
+#[tokio::test]
+async fn local_dismissal_disconnect_and_errors_restore_idle_without_activation() {
+    use sie::{
+        lighting::DialFeedback,
+        switcher::{self, Command},
+    };
+    use tokio::sync::{mpsc, watch};
+    for reason in ["native", "cancel", "move-error", "open-error"] {
+        let bus = Bus::start();
+        let state = Arc::new(Mutex::new(State {
+            native_fail_move: reason == "move-error",
+            native_fail_open: reason == "open-error",
+            ..Default::default()
+        }));
+        let _server = services(&bus, state.clone(), vec![8, 23]).await;
+        let (commands, receiver) = mpsc::channel(4);
+        let (feedback, mut feedback_rx) = watch::channel(DialFeedback::Idle);
+        let task = tokio::spawn(switcher::run(bus.connection().await, receiver, feedback));
+        commands.send(Command::Turn(-1)).await.unwrap();
+        if reason != "open-error" {
+            tokio::time::timeout(
+                std::time::Duration::from_secs(2),
+                feedback_rx.wait_for(|v| *v == DialFeedback::Local),
+            )
+            .await
+            .unwrap()
+            .unwrap();
+            match reason {
+                "native" => state.lock().unwrap().native_active = false,
+                "cancel" => commands.send(Command::Cancel).await.unwrap(),
+                _ => commands.send(Command::Turn(1)).await.unwrap(),
+            }
+            tokio::time::timeout(
+                std::time::Duration::from_secs(2),
+                feedback_rx.wait_for(|v| *v == DialFeedback::Idle),
+            )
+            .await
+            .unwrap()
+            .unwrap();
+        }
+        drop(commands);
+        task.await.unwrap();
+        let state = state.lock().unwrap();
+        assert!(state.native_finishes.iter().all(|confirm| !confirm));
+        assert!(!state.native_active);
+        assert!(state.activated_windows.is_empty());
+        assert!(state.keys.is_empty());
+        assert_eq!(*feedback_rx.borrow(), DialFeedback::Idle);
+    }
 }
 
 #[tokio::test]

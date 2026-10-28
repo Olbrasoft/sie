@@ -8,23 +8,44 @@ import * as AltTab from 'resource:///org/gnome/shell/ui/altTab.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {Controller} from './controller.js';
 import {confirmPopup} from './confirmation.js';
+import {scopePopup} from './scope.js';
 
 const BUS = 'cz.olbrasoft.SIE.Switcher';
 const PATH = '/cz/olbrasoft/SIE/Switcher';
 const XML = `<node><interface name="${BUS}">
   <method name="Version"><arg type="u" direction="out"/></method>
   <method name="Open"><arg type="u" direction="out"/></method>
+  <method name="OpenLocal"><arg type="i" direction="in"/><arg type="u" direction="out"/></method>
   <method name="Move"><arg type="u" direction="in"/><arg type="i" direction="in"/><arg type="b" direction="out"/></method>
   <method name="Finish"><arg type="u" direction="in"/><arg type="b" direction="in"/><arg type="b" direction="out"/></method>
   <method name="Active"><arg type="u" direction="in"/><arg type="b" direction="out"/></method>
 </interface></node>`;
 
-function createPopup() {
+function createPopup({local, delta}) {
     // Match the native Alt+Tab keybinding's normal-session action mode.
     if (Main.sessionMode.isLocked || Main.sessionMode.isGreeter ||
         Main.actionMode !== Shell.ActionMode.NORMAL)
         throw new Error('The native switcher requires the normal unlocked desktop');
     const popup = new AltTab.AppSwitcherPopup();
+    if (local) {
+        try {
+            const workspace = global.workspace_manager.get_active_workspace();
+            const focused = global.display.focus_window;
+            const scope = scopePopup(popup, workspace,
+                () => global.workspace_manager.get_active_workspace(),
+                focused?.is_attached_dialog() ? focused.get_transient_for() : focused, delta);
+            // Invalidate the frozen local list instead of ever following a target
+            // to another workspace or showing stale previews after it closes.
+            global.workspace_manager.connectObject('active-workspace-changed', () => popup.destroy(), popup);
+            for (const window of scope.windows) {
+                window.connectObject('workspace-changed', () => popup.destroy(),
+                    'unmanaged', () => popup.destroy(), popup);
+            }
+        } catch (error) {
+            popup.destroy();
+            throw error;
+        }
+    }
     let activity = () => {};
     // Use GNOME's no-modifier mode, with our cancellation-only idle timeout.
     // Changes apply only to this popup instance, never to Shell prototypes.
@@ -101,8 +122,12 @@ export default class NativeSwitcherExtension extends Extension {
         this._reply(invocation, '(u)', () => this._controller.open(invocation.get_sender()));
     }
 
+    OpenLocalAsync([delta], invocation) {
+        this._reply(invocation, '(u)', () => this._controller.open(invocation.get_sender(), {local: true, delta}));
+    }
+
     Version() {
-        return 2;
+        return 3;
     }
 
     MoveAsync([token, delta], invocation) {

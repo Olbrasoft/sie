@@ -1,7 +1,7 @@
 # System Interface Extensions
 
 System Interface Extensions (SIE) is an MIT-licensed Rust desktop companion
-for extending how input devices control a Linux computer. Version 0.14.0 is a
+for extending how input devices control a Linux computer. Version 0.15.0 is a
 GNOME/Wayland proof of concept for the **Razer BlackWidow V4 Pro** (`1532:028d`).
 
 - A top-panel tray opens a Czech menu with **O aplikaci** (the running binary's
@@ -32,10 +32,11 @@ GNOME/Wayland proof of concept for the **Razer BlackWidow V4 Pro** (`1532:028d`)
   releases, autorepeat and ordinary typing are ignored.
 - On workspace 6 or higher, all five macro keys stay white. The tray uses
   workspace numbers starting at one; the diagnostic CLI explicitly uses indices.
-- The **Command Dial beside Escape** cycles windows on the current workspace
-  when rotated, briefly lighting green. Press it to open GNOME's native Alt+Tab
-  application strip across workspaces (orange); rotate to select and press again
-  to activate. Escape or eight seconds of inactivity cancels; idle is white. See
+- The **Command Dial beside Escape** opens GNOME's native Alt+Tab application
+  strip for the current workspace when rotated (green). Rotation selects an icon
+  without changing applications; press to confirm. Press while idle to open the
+  same strip across workspaces (orange), then rotate and press again to activate.
+  Escape or eight seconds of inactivity cancels; idle is white. See
   [Command Dial setup and behavior](docs/command-dial.md).
 - Local Czech dictation uses Whisper large-v3-turbo, with CUDA or CPU inference.
   The **bottom side button** starts recording, then stops and transcribes.
@@ -76,7 +77,7 @@ supported keyboard, and:
 - `gsettings` for shortcut inspection and `zenity` for the About dialog.
 - The installed Window Calls GNOME extension for revealing player windows;
   browser tab selection additionally needs the [local SIE browser bridge](docs/media-reveal.md).
-- Local Command Dial cycling uses Window Calls. Global selection needs the bundled
+- Both Command Dial selection modes need the bundled
   `sie-switcher@olbrasoft.cz` adapter for GNOME 48, installed by `scripts/install.sh`.
   Its first activation requires one logout/login; the tray reports readiness.
   No separate GTK picker or GTK runtime is used. The installer needs Python 3 with
