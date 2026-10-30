@@ -85,11 +85,17 @@ pub struct Control {
     pub(crate) gate: watch::Sender<Gate>,
     pub(crate) wake: Notify,
     status: watch::Sender<Status>,
+    pub(crate) ducking: crate::ducking::Handle,
 }
 
 impl Control {
+    #[cfg(test)]
     fn new() -> Arc<Self> {
+        Self::with_ducking(crate::ducking::Handle::default())
+    }
+    fn with_ducking(ducking: crate::ducking::Handle) -> Arc<Self> {
         Arc::new(Self {
+            ducking,
             gate: watch::channel(Gate::default()).0,
             wake: Notify::new(),
             status: watch::channel(Status::default()).0,
@@ -149,17 +155,28 @@ impl Control {
 pub struct Runtime {
     pub control: Arc<Control>,
     tasks: Vec<JoinHandle<()>>,
+    ducking: Option<crate::ducking::Ducking>,
 }
 
 impl Runtime {
-    pub async fn start(options: &Options, database_url: &str) -> Result<Self> {
+    pub async fn start(
+        options: &Options,
+        database_url: &str,
+        duck_sink: Option<String>,
+        duck_percent: u8,
+    ) -> Result<Self> {
         let settings = Settings::load(options)?;
         let store = Arc::new(Store::connect(database_url, options.max_pending).await?);
         store.own_consumer().await?;
         let listener=tokio::net::TcpListener::bind(options.listen).await
             .map_err(|_|anyhow::anyhow!("Cannot bind the notification API; stop VirtualAssistant before switching the shared port"))?;
         let chain = tts::Chain::new(settings.clone(), store.clone()).await?;
-        let control = Control::new();
+        ensure!(
+            duck_sink.as_deref() != Some(settings.sound_sink.as_str()),
+            "Speech and attenuated media outputs must differ"
+        );
+        let ducking = crate::ducking::Ducking::new(duck_sink, duck_percent);
+        let control = Control::with_ducking(ducking.handle());
         control.publish(false, store.count().await?, false);
         let credentials = settings
             .providers
@@ -185,16 +202,21 @@ impl Runtime {
             NativeSpeaker {
                 chain,
                 sink: settings.sound_sink,
+                ducking: ducking.handle(),
                 cached: None,
             },
         ));
         Ok(Self {
             control,
             tasks: vec![server, worker],
+            ducking: Some(ducking),
         })
     }
-    pub async fn shutdown(mut self) {
+    pub fn request_shutdown(&self) {
         self.control.gate.send_modify(|g| g.shutdown = true);
+    }
+    pub async fn shutdown(mut self) {
+        self.request_shutdown();
         for mut task in self.tasks.drain(..) {
             if tokio::time::timeout(Duration::from_secs(3), &mut task)
                 .await
@@ -203,6 +225,9 @@ impl Runtime {
                 task.abort();
                 let _ = task.await;
             }
+        }
+        if let Some(ducking) = self.ducking.take() {
+            ducking.shutdown().await;
         }
     }
 }
@@ -223,6 +248,7 @@ struct NativeSpeaker {
     chain: tts::Chain,
     sink: String,
     cached: Option<(String, String, Vec<u8>)>,
+    ducking: crate::ducking::Handle,
 }
 impl Speaker for NativeSpeaker {
     async fn speak(&mut self, request: &Request) -> Result<()> {
@@ -237,7 +263,8 @@ impl Speaker for NativeSpeaker {
                 .await?;
             self.cached = Some((request.source.clone(), request.text.clone(), audio));
         }
-        let result = process::play(&self.cached.as_ref().unwrap().2, &self.sink).await;
+        let result =
+            process::play(&self.cached.as_ref().unwrap().2, &self.sink, &self.ducking).await;
         self.cached = None;
         result
     }

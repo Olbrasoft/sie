@@ -1,7 +1,7 @@
 # System Interface Extensions
 
 System Interface Extensions (SIE) is an MIT-licensed Rust desktop companion
-for extending how input devices control a Linux computer. Version 0.16.0 is a
+for extending how input devices control a Linux computer. Version 0.17.0 is a
 GNOME/Wayland proof of concept for the **Razer BlackWidow V4 Pro** (`1532:028d`).
 
 - A top-panel tray opens a Czech menu with **O aplikaci** (the running binary's
@@ -40,15 +40,17 @@ GNOME/Wayland proof of concept for the **Razer BlackWidow V4 Pro** (`1532:028d`)
   [Command Dial setup and behavior](docs/command-dial.md).
 - Local Czech dictation uses Whisper large-v3-turbo, with CUDA or CPU inference.
   The **bottom side button** starts recording, then stops and transcribes.
-  The **middle side button** cancels recording or transcription without delivery;
+  **Pause** or **Escape** cancels recording or transcription without delivery;
+  the **middle side button** is deliberately inactive;
   the **top side button** finishes an active recording, transcribes, pastes and
   sends one Enter. During transcription it queues submission after successful
   paste; outside recording/transcription it acts as a literal Enter.
   The tray offers normal start/stop and cancellation.
   Original VirtualAssistant sound cues mark recording start, transcription
   (looping typing) and cancellation (paper rip).
-  Optional recording-only volume ducking quiets one explicitly selected media
-  output and restores its prior channel volumes as recording ends.
+  Optional volume ducking quiets one explicitly selected media output during
+  recording and spoken notifications. Overlapping activity shares one saved
+  volume and restores it when the last activity ends.
 - An independent PostgreSQL database holds a one-time copy of VirtualAssistant's
   text corrections. No audio or transcript is sent to an LLM or remote API.
 - Spoken agent notifications run inside SIE, with the existing source voices,
@@ -173,7 +175,7 @@ tracking/Mutter interfaces. No new GNOME extension or inference service was
 installed on the development workstation.
 
 After one-time database import, restart SIE. Bottom button release toggles
-recording; middle button release discards it. While transcribing, another bottom
+recording; Pause or Escape discards it. The middle side button has no action. While transcribing, another bottom
 press is ignored. The menu shows recording/transcription and offers cancel.
 GUI apps, ordinary terminals and CLI agents use their appropriate paste paths;
 attached tmux terminals receive text through a private buffer into the focused
@@ -193,9 +195,8 @@ sie --transcribe-file /absolute/path/16khz-mono-s16.wav
 
 The file command prints corrected text and never pastes. Microphone audio stays
 in memory; completed raw/corrected text is stored in the independent SIE history.
-Cancel discards the current recording or pending output. During migration,
-VirtualAssistant's Scroll Lock/Pause behavior remains available; use one
-recorder at a time.
+Cancel discards the current recording or pending output. VirtualAssistant can
+remain stopped when SIE owns dictation and spoken notifications.
 
 The optional CUDA setting `flash_attention = true` can reduce inference latency;
 it defaults to false and requires an application restart. See the
@@ -231,3 +232,7 @@ of the keyboard colors are separate checks described in the design document.
 ## License
 
 [MIT](LICENSE), copyright 2026 Jiří Tůma.
+
+Codex F8 voice has its own device selection. The workstation setup for the same
+Logitech microphone and ViewSonic speakers is documented in
+[Codex voice audio routing](docs/codex-voice-audio.md).

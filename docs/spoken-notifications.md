@@ -42,6 +42,22 @@ There is no permanent audio cache or played-message archive. Private temporary
 audio/text files for CLI providers are deleted after use; process output, network
 response sizes and execution time are bounded.
 
+## Analog media attenuation
+
+Since 0.17.0, notifications share the recording attenuation controller configured
+by `dictation.duck_sink` and `dictation.duck_volume_percent` (20 means one fifth
+of each channel's original volume). This applies even when dictation is disabled.
+The speech output must differ from the attenuated output. On this workstation,
+Bose analog media is reduced and the ViewSonic speech output is unchanged.
+
+A notification acquires attenuation after decoding and waits for volume control
+before starting playback. Idle media outputs are left alone, but are checked
+while speech continues in case media starts. Recording and simultaneous speech
+leases share one original snapshot; they never multiply the reduction or restore
+early. Completion, errors, interruption and shutdown release ownership. Manual
+volume changes, replaced devices and mute state are respected. Restoration runs
+independently of transcription. No audio is captured to detect media activity.
+
 ## Voices, quotas and credentials
 
 Configuration stores only references such as `google/primary`. The desktop

@@ -17,7 +17,9 @@ restore the original map. Version 0.7.0 assigns the top side button to explicit
 finish-and-submit.
 
 - Bottom release: idle → recording → local transcription → paste → idle.
-- Middle release: cancel recording or transcription; discard pending output.
+- Pause or Escape release: cancel recording or transcription; discard pending output.
+- Middle release: deliberately ignored since 0.17.0, preventing accidental loss.
+  Its guarded macro remapping remains active so it cannot mute the microphone.
 - Top release while recording: stop → local transcription → paste → one Enter.
 - Since 0.11.0, top release during transcription queues one submission for that
   job, after successful paste and another window/pane/cancellation check. Repeated
@@ -56,7 +58,7 @@ The real-model regression verifies cancellation followed by repeated inference.
 ## Keyboard recording indication
 
 Since 0.8.0, the ambient strip animates a rainbow during `Recording` and returns
-to white when capture ends, including while transcribing. All three buttons and
+to white when capture ends, including while transcribing. Side buttons, cancellation keys and
 the tray use the same phase signal. Lighting off overrides the animation. This
 first stage is time-based, not reactive to voice intensity; see the separate
 [effect design and voice-intensity feasibility assessment](recording-lighting.md).
@@ -88,8 +90,8 @@ The system-wide TONOR input/Bose analog output defaults were left unchanged.
 output; by default SIE uses the current system output. Missing playback support
 is logged without preventing dictation. Sound tests inspect the embedded PCM
 onset and command arguments and select cues with playback disabled; CI never
-plays real audio. Escape/Pause remain VirtualAssistant keys;
-SIE cancellation is the middle side button or its tray action.
+plays real audio. Pause, Escape and the tray cancellation action share the same
+cancel path; Fn+Pause (the distinct Sleep key) remains untouched.
 
 ### Short cues after monitor audio has been idle
 
@@ -124,7 +126,8 @@ automated Rust tests do not use desktop audio or a microphone.
 ## Media volume while recording
 
 Since 0.10.0, an optional `duck_sink` names the one playback output to attenuate
-during microphone capture. The portable default is unset, so other installations
+during microphone capture and, since 0.17.0, spoken notification playback.
+The portable default is unset, so other installations
 do not change any output volume. On the development workstation it selects Bose
 (`alsa_output.pci-0000_0a_00.4.playback.0.0`), separate from ViewSonic feedback.
 
@@ -138,7 +141,7 @@ The dictation actor only signals a separate serialized volume worker. It request
 restoration before awaiting capture shutdown on normal finish, finish-and-submit
 and the recording deadline, and also on cancellation, disable or graceful exit.
 Transcription can proceed concurrently and does not prolong attenuation. Failed
-recording starts never request attenuation. Missing outputs or volume errors are
+recording starts release any preparatory attenuation. Missing outputs or volume errors are
 logged or ignored without preventing dictation; volume subprocesses have bounded
 timeouts and failed restoration is retried.
 

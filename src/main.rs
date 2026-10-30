@@ -282,6 +282,8 @@ async fn run(connection: Connection, tray_only: bool, config: AppConfig) -> Resu
             sie::notifications::Runtime::start(
                 &config.notifications,
                 &dictation_config.database_url,
+                dictation_config.duck_sink.clone(),
+                dictation_config.duck_volume_percent,
             )
             .await?,
         )
@@ -552,6 +554,9 @@ async fn run(connection: Connection, tray_only: bool, config: AppConfig) -> Resu
                 if let Err(error) = result { tracing::error!(%error, "Input monitor stopped"); }
             },
         }
+    }
+    if let Some(runtime) = &notifications {
+        runtime.request_shutdown();
     }
     drop(dictation_commands);
     drop(dial_requests);

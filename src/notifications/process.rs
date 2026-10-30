@@ -60,7 +60,7 @@ pub async fn read_audio(path: &Path) -> Result<Vec<u8>> {
     Ok(bytes)
 }
 
-pub async fn play(audio: &[u8], sink: &str) -> Result<()> {
+pub async fn play(audio: &[u8], sink: &str, ducking: &crate::ducking::Handle) -> Result<()> {
     let mut decode = Command::new("ffmpeg");
     decode.args([
         "-nostdin",
@@ -80,6 +80,9 @@ pub async fn play(audio: &[u8], sink: &str) -> Result<()> {
         wav.starts_with(b"RIFF") && wav.len() > 44,
         "TTS decoder produced invalid audio"
     );
+    // Acquire only after decoding, but before any speech reaches the output.
+    // The lease restores media on completion, errors and cancellation.
+    let _media = ducking.notification().await?;
     let mut player = Command::new("pw-play");
     player.args(["--latency", "20ms", "--target", sink, "-"]);
     run(&mut player, &wav, 600, 1024).await?;
