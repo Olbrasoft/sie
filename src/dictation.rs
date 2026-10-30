@@ -186,6 +186,7 @@ pub async fn run(
     connection: Connection,
     mut commands: mpsc::Receiver<Command>,
     status: watch::Sender<Status>,
+    notification_control: Option<Arc<crate::notifications::Control>>,
 ) {
     let mut enabled = config.enabled;
     let mut feedback = Feedback::new(
@@ -197,7 +198,10 @@ pub async fn run(
             Phase::Disabled
         },
     );
-    let mut speech_lock = SpeechLock::new(config.virtual_assistant_speech_lock);
+    let mut speech_lock = match notification_control {
+        Some(control) => SpeechLock::local(control),
+        None => SpeechLock::new(config.virtual_assistant_speech_lock),
+    };
     let ducking = Ducking::new(config.duck_sink.clone(), config.duck_volume_percent);
     let mut recording: Option<(Recording, FocusTarget)> = None;
     let mut deadline: Option<Instant> = None;

@@ -107,7 +107,7 @@ async fn main() -> Result<()> {
         );
         return Ok(());
     }
-    run(connection, args.tray_only, config.dictation).await
+    run(connection, args.tray_only, config).await
 }
 
 async fn doctor(connection: &Connection, dictation: &DictationConfig) -> Result<()> {
@@ -275,11 +275,26 @@ async fn doctor(connection: &Connection, dictation: &DictationConfig) -> Result<
     Ok(())
 }
 
-async fn run(
-    connection: Connection,
-    tray_only: bool,
-    dictation_config: DictationConfig,
-) -> Result<()> {
+async fn run(connection: Connection, tray_only: bool, config: AppConfig) -> Result<()> {
+    let dictation_config = config.dictation;
+    let notifications = if config.notifications.enabled && !tray_only {
+        Some(
+            sie::notifications::Runtime::start(
+                &config.notifications,
+                &dictation_config.database_url,
+            )
+            .await?,
+        )
+    } else {
+        None
+    };
+    let notification_control = notifications
+        .as_ref()
+        .map(|runtime| runtime.control.clone());
+    let mut notification_status_rx = notification_control
+        .as_ref()
+        .map(|c| c.subscribe())
+        .unwrap_or_else(|| tokio::sync::watch::channel(sie::notifications::Status::default()).1);
     let mut lighting_mode = LightingMode::On;
     let (lighting_requests, lighting_request_rx) =
         tokio::sync::watch::channel(LightingState::default());
@@ -322,6 +337,7 @@ async fn run(
         media_status: MediaStatus::default().label(),
         focus_status: None,
         switcher_status: (!tray_only).then(|| "Přepínání aplikací: kontroluji…".into()),
+        notification_status: notification_control.as_ref().map(|c| c.status()),
         lighting_controls_available: !tray_only,
         dictation_status: initial,
         dictation_controls_available: !tray_only,
@@ -415,6 +431,7 @@ async fn run(
             connection.clone(),
             dictation_rx,
             dictation_status,
+            notification_control.clone(),
         )));
         tasks.spawn(desktop::watch_workspaces(
             connection.clone(),
@@ -430,6 +447,8 @@ async fn run(
             _ = term.recv() => break,
             action = action_rx.recv() => match action {
                 Some(Action::Quit) | None => break,
+                Some(Action::ToggleNotifications) => if let Some(control)=&notification_control { control.toggle_mute(); },
+                Some(Action::StopSpeech) => if let Some(control)=&notification_control { control.stop_current(); },
                 Some(Action::SetLightingMode(mode)) => if !tray_only {
                     lighting_mode = mode;
                     mouse_requests.send_if_modified(|old| {
@@ -445,6 +464,10 @@ async fn run(
                 },
             },
             Some(_) = about.join_next(), if !about.is_empty() => {},
+            Ok(()) = notification_status_rx.changed(), if notifications.is_some() => {
+                let status=notification_status_rx.borrow_and_update().clone();
+                tray.update(move |tray|tray.notification_status=Some(status)).await;
+            },
             Some((action, at)) = macro_rx.recv(), if !tray_only => {
                 let index = match action {
                     InputAction::DialTurn(delta)=>{let _=dial_requests.try_send(sie::switcher::Command::Turn(delta));continue;},
@@ -565,6 +588,9 @@ async fn run(
     {
         task.abort();
         let _ = task.await;
+    }
+    if let Some(notifications) = notifications {
+        notifications.shutdown().await;
     }
     tasks.abort_all();
     about.abort_all();

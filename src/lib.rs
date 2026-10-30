@@ -18,6 +18,7 @@ pub mod macros;
 pub mod media;
 pub mod media_focus;
 pub mod mouse_lighting;
+pub mod notifications;
 pub mod openrazer;
 mod sounds;
 pub mod speech;

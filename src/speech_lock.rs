@@ -1,5 +1,5 @@
 //! Optional local speech coordination while VirtualAssistant remains installed.
-use std::process::Stdio;
+use std::{process::Stdio, sync::Arc};
 
 use anyhow::{Context, Result, ensure};
 use tokio::process::Command;
@@ -7,6 +7,7 @@ use tokio::process::Command;
 pub struct SpeechLock {
     enabled: bool,
     held: bool,
+    local: Option<Arc<crate::notifications::Control>>,
 }
 
 impl SpeechLock {
@@ -14,10 +15,23 @@ impl SpeechLock {
         Self {
             enabled,
             held: false,
+            local: None,
+        }
+    }
+
+    pub fn local(control: Arc<crate::notifications::Control>) -> Self {
+        Self {
+            enabled: false,
+            held: false,
+            local: Some(control),
         }
     }
 
     pub async fn acquire(&mut self, timeout_seconds: u64) -> Result<()> {
+        if let Some(control) = &self.local {
+            self.held = true;
+            return control.recording(true).await;
+        }
         if !self.enabled || self.held {
             return Ok(());
         }
@@ -31,6 +45,13 @@ impl SpeechLock {
     }
 
     pub async fn release(&mut self) {
+        if let Some(control) = &self.local {
+            if self.held {
+                let _ = control.recording(false).await;
+            }
+            self.held = false;
+            return;
+        }
         if self.held {
             match request("stop", "{}").await {
                 Ok(()) => self.held = false,
@@ -38,6 +59,16 @@ impl SpeechLock {
                     tracing::warn!(%error, "Could not release VirtualAssistant speech lock; it will expire")
                 }
             }
+        }
+    }
+}
+
+impl Drop for SpeechLock {
+    fn drop(&mut self) {
+        if self.held
+            && let Some(control) = &self.local
+        {
+            control.gate.send_modify(|g| g.recording = false);
         }
     }
 }

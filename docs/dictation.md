@@ -275,3 +275,7 @@ The fixture records the resulting text and an Enter count in its JSON file.
 The example refuses other target applications. The GTK dependency is solely for
 this manual fixture, not the SIE application. Physical buttons and real audio
 must be verified separately; see [validation results](validation.md).
+
+When [standalone SIE notifications](spoken-notifications.md) are enabled, speech
+coordination stays inside the Rust process and the legacy VirtualAssistant lock
+is bypassed. Set `virtual_assistant_speech_lock = false` after migration.

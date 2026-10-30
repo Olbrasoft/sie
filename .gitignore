@@ -1,2 +1,4 @@
 /target/
+/tools/import-va-secrets/bin/
+/tools/import-va-secrets/obj/
 *.log

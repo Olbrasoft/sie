@@ -26,6 +26,8 @@ pub enum Action {
     Dictation(DictationCommand),
     About,
     Quit,
+    ToggleNotifications,
+    StopSpeech,
 }
 
 pub struct AppTray {
@@ -38,6 +40,7 @@ pub struct AppTray {
     pub media_status: String,
     pub focus_status: Option<String>,
     pub switcher_status: Option<String>,
+    pub notification_status: Option<crate::notifications::Status>,
     pub dictation_status: DictationStatus,
     pub dictation_controls_available: bool,
 }
@@ -180,6 +183,54 @@ impl Tray for AppTray {
             }
             .into(),
         ];
+        if let Some(status) = &self.notification_status {
+            let state = if status.unavailable {
+                "Nedostupné"
+            } else if status.muted {
+                "Ztlumené"
+            } else if status.speaking {
+                "Přehrávám"
+            } else if status.locked {
+                "Čekám na diktování"
+            } else {
+                "Připravené"
+            };
+            let index = menu.len() - 3;
+            menu.splice(
+                index..index,
+                [
+                    MenuItem::Separator,
+                    StandardItem {
+                        label: format!("Hlasová oznámení: {state} · ve frontě {}", status.pending),
+                        enabled: false,
+                        ..Default::default()
+                    }
+                    .into(),
+                    StandardItem {
+                        label: if status.muted {
+                            "❌ Hlasová oznámení — Zapnout"
+                        } else {
+                            "✅ Hlasová oznámení — Vypnout"
+                        }
+                        .into(),
+                        activate: Box::new(|this: &mut Self| {
+                            let _ = this.actions.try_send(Action::ToggleNotifications);
+                        }),
+                        ..Default::default()
+                    }
+                    .into(),
+                    StandardItem {
+                        label: "Zastavit aktuální oznámení".into(),
+                        enabled: status.speaking,
+                        activate: Box::new(|this: &mut Self| {
+                            let _ = this.actions.try_send(Action::StopSpeech);
+                        }),
+                        ..Default::default()
+                    }
+                    .into(),
+                ],
+            );
+        }
         for label in [&self.focus_status, &self.switcher_status]
             .into_iter()
             .flatten()
@@ -253,6 +304,7 @@ mod tests {
             media_status: "Média nedostupná".into(),
             focus_status: None,
             switcher_status: None,
+            notification_status: None,
             dictation_status: DictationStatus::new(false, Phase::Disabled),
             dictation_controls_available: true,
         };
@@ -279,6 +331,7 @@ mod tests {
             media_status: "Média nedostupná".into(),
             focus_status: None,
             switcher_status: None,
+            notification_status: None,
             dictation_status: DictationStatus::new(false, Phase::Disabled),
             dictation_controls_available: true,
         };
@@ -323,6 +376,7 @@ mod tests {
             media_status: "Média nedostupná".into(),
             focus_status: None,
             switcher_status: None,
+            notification_status: None,
             dictation_status: DictationStatus::new(true, Phase::Recording),
             dictation_controls_available: true,
         };

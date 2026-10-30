@@ -1,0 +1,21 @@
+{
+  "sound_sink": "alsa_output.your_monitor",
+  "profiles": {
+    "codex": {"provider": "GoogleCloudMultiKey", "voice": "cs-CZ-Chirp3-HD-Enceladus", "rate": "+10%"},
+    "claude-code": {"provider": "GoogleCloudMultiKey", "voice": "cs-CZ-Chirp3-HD-Charon", "rate": "+10%"},
+    "opencode": {"provider": "EdgeTTS-WebSocket", "voice": "cs-CZ-AntoninNeural", "rate": "+10%"},
+    "gemini": {"provider": "EdgeTTS-WebSocket", "voice": "cs-CZ-VlastaNeural", "rate": "+10%"}
+  },
+  "default_profile": {"provider": "Piper", "voice": "cs_CZ-jirka-medium"},
+  "providers": [
+    {"name": "GoogleCloudMultiKey", "voice": "cs-CZ-Chirp3-HD-Fenrir", "credentials": [
+      {"name": "primary", "reference": "google/primary", "monthly_limit": 1000000},
+      {"name": "backup", "reference": "google/backup", "monthly_limit": 1000000}
+    ]},
+    {"name": "AzureTTS", "voice": "cs-CZ-AntoninNeural", "region": "westeurope", "credentials": [{"name": "Azure", "reference": "azure"}]},
+    {"name": "EdgeTTS-WebSocket", "voice": "cs-CZ-AntoninNeural", "executable": "/home/your-user/.local/bin/edge-tts"},
+    {"name": "VoiceRSS", "voice": "Josef", "credentials": [{"name": "VoiceRSS", "reference": "voicerss"}]},
+    {"name": "GoogleTTS", "voice": "cs-CZ-Standard-A", "executable": "/home/your-user/.local/bin/gtts-cli"},
+    {"name": "Piper", "voice": "cs_CZ-jirka-medium", "executable": "/home/your-user/.local/bin/piper", "model_path": "/home/your-user/.local/share/piper/cs_CZ-jirka-medium.onnx", "timeout_seconds": 60}
+  ]
+}
