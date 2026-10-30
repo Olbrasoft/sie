@@ -1,4 +1,4 @@
-//! Recording-only attenuation of one explicit output, independent of inference.
+//! Shared attenuation of one media output for recording and notification speech.
 use std::{future::Future, process::Stdio, time::Duration};
 
 use anyhow::{Context, Result, ensure};
@@ -12,6 +12,7 @@ struct Sink {
     serial: Option<String>,
     channels: Vec<String>,
     volumes: Vec<u32>,
+    running: bool,
 }
 
 impl Sink {
@@ -40,6 +41,8 @@ fn parse_sink(bytes: &[u8], name: &str) -> Result<Option<Sink>> {
         index: u32,
         name: String,
         channel_map: String,
+        #[serde(default)]
+        state: String,
         volume: std::collections::HashMap<String, Volume>,
         #[serde(default)]
         properties: serde_json::Map<String, serde_json::Value>,
@@ -86,6 +89,7 @@ fn parse_sink(bytes: &[u8], name: &str) -> Result<Option<Sink>> {
         name: raw.name,
         serial,
         channels,
+        running: raw.state == "RUNNING",
         volumes,
     }))
 }
@@ -95,7 +99,7 @@ async fn pactl(args: &[String]) -> Result<Vec<u8>> {
         Duration::from_millis(500),
         Command::new("pactl")
             .args(args)
-            .env("LC_ALL", "C")
+            .env("LC_ALL", "C.UTF-8")
             .stdin(Stdio::null())
             .stderr(Stdio::null())
             .kill_on_drop(true)
@@ -128,6 +132,7 @@ impl Control for Pactl {
 struct Saved {
     original: Sink,
     applied: Vec<u32>,
+    uncertain: bool,
 }
 
 struct Controller<C> {
@@ -143,13 +148,29 @@ fn same_volume(left: &[u32], right: &[u32]) -> bool {
 
 impl<C: Control> Controller<C> {
     async fn update(&mut self, recording: bool) -> Result<()> {
-        if recording {
-            if self.saved.is_some() {
+        self.update_requested(recording, false).await
+    }
+
+    async fn update_requested(&mut self, recording: bool, notification: bool) -> Result<()> {
+        if recording || notification {
+            if let Some(saved) = &mut self.saved {
+                if saved.uncertain {
+                    if let Some(current) = self.control.read(&self.sink).await?
+                        && saved.original.same_output(&current)
+                        && same_volume(&current.volumes, &saved.original.volumes)
+                    {
+                        self.control.write(&current, &saved.applied).await?;
+                    }
+                    saved.uncertain = false;
+                }
                 return Ok(());
             }
             let Some(original) = self.control.read(&self.sink).await? else {
                 return Ok(());
             };
+            if !recording && notification && !original.running {
+                return Ok(());
+            }
             let applied: Vec<_> = original
                 .volumes
                 .iter()
@@ -160,10 +181,15 @@ impl<C: Control> Controller<C> {
             }
             // Save before the write: a failed acknowledgement may still have
             // changed the device, so cleanup must retain the original state.
-            self.saved = Some(Saved { original, applied });
+            self.saved = Some(Saved {
+                original,
+                applied,
+                uncertain: true,
+            });
             let saved = self.saved.as_ref().unwrap();
             self.control.write(&saved.original, &saved.applied).await?;
-            tracing::info!(output = %self.sink, "Media output attenuated for recording");
+            self.saved.as_mut().unwrap().uncertain = false;
+            tracing::info!(output = %self.sink, "Media output attenuated for voice activity");
         } else if let Some(saved) = &self.saved {
             let current = self.control.read(&self.sink).await?;
             if let Some(current) = current
@@ -182,24 +208,130 @@ impl<C: Control> Controller<C> {
     }
 }
 
-pub(crate) struct Ducking {
-    requested: Option<watch::Sender<bool>>,
-    task: Option<JoinHandle<()>>,
+#[derive(Clone, Copy, Default)]
+struct Requests {
+    recording: bool,
+    notifications: u32,
+    epoch: u64,
+    shutdown: bool,
+}
+impl Requests {
+    fn active(self) -> bool {
+        self.recording || self.notifications > 0
+    }
+    fn changed(&mut self) {
+        self.epoch = self.epoch.saturating_add(1);
+    }
+}
+#[derive(Clone, Copy, Default, PartialEq, Eq)]
+struct Applied {
+    epoch: u64,
+    success: bool,
 }
 
+#[derive(Clone, Default)]
+pub(crate) struct Handle {
+    requested: Option<watch::Sender<Requests>>,
+    applied: Option<watch::Receiver<Applied>>,
+}
+impl Handle {
+    pub fn recording(&self) -> RecordingClient {
+        RecordingClient {
+            handle: self.clone(),
+        }
+    }
+    fn set_recording(&self, recording: bool) {
+        if let Some(sender) = &self.requested {
+            sender.send_if_modified(|r| {
+                if r.recording == recording || r.shutdown {
+                    false
+                } else {
+                    r.recording = recording;
+                    r.changed();
+                    true
+                }
+            });
+        }
+    }
+    pub async fn notification(&self) -> Result<NotificationLease> {
+        let mut lease = NotificationLease { requested: None };
+        if let Some(sender) = &self.requested {
+            let mut epoch = None;
+            sender.send_if_modified(|r| {
+                if r.shutdown {
+                    return false;
+                }
+                r.notifications = r.notifications.saturating_add(1);
+                r.changed();
+                epoch = Some(r.epoch);
+                true
+            });
+            let epoch = epoch.context("Media attenuation controller stopped")?;
+            lease.requested = Some(sender.clone());
+            let mut applied = self.applied.clone().unwrap();
+            let ready = tokio::time::timeout(
+                Duration::from_secs(2),
+                applied.wait_for(|a| a.epoch >= epoch),
+            )
+            .await??;
+            ensure!(
+                ready.success,
+                "Could not attenuate the media output before speech"
+            );
+        }
+        Ok(lease)
+    }
+}
+pub(crate) struct RecordingClient {
+    handle: Handle,
+}
+impl RecordingClient {
+    pub fn set_recording(&self, recording: bool) {
+        self.handle.set_recording(recording);
+    }
+}
+impl Drop for RecordingClient {
+    fn drop(&mut self) {
+        self.handle.set_recording(false);
+    }
+}
+pub(crate) struct NotificationLease {
+    requested: Option<watch::Sender<Requests>>,
+}
+impl Drop for NotificationLease {
+    fn drop(&mut self) {
+        if let Some(sender) = &self.requested {
+            sender.send_modify(|r| {
+                r.notifications = r.notifications.saturating_sub(1);
+                r.changed();
+            });
+        }
+    }
+}
+pub(crate) struct Ducking {
+    handle: Handle,
+    task: Option<JoinHandle<()>>,
+}
 impl Ducking {
     pub fn new(sink: Option<String>, percent: u8) -> Self {
         match sink {
             Some(sink) => Self::spawn(Pactl, sink, percent),
             None => Self {
-                requested: None,
+                handle: Handle::default(),
                 task: None,
             },
         }
     }
-
+    pub fn handle(&self) -> Handle {
+        self.handle.clone()
+    }
+    #[cfg(test)]
+    pub fn set_recording(&self, recording: bool) {
+        self.handle.set_recording(recording);
+    }
     fn spawn(control: impl Control + 'static, sink: String, percent: u8) -> Self {
-        let (requested, mut receiver) = watch::channel(false);
+        let (requested, mut receiver) = watch::channel(Requests::default());
+        let (applied, applied_rx) = watch::channel(Applied::default());
         let task = tokio::spawn(async move {
             let mut controller = Controller {
                 control,
@@ -209,13 +341,30 @@ impl Ducking {
             };
             loop {
                 tokio::select! {
-                    changed = receiver.changed() => if changed.is_err() { break; },
-                    _ = tokio::time::sleep(Duration::from_millis(250)),
-                        if controller.saved.is_some() && !*receiver.borrow() => {},
+                    changed=receiver.changed()=>if changed.is_err(){break;},
+                    _=tokio::time::sleep(Duration::from_millis(250)),if controller.saved.is_some() || receiver.borrow().active()=>{},
                 }
-                let recording = *receiver.borrow_and_update();
-                if let Err(error) = controller.update(recording).await {
-                    tracing::warn!(%error, "Could not update recording output volume");
+                let request = *receiver.borrow_and_update();
+                if request.shutdown {
+                    break;
+                }
+                let result = controller
+                    .update_requested(request.recording, request.notifications > 0)
+                    .await;
+                let next = Applied {
+                    epoch: request.epoch,
+                    success: result.is_ok(),
+                };
+                applied.send_if_modified(|old| {
+                    if *old == next {
+                        false
+                    } else {
+                        *old = next;
+                        true
+                    }
+                });
+                if let Err(error) = result {
+                    tracing::warn!(%error,"Could not update voice attenuation");
                 }
             }
             for _ in 0..3 {
@@ -223,28 +372,37 @@ impl Ducking {
                     break;
                 }
                 if let Err(error) = controller.update(false).await {
-                    tracing::warn!(%error, "Could not restore recording output volume");
+                    tracing::warn!(%error,"Could not restore voice attenuation");
                     tokio::time::sleep(Duration::from_millis(50)).await;
                 }
             }
         });
         Self {
-            requested: Some(requested),
+            handle: Handle {
+                requested: Some(requested),
+                applied: Some(applied_rx),
+            },
             task: Some(task),
         }
     }
-
-    pub fn set_recording(&self, recording: bool) {
-        if let Some(sender) = &self.requested {
-            sender.send_replace(recording);
+    fn stop(&self) {
+        if let Some(sender) = &self.handle.requested {
+            sender.send_modify(|r| {
+                r.shutdown = true;
+                r.changed();
+            });
         }
     }
-
     pub async fn shutdown(mut self) {
-        self.requested.take();
+        self.stop();
         if let Some(task) = self.task.take() {
             let _ = task.await;
         }
+    }
+}
+impl Drop for Ducking {
+    fn drop(&mut self) {
+        self.stop();
     }
 }
 
@@ -276,6 +434,7 @@ mod tests {
                 serial: Some("serial-1".into()),
                 channels: vec!["front-left".into(), "front-right".into()],
                 volumes: vec![50_003, 40_009],
+                running: true,
             }),
             muted: true,
             writes: Vec::new(),
@@ -483,6 +642,77 @@ mod tests {
         disabled.set_recording(true);
         assert!(disabled.task.is_none());
         disabled.shutdown().await;
+    }
+
+    #[tokio::test]
+    async fn notification_ownership_waits_for_attenuation_and_restores_after_last_owner() {
+        let (controller, state) = fixture();
+        let ducking = Ducking::spawn(controller.control, "test.bose".into(), 20);
+        let handle = ducking.handle();
+        let first = handle.notification().await.unwrap();
+        assert_eq!(state.lock().unwrap().writes, [vec![10_000, 8_001]]);
+        let second = handle.notification().await.unwrap();
+        let recording = handle.recording();
+        recording.set_recording(true);
+        drop(first);
+        drop(second);
+        // The acknowledgement for this lease also orders the recording request.
+        let last = handle.notification().await.unwrap();
+        assert_eq!(state.lock().unwrap().writes.len(), 1);
+        drop(last);
+        assert!(handle.requested.as_ref().unwrap().borrow().recording);
+        drop(recording);
+        wait_for(&state, |s| s.writes.len() == 2).await;
+        ducking.shutdown().await;
+        assert_eq!(
+            state.lock().unwrap().writes,
+            [vec![10_000, 8_001], vec![50_003, 40_009]]
+        );
+    }
+
+    #[tokio::test]
+    async fn notification_skips_idle_output_but_ducks_if_media_starts_during_speech() {
+        let (controller, state) = fixture();
+        state.lock().unwrap().sink.as_mut().unwrap().running = false;
+        let ducking = Ducking::spawn(controller.control, "test.bose".into(), 20);
+        let handle = ducking.handle();
+        let speech = handle.notification().await.unwrap();
+        assert!(state.lock().unwrap().writes.is_empty());
+        state.lock().unwrap().sink.as_mut().unwrap().running = true;
+        wait_for(&state, |s| s.writes.len() == 1).await;
+        drop(speech);
+        wait_for(&state, |s| s.writes.len() == 2).await;
+        ducking.shutdown().await;
+    }
+
+    #[tokio::test]
+    async fn cancelling_a_pending_lease_restores_an_inflight_write() {
+        let (mut controller, state) = fixture();
+        let (release, gate) = tokio::sync::oneshot::channel();
+        controller.control.gate = Some(gate);
+        let ducking = Ducking::spawn(controller.control, "test.bose".into(), 20);
+        let handle = ducking.handle();
+        let acquire = tokio::spawn(async move { handle.notification().await });
+        wait_for(&state, |s| s.reads > 0).await;
+        acquire.abort();
+        let _ = acquire.await;
+        release.send(()).unwrap();
+        wait_for(&state, |s| s.writes.len() == 2).await;
+        ducking.shutdown().await;
+    }
+
+    #[tokio::test]
+    async fn failed_attenuation_is_not_acknowledged_and_can_be_retried() {
+        let (mut controller, state) = fixture();
+        state.lock().unwrap().fail_writes = 1;
+        assert!(controller.update_requested(false, true).await.is_err());
+        controller.update_requested(false, true).await.unwrap();
+        assert_eq!(state.lock().unwrap().writes, [vec![10_000, 8_001]]);
+        controller.update_requested(false, false).await.unwrap();
+        assert_eq!(
+            state.lock().unwrap().writes.last().unwrap(),
+            &[50_003, 40_009]
+        );
     }
 
     #[test]

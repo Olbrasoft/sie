@@ -198,11 +198,18 @@ pub async fn run(
             Phase::Disabled
         },
     );
+    let owned_ducking = notification_control
+        .is_none()
+        .then(|| Ducking::new(config.duck_sink.clone(), config.duck_volume_percent));
+    let ducking = notification_control
+        .as_ref()
+        .map(|c| c.ducking.clone())
+        .unwrap_or_else(|| owned_ducking.as_ref().unwrap().handle())
+        .recording();
     let mut speech_lock = match notification_control {
         Some(control) => SpeechLock::local(control),
         None => SpeechLock::new(config.virtual_assistant_speech_lock),
     };
-    let ducking = Ducking::new(config.duck_sink.clone(), config.duck_volume_percent);
     let mut recording: Option<(Recording, FocusTarget)> = None;
     let mut deadline: Option<Instant> = None;
     let mut active: Option<ActiveJob> = None;
@@ -284,7 +291,7 @@ pub async fn run(
                                 (id, result)
                             });
                         }
-                        Err(error) => { speech_lock.release().await; publish_error(&status, &mut feedback, enabled, error); },
+                        Err(error) => { ducking.set_recording(false); speech_lock.release().await; publish_error(&status, &mut feedback, enabled, error); },
                     }
                 } else {
                     let result = async {
@@ -292,6 +299,8 @@ pub async fn run(
                         // Fail before recording if postprocessing is unavailable.
                         Database::connect(&config.database_url).await?.postprocessor().await?;
                         let target = desktop::focused_window(&connection).await?;
+                        // Transfer attenuation ownership before cancelling notification speech.
+                        ducking.set_recording(true);
                         speech_lock.acquire(config.max_duration_seconds + 180).await?;
                         let capture = Recording::start(config.audio_source.as_deref(), config.max_duration_seconds).await?;
                         anyhow::Ok((capture, target))
@@ -304,7 +313,7 @@ pub async fn run(
                             feedback.transition(Phase::Recording, false);
                             status.send_replace(Status::new(true, Phase::Recording));
                         }
-                        Err(error) => { speech_lock.release().await; publish_error(&status, &mut feedback, enabled, error); },
+                        Err(error) => { ducking.set_recording(false); speech_lock.release().await; publish_error(&status, &mut feedback, enabled, error); },
                     }
                 }
             },
@@ -365,7 +374,7 @@ pub async fn run(
                                 tracing::info!(characters=completed.characters, "Local dictation completed");
                                 status.send_replace(Status::new(enabled, Phase::Idle));
                             }
-                            Err(error) => { speech_lock.release().await; publish_error(&status, &mut feedback, enabled, error); },
+                            Err(error) => { ducking.set_recording(false); speech_lock.release().await; publish_error(&status, &mut feedback, enabled, error); },
                         }
                     }
                     Ok(_) => {},
@@ -386,7 +395,10 @@ pub async fn run(
         job.cancelled.store(true, Ordering::SeqCst);
     }
     speech_lock.release().await;
-    ducking.shutdown().await;
+    drop(ducking);
+    if let Some(ducking) = owned_ducking {
+        ducking.shutdown().await;
+    }
     jobs.abort_all();
     while jobs.join_next().await.is_some() {}
 }
