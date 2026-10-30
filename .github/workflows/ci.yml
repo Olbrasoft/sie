@@ -42,5 +42,5 @@ jobs:
       - run: cargo clippy --locked --all-targets -- -D warnings
       - run: cargo test --locked --all-targets
       - run: cargo test --locked --test correction_database -- --ignored
-      - run: cargo test --locked --lib notifications:: -- --ignored
+      - run: 'cargo test --locked --lib notifications:: -- --ignored'
       - run: cargo build --locked --release
