@@ -1,7 +1,7 @@
 # System Interface Extensions
 
 System Interface Extensions (SIE) is an MIT-licensed Rust desktop companion
-for extending how input devices control a Linux computer. Version 0.15.0 is a
+for extending how input devices control a Linux computer. Version 0.16.0 is a
 GNOME/Wayland proof of concept for the **Razer BlackWidow V4 Pro** (`1532:028d`).
 
 - A top-panel tray opens a Czech menu with **O aplikaci** (the running binary's
@@ -51,10 +51,15 @@ GNOME/Wayland proof of concept for the **Razer BlackWidow V4 Pro** (`1532:028d`)
   output and restores its prior channel volumes as recording ends.
 - An independent PostgreSQL database holds a one-time copy of VirtualAssistant's
   text corrections. No audio or transcript is sent to an LLM or remote API.
+- Spoken agent notifications run inside SIE, with the existing source voices,
+  multiple Google keys, durable serial playback, provider fallback to local Piper
+  and explicit monitor output. Dictation pauses speech directly. Successfully
+  played notification bodies are deleted; old VirtualAssistant history is not
+  imported. Credentials stay in the desktop keyring. See
+  [standalone spoken notifications and migration](docs/spoken-notifications.md).
 - Pending Codex questions from another workspace appear as clickable native
   notifications. Clicking focuses their existing terminal and tmux pane;
-  answered questions are removed. Spoken questions keep their existing audio
-  path. See [agent question notifications](docs/agent-notifications.md).
+  answered questions are removed. Spoken questions use the SIE voice queue. See [agent question notifications](docs/agent-notifications.md).
 - Existing GNOME integrations are reused. A small Shell adapter controls the native
   Alt+Tab strip without holding virtual modifiers. Legacy VirtualAssistant
   shortcuts remain independent.

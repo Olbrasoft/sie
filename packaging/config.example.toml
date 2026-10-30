@@ -25,3 +25,9 @@ sound_effects = true
 # duck_sink = "alsa_output.your_media_speakers"
 # Relative to each channel's volume at recording start; 20 means one fifth.
 duck_volume_percent = 20
+
+[notifications]
+# Standalone agent speech; import notifications.json/keyring settings first.
+enabled = false
+listen = "127.0.0.1:5055"
+max_pending = 256
