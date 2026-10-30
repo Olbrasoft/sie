@@ -67,6 +67,30 @@ pub struct Provider {
     pub timeout_seconds: u64,
 }
 
+/// Internal provider dispatch; serialized configuration keeps its existing names.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum ProviderKind {
+    GoogleCloud,
+    Azure,
+    Edge,
+    VoiceRss,
+    GoogleTts,
+    Piper,
+}
+impl Provider {
+    pub(super) fn kind(&self) -> Result<ProviderKind> {
+        match self.name.as_str() {
+            "GoogleCloudMultiKey" => Ok(ProviderKind::GoogleCloud),
+            "AzureTTS" => Ok(ProviderKind::Azure),
+            "EdgeTTS-WebSocket" => Ok(ProviderKind::Edge),
+            "VoiceRSS" => Ok(ProviderKind::VoiceRss),
+            "GoogleTTS" => Ok(ProviderKind::GoogleTts),
+            "Piper" => Ok(ProviderKind::Piper),
+            _ => anyhow::bail!("Unknown TTS provider"),
+        }
+    }
+}
+
 impl Default for Provider {
     fn default() -> Self {
         Self {
@@ -123,18 +147,7 @@ impl Settings {
         );
         let mut names = std::collections::HashSet::new();
         for p in &self.providers {
-            ensure!(
-                matches!(
-                    p.name.as_str(),
-                    "GoogleCloudMultiKey"
-                        | "AzureTTS"
-                        | "EdgeTTS-WebSocket"
-                        | "VoiceRSS"
-                        | "GoogleTTS"
-                        | "Piper"
-                ),
-                "Unknown TTS provider"
-            );
+            p.kind()?;
             ensure!(names.insert(&p.name), "Duplicate TTS provider");
             ensure!(
                 (1..=120).contains(&p.timeout_seconds),
