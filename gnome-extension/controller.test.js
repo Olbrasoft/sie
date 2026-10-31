@@ -8,8 +8,9 @@ function fixture(workspaceOnly = false) {
     const popups = [];
     let next = 0;
     const controller = new Controller({
-        createPopup() {
+        createPopup(options) {
             const popup = {
+                options,
                 shown: true, position: 1, confirmed: 0, canceled: 0,
                 onClosed(callback) { this.closed = callback; },
                 onActivity(callback) { this.activity = callback; },
@@ -23,8 +24,9 @@ function fixture(workspaceOnly = false) {
         },
         schedule(delay, callback) {
             assert.equal(delay, IDLE_TIMEOUT_MS);
-            timers.set(++next, callback);
-            return next;
+            const id = ++next;
+            timers.set(id, () => { timers.delete(id); callback(); });
+            return id;
         },
         unschedule(id) { timers.delete(id); },
         workspaceOnly: () => workspaceOnly,
@@ -44,6 +46,39 @@ test('native selection moves both directions and confirms only on click', () => 
     assert.equal(popups[0].confirmed, 1);
     assert.equal(c.active(':1.5', token), false);
     assert.equal(timers.size, 0);
+});
+
+test('local selection forwards its first delta and works with the workspace-only preference', () => {
+    for (const delta of [-16, -1, 1, 3, 16]) {
+        const {controller:c, popups} = fixture(true);
+        const token = c.open(':1.5', {local: true, delta});
+        assert.deepEqual(popups[0].options, {local: true, delta});
+        assert.equal(c.active(':1.5', token), true);
+        assert.equal(popups[0].confirmed, 0);
+        c.finish(':1.5', token, true);
+        assert.equal(popups[0].confirmed, 1);
+    }
+    for (const delta of [0, 17, -17, NaN, 1.5]) {
+        const {controller:c, popups} = fixture();
+        assert.throws(() => c.open(':1.5', {local: true, delta}), /Invalid/);
+        assert.equal(popups.length, 0);
+    }
+});
+
+test('local mode keeps ownership, context cancellation and idle cleanup', () => {
+    for (const reason of ['context', 'idle', 'disconnect']) {
+        const {controller:c, popups, timers} = fixture();
+        const token = c.open(':1.5', {local: true, delta: -1});
+        assert.throws(() => c.open(':1.6', {local: true, delta: 1}), /another client/);
+        assert.equal(c.finish(':1.6', token, true), false);
+        c.move(':1.5', token, 1);
+        if (reason === 'context') popups[0].closed();
+        else if (reason === 'idle') [...timers.values()][0]();
+        else c.ownerGone(':1.5');
+        assert.equal(c.active(':1.5', token), false);
+        assert.equal(popups[0].confirmed, 0);
+        assert.equal(timers.size, 0);
+    }
 });
 
 test('dial confirmation outside an input event uses fresh compositor time to activate the selected workspace', () => {

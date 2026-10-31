@@ -114,7 +114,7 @@ class Delivery:
         with urllib.request.urlopen(request, timeout=5) as response:
             result = json.load(response)
             if not result.get("success"):
-                raise ValueError("VirtualAssistant did not acknowledge the notification")
+                raise ValueError("The notification API did not acknowledge the notification")
 
     def remember(self, key, intro):
         self.db.execute("INSERT OR REPLACE INTO sent VALUES (?, ?)", (key, time.time()))
@@ -279,7 +279,7 @@ class Observer:
                 try:
                     await asyncio.to_thread(self.delivery.post, message)
                     self.delivery.remember(key, intro)
-                    LOG.info("Question notification accepted by VirtualAssistant")
+                    LOG.info("Question notification accepted by SIE")
                     return
                 except (OSError, ValueError) as error:
                     LOG.warning("Notification delivery failed (%s); retrying in %s seconds", type(error).__name__, delay)
@@ -373,7 +373,7 @@ async def main():
     state_dir = Path(os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local/state")))
     delivery = Delivery(
         state_dir / "codex-question-notify/state.sqlite",
-        os.environ.get("VIRTUAL_ASSISTANT_URL", "http://localhost:5055").rstrip("/") + "/api/notifications",
+        os.environ.get("SIE_NOTIFICATION_API_URL") or os.environ.get("VIRTUAL_ASSISTANT_URL", "http://localhost:5055").rstrip("/") + "/api/notifications",
     )
     desktop = DesktopNotifications(os.environ.get(
         "SIE_AGENT_NOTIFY_BIN", str(Path.home() / ".local/bin/sie-agent-notify"),

@@ -36,7 +36,7 @@ pub fn action_for_event(event: InputEvent) -> Option<InputAction> {
         code if code == KeyCode::KEY_F18.code() || code == MACRO1 + 5 => {
             Some(InputAction::DictationSubmit)
         }
-        code if code == KeyCode::KEY_F19.code() || code == MACRO1 + 6 => {
+        code if code == KeyCode::KEY_PAUSE.code() || code == KeyCode::KEY_ESC.code() => {
             Some(InputAction::DictationCancel)
         }
         code if code == KeyCode::KEY_F20.code() || code == MACRO1 + 7 => {
@@ -127,14 +127,33 @@ mod tests {
             assert_eq!(action_for_event(InputEvent::new(1, code, 2)), None);
         }
         for code in [KeyCode::KEY_F19.code(), MACRO1 + 6] {
-            assert_eq!(
-                action_for_event(InputEvent::new(1, code, 0)),
-                Some(InputAction::DictationCancel)
-            );
+            for value in [0, 1, 2] {
+                assert_eq!(action_for_event(InputEvent::new(1, code, value)), None);
+            }
         }
-        for code in [KeyCode::KEY_SCROLLLOCK, KeyCode::KEY_PAUSE, KeyCode::KEY_A] {
+        for code in [KeyCode::KEY_SCROLLLOCK, KeyCode::KEY_SLEEP, KeyCode::KEY_A] {
             assert_eq!(action_for_event(InputEvent::new(1, code.code(), 0)), None);
         }
+    }
+
+    #[test]
+    fn pause_and_escape_cancel_only_on_release_without_reusing_sleep() {
+        for code in [KeyCode::KEY_PAUSE, KeyCode::KEY_ESC] {
+            assert_eq!(
+                action_for_event(InputEvent::new(1, code.code(), 0)),
+                Some(InputAction::DictationCancel)
+            );
+            for value in [1, 2] {
+                assert_eq!(
+                    action_for_event(InputEvent::new(1, code.code(), value)),
+                    None
+                );
+            }
+        }
+        assert_eq!(
+            action_for_event(InputEvent::new(1, KeyCode::KEY_SLEEP.code(), 0)),
+            None
+        );
     }
 
     #[test]

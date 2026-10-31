@@ -3,6 +3,25 @@
 Validated on 2026-10-23 with GNOME Shell 48.7 on Wayland, OpenRazer 3.12.4,
 the connected Razer BlackWidow V4 Pro (`1532:028d`), and Rust 1.99.0.
 
+## Responsibility refactoring in version 0.17.1
+
+- The required formatting, locked Clippy with warnings denied and all-target
+  checks passed on stable Rust and the declared Rust 1.89 minimum. The suite has
+  140 ordinary Rust tests. New regressions cover cancellation ownership/stale
+  completions, fallback/timeouts, worker cleanup and independent lighting fields.
+- The private D-Bus target retains all 26 behavior checks and is split by domain.
+  Media and agent-notification suites share the same private bus owner; no test
+  connects to the user's desktop or real hardware.
+- The opt-in PostgreSQL correction-history test and two notification tests passed
+  against `test_sie_dictation`. They use isolated schemas, fake credentials,
+  blocked network and stub synthesis processes, never the production SIE data.
+- All 20 browser/GNOME JavaScript tests and nine Python observer/import tests
+  passed. The extension and script implementations were retained after review.
+- The CUDA release built for the workstation's RTX 3060. Physical acceptance is
+  separate from these isolated checks and is tracked in the deployment issue.
+  See [architecture and ownership](architecture.md) for module boundaries,
+  retained compatibility and the rationale for the patterns used.
+
 ## Combined lighting in versions 0.9.0 and 0.9.1
 
 - The workstation mouse is a Logitech G203 LIGHTSYNC (`046d:c092`) with HID++ RGB

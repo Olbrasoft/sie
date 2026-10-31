@@ -1,55 +1,22 @@
 //! Private session bus only: no real players, keyboard or media control.
+#[path = "support/bus.rs"]
+mod private_bus;
+use private_bus::Bus;
 use sie::{
     lighting::LightingMode,
     media::{self, Playback, Status},
 };
 use std::{
-    io::{BufRead, BufReader},
-    process::{Child, Command, Stdio},
     sync::{Arc, Mutex},
     time::Duration,
 };
 use tokio::sync::{mpsc, watch};
+use zbus::connection::Builder;
 use zbus::{
     Connection,
-    connection::Builder,
     zvariant::{OwnedValue, Str},
 };
 
-struct Bus {
-    child: Child,
-    address: String,
-}
-impl Bus {
-    fn new() -> Self {
-        let mut child = Command::new("dbus-daemon")
-            .args(["--session", "--nofork", "--print-address=1"])
-            .stdout(Stdio::piped())
-            .spawn()
-            .unwrap();
-        let mut address = String::new();
-        BufReader::new(child.stdout.take().unwrap())
-            .read_line(&mut address)
-            .unwrap();
-        Self {
-            child,
-            address: address.trim().into(),
-        }
-    }
-    async fn connection(&self) -> Connection {
-        Builder::address(self.address.as_str())
-            .unwrap()
-            .build()
-            .await
-            .unwrap()
-    }
-}
-impl Drop for Bus {
-    fn drop(&mut self) {
-        let _ = self.child.kill();
-        let _ = self.child.wait();
-    }
-}
 #[derive(Clone)]
 struct PlayerData {
     status: String,

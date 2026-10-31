@@ -7,6 +7,7 @@ use serde::Deserialize;
 #[serde(default, deny_unknown_fields)]
 pub struct AppConfig {
     pub dictation: DictationConfig,
+    pub notifications: crate::notifications::config::Options,
 }
 
 #[derive(Debug, Clone, Deserialize)]

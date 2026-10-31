@@ -6,7 +6,7 @@ GNOME shows its text, project name, the workspace number starting at one, and a 
 return to the question. Clicking the banner or its button activates that
 existing terminal/workspace and selects the exact tmux session/window/pane.
 Showing a notification never changes focus. On the same workspace no banner
-is created; the existing spoken question still plays through VirtualAssistant.
+is created; the spoken question plays through the local notification API (SIE after migration).
 
 The notification requests persistence in the notification center, is removed
 when answered/resolved or when its observer stops, and has a one-hour resource
@@ -59,7 +59,7 @@ systemctl --user restart codex-question-notify.service
 ```
 
 The observer needs Python 3 and `websockets` (Debian `python3-websockets`), the
-existing local Codex app-server control socket, and the existing VirtualAssistant
+existing local Codex app-server control socket, and the SIE notification API (or the existing VirtualAssistant during migration)
 notification URL for speech. Desktop actions additionally require tmux, the
 GNOME session bus and native notification action support. Failure of voice
 delivery does not prevent the banner, and a missing desktop helper does not
@@ -99,3 +99,5 @@ native/async deduplication, per-thread cancellation and owned-child cleanup.
 
 Read-only origin resolution and a real cross-workspace banner/click are recorded
 separately as desktop checks. Automated tests do not inspect the user's desktop.
+
+Spoken delivery migrates independently through the compatible API; see [standalone SIE speech](spoken-notifications.md). No desktop banner sound is added.

@@ -1,0 +1,19 @@
+# Explicit Codex voice routes; system audio defaults remain independent.
+pcm.sie_codex_microphone {
+    type pulse
+    device "alsa_input.usb-046d_Logitech_StreamCam_490A4236-02.analog-stereo"
+    hint {
+        show on
+        description "SIE Logitech StreamCam microphone"
+        ioid "Input"
+    }
+}
+pcm.sie_codex_speaker {
+    type pulse
+    device "alsa_output.pci-0000_08_00.1.hdmi-stereo"
+    hint {
+        show on
+        description "SIE ViewSonic monitor speakers"
+        ioid "Output"
+    }
+}

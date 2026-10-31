@@ -20,8 +20,15 @@ sound_effects = true
 # Omit sound_sink to use the default audio output.
 # sound_sink = "alsa_output.your_speakers"
 
-# Optional recording-only attenuation of a different, explicitly named output.
-# Omit duck_sink to disable it. Preserve monitor feedback by selecting a separate sink.
+# Optional attenuation of a different media output during recording and speech.
+# Shared by recording and spoken notifications. Omit duck_sink to disable it.
+# Preserve monitor feedback by selecting a separate sink.
 # duck_sink = "alsa_output.your_media_speakers"
 # Relative to each channel's volume at recording start; 20 means one fifth.
 duck_volume_percent = 20
+
+[notifications]
+# Standalone agent speech; import notifications.json/keyring settings first.
+enabled = false
+listen = "127.0.0.1:5055"
+max_pending = 256

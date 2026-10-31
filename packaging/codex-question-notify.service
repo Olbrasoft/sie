@@ -1,6 +1,6 @@
 [Unit]
 Description=Forward Codex questions to voice and clickable desktop notifications
-After=virtual-assistant.service
+After=sie.service
 
 [Service]
 Type=simple
