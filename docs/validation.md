@@ -3,6 +3,18 @@
 Validated on 2026-10-23 with GNOME Shell 48.7 on Wayland, OpenRazer 3.12.4,
 the connected Razer BlackWidow V4 Pro (`1532:028d`), and Rust 1.99.0.
 
+## Adaptive recording cue in version 0.17.2
+
+- Formatting, locked Clippy with warnings denied and all-target checks passed on
+  stable Rust and Rust 1.89.0, with 145 ordinary Rust tests. CUDA release built.
+- Isolated fake-player tests verify the first/idle 300 ms prefix, the unchanged
+  recent PCM asset, activity after other cues, failed-player behavior, and joining
+  an interrupted owned player. Signal tests compare every original PCM sample.
+- The ViewSonic keep-awake rule was already active and its ALSA PCM remained
+  RUNNING during the investigation. This state alone did not establish acoustic
+  reliability. Repeated physical starts after at least 20 seconds of quiet remain
+  separate acceptance in issue #105; no diagnostic microphone or camera is used.
+
 ## Responsibility refactoring in version 0.17.1
 
 - The required formatting, locked Clippy with warnings denied and all-target
