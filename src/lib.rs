@@ -45,3 +45,7 @@ pub async fn claim_instance(connection: &zbus::Connection) -> anyhow::Result<()>
     );
     Ok(())
 }
+
+#[cfg(test)]
+#[path = "../tests/support/bus.rs"]
+mod test_bus;

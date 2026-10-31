@@ -1,7 +1,7 @@
 # System Interface Extensions
 
 System Interface Extensions (SIE) is an MIT-licensed Rust desktop companion
-for extending how input devices control a Linux computer. Version 0.17.0 is a
+for extending how input devices control a Linux computer. Version 0.17.1 is a
 GNOME/Wayland proof of concept for the **Razer BlackWidow V4 Pro** (`1532:028d`).
 
 - A top-panel tray opens a Czech menu with **O aplikaci** (the running binary's
@@ -236,3 +236,6 @@ of the keyboard colors are separate checks described in the design document.
 Codex F8 voice has its own device selection. The workstation setup for the same
 Logitech microphone and ViewSonic speakers is documented in
 [Codex voice audio routing](docs/codex-voice-audio.md).
+
+Module responsibilities, ownership rules and the rationale for the current
+patterns are documented in [architecture and maintenance](docs/architecture.md).
