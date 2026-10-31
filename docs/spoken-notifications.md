@@ -126,6 +126,29 @@ notification endpoint; the legacy `VIRTUAL_ASSISTANT_URL` base override remains
 compatible. Existing running MCP/OpenCode clients using localhost:5055 need no
 restart. SIE's login-start preference is not changed by the installer.
 
+### Automatic Codex completion filtering
+
+The automatic completion hook announces persisted Codex conversations. It checks
+`$CODEX_HOME/state_5.sqlite` (or `~/.codex/state_5.sqlite`) read-only before
+updating PID routing or sending speech. When an available registry positively
+contains no matching thread, the completion is from a non-persisted turn and is
+skipped. This prevents temporary helper summaries from producing a second spoken
+announcement long after the visible task finished, or replacing the PID index.
+
+The lookup has a one-second process deadline and a 150 ms SQLite lock timeout.
+Missing, older or unavailable registries preserve the previous forwarding
+behavior. No message contents or credentials are logged. Explicit notification
+API clients are unaffected; a deliberate ephemeral client can use that API when
+its result should be spoken. The existing final-paragraph cleanup and 350-character
+limit still apply to accepted automatic completions.
+
+A long gap between two announcements does not itself establish queue latency:
+compare the source turn's completion and hook invocation with SIE synthesis
+timestamps. A separate helper turn may have been created later. Codex also has
+an idle [SessionEnd hook](https://learn.chatgpt.com/docs/hooks#sessionend)
+threshold of 30 minutes, but matching that interval alone does not prove which
+hook or client created a turn.
+
 Useful local endpoints:
 
 ```sh
