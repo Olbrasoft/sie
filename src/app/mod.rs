@@ -65,6 +65,8 @@ pub async fn run(connection: Connection, tray_only: bool, config: AppConfig) -> 
     );
     let (dictation_commands, dictation_rx) = mpsc::channel(16);
     let (dictation_status, mut dictation_status_rx) = tokio::sync::watch::channel(initial.clone());
+    let initial_model = sie::models::Status::new(dictation_config.model_path.clone());
+    let (model_status, mut model_status_rx) = tokio::sync::watch::channel(initial_model.clone());
     let (actions, mut action_rx) = mpsc::channel(8);
     let (media_status, mut media_rx) = tokio::sync::watch::channel(MediaStatus::default());
     let (media_targets, media_target_rx) = mpsc::channel(8);
@@ -89,6 +91,7 @@ pub async fn run(connection: Connection, tray_only: bool, config: AppConfig) -> 
         notification_status: notification_control.as_ref().map(|c| c.status()),
         lighting_controls_available: !tray_only,
         dictation_status: initial,
+        model_status: initial_model,
         dictation_controls_available: !tray_only,
         workspace_status: if tray_only {
             "Makroklávesy vypnuty"
@@ -181,6 +184,8 @@ pub async fn run(connection: Connection, tray_only: bool, config: AppConfig) -> 
             dictation_rx,
             dictation_status,
             notification_control.clone(),
+            config.source_path.unwrap_or_else(AppConfig::path),
+            model_status,
         )));
         tasks.spawn(desktop::watch_workspaces(
             connection.clone(),
@@ -238,6 +243,10 @@ pub async fn run(connection: Connection, tray_only: bool, config: AppConfig) -> 
                 tracing::info!(phase=?status.phase,"Dictation state changed");
                 lighting.set_recording(status.phase == Phase::Recording);
                 tray.update(move |tray| tray.dictation_status=status).await;
+            },
+            Ok(()) = model_status_rx.changed(), if !tray_only => {
+                let status=model_status_rx.borrow_and_update().clone();
+                tray.update(move |tray| tray.model_status=status).await;
             },
             Ok(()) = lighting_status_rx.changed(), if !tray_only => {
                 let status = lighting_status_rx.borrow_and_update().clone();

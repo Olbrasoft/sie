@@ -42,6 +42,33 @@ microphone. It uses whisper-rs/whisper.cpp directly and caches the loaded model;
 first inference includes model loading. CUDA is an optional build feature, with
 CPU inference available in either build by setting `use_gpu = false`.
 
+## Model selection
+
+Since 0.18.0, **Model přepisu** in the tray opens a native dropdown with
+Whisper Large-v3 and Large-v3 Turbo. Exactly the selected known model is checked;
+a custom configured model is labeled separately. Additional models can extend
+the catalog in `models.rs`. Both GGML files must be installed alongside the
+configured `dictation.model_path`; missing choices are disabled. SIE never
+downloads a model automatically.
+
+An idle selection releases SIE's cached native context and CUDA buffers before
+installing a new, empty speech engine. The new model loads on the next
+transcription, so that first transcription includes loading time. Other GPU
+applications are untouched. No audio capture or model load is needed to switch.
+
+During recording, inference or pending text submission, selection waits until
+the existing session finishes. Canceled inference must also drain. The current
+checkmark stays on the actual model; the pending choice is shown separately.
+Another selection replaces the pending choice; selecting the current model
+cancels it. Dictation and its keyboard controls remain available.
+
+Only `dictation.model_path` is saved, atomically, to the actual configuration
+file (including an explicit `--config`). Other settings and comments survive,
+and the file is written privately with mode 0600. If persistence fails, the
+previous selection remains active and can reload lazily; the menu reports the
+failure. Selection is retained across SIE restarts. Changing GPU or Flash
+Attention settings still requires a restart.
+
 Version 0.8.1 adds the optional `flash_attention = true` CUDA optimization.
 It defaults to false for existing configurations and is disabled when GPU use
 is explicitly disabled or the binary was built without CUDA.

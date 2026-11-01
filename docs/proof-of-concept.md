@@ -18,8 +18,9 @@ Starting a second controlling instance fails without replacing the first.
 
 Local speech capture, Whisper transcription, database corrections and text
 insertion are implemented as described in [the dictation guide](dictation.md).
-Text-to-speech, model selection UI, mouse automation, configurable profiles and
-support for other desktops are future work.
+Native spoken notifications and the Whisper model dropdown are implemented.
+Mouse automation, configurable profiles and support for other desktops are
+future work.
 Whisper is a speech-to-text component; speech synthesis needs a separate engine.
 
 ## Why Rust

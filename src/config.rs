@@ -6,6 +6,8 @@ use serde::Deserialize;
 #[derive(Debug, Default, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct AppConfig {
+    #[serde(skip)]
+    pub source_path: Option<PathBuf>,
     pub dictation: DictationConfig,
     pub notifications: crate::notifications::config::Options,
 }
@@ -67,11 +69,15 @@ impl AppConfig {
     pub fn load(path: Option<PathBuf>) -> Result<Self> {
         let path = path.unwrap_or_else(Self::path);
         if !path.exists() {
-            return Ok(Self::default());
+            return Ok(Self {
+                source_path: Some(path),
+                ..Self::default()
+            });
         }
-        let text = std::fs::read_to_string(path).context("Cannot read SIE configuration")?;
-        let config: Self =
+        let text = std::fs::read_to_string(&path).context("Cannot read SIE configuration")?;
+        let mut config: Self =
             toml::from_str(&text).map_err(|_| anyhow::anyhow!("Invalid SIE configuration"))?;
+        config.source_path = Some(path);
         ensure!(
             (1..=600).contains(&config.dictation.max_duration_seconds),
             "Recording duration must be 1–600 seconds"
@@ -101,6 +107,21 @@ impl AppConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn explicit_configuration_path_is_retained_even_before_the_file_exists() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("custom.toml");
+        assert_eq!(
+            AppConfig::load(Some(path.clone())).unwrap().source_path,
+            Some(path.clone())
+        );
+        std::fs::write(&path, "[dictation]\nlanguage = 'cs'\n").unwrap();
+        assert_eq!(
+            AppConfig::load(Some(path.clone())).unwrap().source_path,
+            Some(path)
+        );
+    }
 
     #[test]
     fn ducking_is_opt_in_and_requires_a_separate_stable_output_and_valid_percentage() {

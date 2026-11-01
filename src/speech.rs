@@ -22,6 +22,18 @@ impl SpeechEngine {
         }
     }
 
+    /// Drop the owned native context, including its CUDA buffers, before returning.
+    pub(crate) fn unload(&self) -> Result<bool> {
+        let cached = self
+            .context
+            .lock()
+            .map_err(|_| anyhow::anyhow!("Speech engine lock unavailable"))?
+            .take();
+        let loaded = cached.is_some();
+        drop(cached);
+        Ok(loaded)
+    }
+
     pub fn transcribe(&self, pcm: &[i16], cancelled: Arc<AtomicBool>) -> Result<String> {
         ensure!(!cancelled.load(Ordering::SeqCst), "Dictation canceled");
         ensure!(pcm.len() >= 1600, "Recording is too short");

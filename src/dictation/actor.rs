@@ -21,11 +21,13 @@ use tokio::{
 use zbus::Connection;
 
 pub async fn run(
-    config: DictationConfig,
+    mut config: DictationConfig,
     connection: Connection,
     mut commands: mpsc::Receiver<Command>,
     status: watch::Sender<Status>,
     notification_control: Option<Arc<crate::notifications::Control>>,
+    config_path: std::path::PathBuf,
+    model_status: watch::Sender<crate::models::Status>,
 ) {
     let mut enabled = config.enabled;
     let mut feedback = Feedback::new(
@@ -53,6 +55,7 @@ pub async fn run(
     let mut recording: Option<(Recording, FocusTarget)> = None;
     let mut deadline: Option<Instant> = None;
     let mut jobs = Jobs::new(config.clone(), connection.clone());
+    let mut models = crate::models::Status::new(config.model_path.clone());
     status.send_replace(Status::new(
         enabled,
         if enabled {
@@ -62,12 +65,30 @@ pub async fn run(
         },
     ));
     loop {
+        if let Some(path) =
+            models.begin_switch(recording.is_some(), jobs.is_active(), jobs.has_pending())
+        {
+            model_status.send_replace(models.clone());
+            let result = jobs.select_model(&path, &config_path).await;
+            if result.is_ok() {
+                config.model_path = path.clone();
+            } else if let Err(error) = &result {
+                tracing::warn!(%error, "Could not select Whisper model");
+            }
+            models.complete(path, result.is_ok());
+            model_status.send_replace(models.clone());
+        }
         tokio::select! {
             // Process queued control requests before a simultaneous completion,
             // so a pending submit stays attached to the job that is finishing.
             biased;
             command = commands.recv() => {
                 let Some(command) = command else { break; };
+                if let Command::SelectModel(model) = command {
+                    models.request(model);
+                    model_status.send_replace(models.clone());
+                    continue;
+                }
                 if command == Command::FinishAndSubmit && recording.is_none() && !jobs.is_active() {
                     if let Err(error) = desktop::press_enter(&connection).await {
                         tracing::warn!(%error, "Top side button could not send Enter");
@@ -215,4 +236,63 @@ async fn finish(
     feedback.transition(Phase::Transcribing, false).await;
     status.send_replace(Status::new(true, Phase::Transcribing));
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::{Status as ModelStatus, WhisperModel};
+
+    #[tokio::test]
+    async fn selecting_a_model_while_disabled_persists_without_starting_recording() {
+        let bus = crate::test_bus::Bus::new();
+        let directory = tempfile::tempdir().unwrap();
+        let old_model = directory.path().join(WhisperModel::LargeV3.file_name());
+        let new_model = directory
+            .path()
+            .join(WhisperModel::LargeV3Turbo.file_name());
+        std::fs::write(&old_model, []).unwrap();
+        std::fs::write(&new_model, []).unwrap();
+        let config_path = directory.path().join("custom.toml");
+        let config = DictationConfig {
+            enabled: false,
+            model_path: old_model.clone(),
+            sound_effects: false,
+            ..DictationConfig::default()
+        };
+        let (commands, receiver) = mpsc::channel(4);
+        let (status, session) = watch::channel(Status::new(false, Phase::Disabled));
+        let (models, mut selection) = watch::channel(ModelStatus::new(old_model));
+        let actor = tokio::spawn(run(
+            config,
+            bus.connection().await,
+            receiver,
+            status,
+            None,
+            config_path.clone(),
+            models,
+        ));
+        commands
+            .send(Command::SelectModel(WhisperModel::LargeV3Turbo))
+            .await
+            .unwrap();
+        tokio::time::timeout(Duration::from_secs(3), async {
+            while selection.borrow().selected != new_model {
+                selection.changed().await.unwrap();
+            }
+        })
+        .await
+        .unwrap();
+        assert_eq!(session.borrow().phase, Phase::Disabled);
+        assert!(!session.borrow().enabled);
+        assert_eq!(
+            crate::config::AppConfig::load(Some(config_path))
+                .unwrap()
+                .dictation
+                .model_path,
+            new_model
+        );
+        drop(commands);
+        actor.await.unwrap();
+    }
 }
