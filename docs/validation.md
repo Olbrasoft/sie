@@ -297,3 +297,29 @@ microphone is used by default CI tests.
 - CI database authentication uses an encrypted repository secret; the replacement
   PR contains no hardcoded database password. The earlier public test password was
   flagged by GitGuardian; no production credential was involved.
+
+## Persistent Whisper model dropdown in version 0.18.0
+
+Issue #108 adds a native tray submenu with checked Large-v3 / Large-v3 Turbo
+choices. Formatting, Clippy with warnings denied and all 155 isolated Rust
+tests passed on stable and Rust 1.89. Ten new tests cover selection during busy
+sessions, canceled jobs, exclusive engine ownership, lazy replacement, failed
+persistence, comments, private file permissions, explicit configuration paths,
+missing models, menu callbacks and selection while dictation is disabled. Four
+opt-in database/model tests remain ignored in the default suite. The CUDA
+release build for architecture 86 passed.
+
+Manual checks on 2026-11-01 used the running SIE 0.18.0 and RTX 3060 8 GB. The
+user selected Turbo, dictated, selected Large-v3 and dictated again; both texts
+were delivered. Read-only observations of the same SIE process showed Turbo
+using 1668 MiB, then 118 MiB after selection of Large-v3 (before inference),
+then 3070 MiB after the first Large-v3 transcription. The residual GPU allocation was 118 MiB; model allocations were released
+before the next model loaded. Native logs independently showed release of the
+cached context and the 4-layer / 32-layer models loading on their first use.
+
+The actual D-Bus menu reported a submenu, both checkmark choices and only
+Large-v3 selected afterward. The saved configuration matched its predeployment
+settings, including the restored Large-v3 path, and retained mode 0600. No
+diagnostic microphone or camera capture was used. Selection during a live
+recording/transcription is covered by isolated tests; it was not physically
+exercised. Restart loading of the saved path is covered by configuration tests.
