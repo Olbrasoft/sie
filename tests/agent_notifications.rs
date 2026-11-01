@@ -1,53 +1,21 @@
 //! Native notification protocol on a private bus, with no desktop or input.
+#[path = "support/bus.rs"]
+mod private_bus;
+use private_bus::Bus;
 use sie::{agent_notifications, agent_origin::Question};
 use std::{
     collections::HashMap,
-    io::{BufRead, BufReader},
-    process::{Child, Command, Stdio},
     sync::{
         Arc, Mutex,
         atomic::{AtomicUsize, Ordering},
     },
     time::Duration,
 };
-use zbus::{Connection, connection::Builder, zvariant::OwnedValue};
+use zbus::connection::Builder;
+use zbus::{Connection, zvariant::OwnedValue};
 
 const PATH: &str = "/org/freedesktop/Notifications";
 const IFACE: &str = "org.freedesktop.Notifications";
-struct Bus {
-    process: Child,
-    address: String,
-}
-impl Bus {
-    fn new() -> Self {
-        let mut process = Command::new("dbus-daemon")
-            .args(["--session", "--nofork", "--print-address=1"])
-            .stdout(Stdio::piped())
-            .spawn()
-            .unwrap();
-        let mut address = String::new();
-        BufReader::new(process.stdout.take().unwrap())
-            .read_line(&mut address)
-            .unwrap();
-        Self {
-            process,
-            address: address.trim().into(),
-        }
-    }
-    async fn connection(&self) -> Connection {
-        Builder::address(self.address.as_str())
-            .unwrap()
-            .build()
-            .await
-            .unwrap()
-    }
-}
-impl Drop for Bus {
-    fn drop(&mut self) {
-        let _ = self.process.kill();
-        let _ = self.process.wait();
-    }
-}
 #[derive(Default)]
 struct State {
     calls: usize,

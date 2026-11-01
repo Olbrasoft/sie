@@ -17,7 +17,9 @@ restore the original map. Version 0.7.0 assigns the top side button to explicit
 finish-and-submit.
 
 - Bottom release: idle → recording → local transcription → paste → idle.
-- Middle release: cancel recording or transcription; discard pending output.
+- Pause or Escape release: cancel recording or transcription; discard pending output.
+- Middle release: deliberately ignored since 0.17.0, preventing accidental loss.
+  Its guarded macro remapping remains active so it cannot mute the microphone.
 - Top release while recording: stop → local transcription → paste → one Enter.
 - Since 0.11.0, top release during transcription queues one submission for that
   job, after successful paste and another window/pane/cancellation check. Repeated
@@ -40,6 +42,33 @@ microphone. It uses whisper-rs/whisper.cpp directly and caches the loaded model;
 first inference includes model loading. CUDA is an optional build feature, with
 CPU inference available in either build by setting `use_gpu = false`.
 
+## Model selection
+
+Since 0.18.0, **Model přepisu** in the tray opens a native dropdown with
+Whisper Large-v3 and Large-v3 Turbo. Exactly the selected known model is checked;
+a custom configured model is labeled separately. Additional models can extend
+the catalog in `models.rs`. Both GGML files must be installed alongside the
+configured `dictation.model_path`; missing choices are disabled. SIE never
+downloads a model automatically.
+
+An idle selection releases SIE's cached native context and CUDA buffers before
+installing a new, empty speech engine. The new model loads on the next
+transcription, so that first transcription includes loading time. Other GPU
+applications are untouched. No audio capture or model load is needed to switch.
+
+During recording, inference or pending text submission, selection waits until
+the existing session finishes. Canceled inference must also drain. The current
+checkmark stays on the actual model; the pending choice is shown separately.
+Another selection replaces the pending choice; selecting the current model
+cancels it. Dictation and its keyboard controls remain available.
+
+Only `dictation.model_path` is saved, atomically, to the actual configuration
+file (including an explicit `--config`). Other settings and comments survive,
+and the file is written privately with mode 0600. If persistence fails, the
+previous selection remains active and can reload lazily; the menu reports the
+failure. Selection is retained across SIE restarts. Changing GPU or Flash
+Attention settings still requires a restart.
+
 Version 0.8.1 adds the optional `flash_attention = true` CUDA optimization.
 It defaults to false for existing configurations and is disabled when GPU use
 is explicitly disabled or the binary was built without CUDA.
@@ -56,7 +85,7 @@ The real-model regression verifies cancellation followed by repeated inference.
 ## Keyboard recording indication
 
 Since 0.8.0, the ambient strip animates a rainbow during `Recording` and returns
-to white when capture ends, including while transcribing. All three buttons and
+to white when capture ends, including while transcribing. Side buttons, cancellation keys and
 the tray use the same phase signal. Lighting off overrides the animation. This
 first stage is time-based, not reactive to voice intensity; see the separate
 [effect design and voice-intensity feasibility assessment](recording-lighting.md).
@@ -88,8 +117,8 @@ The system-wide TONOR input/Bose analog output defaults were left unchanged.
 output; by default SIE uses the current system output. Missing playback support
 is logged without preventing dictation. Sound tests inspect the embedded PCM
 onset and command arguments and select cues with playback disabled; CI never
-plays real audio. Escape/Pause remain VirtualAssistant keys;
-SIE cancellation is the middle side button or its tray action.
+plays real audio. Pause, Escape and the tray cancellation action share the same
+cancel path; Fn+Pause (the distinct Sleep key) remains untouched.
 
 ### Short cues after monitor audio has been idle
 
@@ -121,10 +150,41 @@ running, instead of becoming suspended. Repeat recording starts separated by
 quiet intervals and confirm each cue through the physical monitor speakers;
 automated Rust tests do not use desktop audio or a microphone.
 
+### Adaptive recording-cue priming
+
+Since 0.17.2, the first recording-start cue and the first one after at least ten
+seconds without dictation-cue output receive 300 ms of leading PCM silence. SIE
+builds that variant in memory from the same embedded WAV, sends silence and melody
+through one `pw-play` stream, and retains every original sample. No second asset,
+separate silence player, continuous keepalive or new service is used.
+
+Recent cue output keeps the fast unpadded WAV with its original approximately
+10 ms onset. Recording, typing and cancellation streams all refresh recent
+activity when they finish or are interrupted after receiving audio. Known failed
+playback does not mark the output warm. Replacing a cue first aborts and joins
+its owned player before selecting the next variant, so an interrupted typing
+stream is accounted for and cannot overlap a later cue. Microphone capture starts
+before feedback and does not wait for the 300 ms of silence.
+
+This is a conservative cue-activity heuristic, not a physical amplifier sensor:
+other applications, F8 voice and spoken notifications are not polled on each key
+press. They may already have warmed the monitor, but a cold cue still receives
+the short prefix when SIE's own dictation cues have been idle. The first cue after
+an application restart also receives the prefix.
+
+During the October 31 investigation, the installed suspend rule was active,
+`node.pause-on-idle` was false, and the HDMI ALSA PCM remained RUNNING while the
+PipeWire node was idle. The untrimmed MP3 contained about 280 ms of digital silence;
+the optimized WAV lasted about 274 ms. No player errors accompanied the reported
+missed sounds. These observations do not prove which hardware/stream stage lost
+the onset; physical repeated/idle acceptance is required separately from process
+success and routing metadata. The existing WirePlumber policy remains unchanged.
+
 ## Media volume while recording
 
 Since 0.10.0, an optional `duck_sink` names the one playback output to attenuate
-during microphone capture. The portable default is unset, so other installations
+during microphone capture and, since 0.17.0, spoken notification playback.
+The portable default is unset, so other installations
 do not change any output volume. On the development workstation it selects Bose
 (`alsa_output.pci-0000_0a_00.4.playback.0.0`), separate from ViewSonic feedback.
 
@@ -138,7 +198,7 @@ The dictation actor only signals a separate serialized volume worker. It request
 restoration before awaiting capture shutdown on normal finish, finish-and-submit
 and the recording deadline, and also on cancellation, disable or graceful exit.
 Transcription can proceed concurrently and does not prolong attenuation. Failed
-recording starts never request attenuation. Missing outputs or volume errors are
+recording starts release any preparatory attenuation. Missing outputs or volume errors are
 logged or ignored without preventing dictation; volume subprocesses have bounded
 timeouts and failed restoration is retried.
 
@@ -275,3 +335,7 @@ The fixture records the resulting text and an Enter count in its JSON file.
 The example refuses other target applications. The GTK dependency is solely for
 this manual fixture, not the SIE application. Physical buttons and real audio
 must be verified separately; see [validation results](validation.md).
+
+When [standalone SIE notifications](spoken-notifications.md) are enabled, speech
+coordination stays inside the Rust process and the legacy VirtualAssistant lock
+is bypassed. Set `virtual_assistant_speech_lock = false` after migration.

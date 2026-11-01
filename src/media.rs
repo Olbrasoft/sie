@@ -1,5 +1,5 @@
 //! Observe MPRIS playback without intercepting keys or controlling any player.
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result};
 use futures_util::StreamExt;
 use std::{
     collections::{HashMap, HashSet},
@@ -7,6 +7,9 @@ use std::{
 };
 use tokio::sync::{mpsc, watch};
 use zbus::{Connection, MatchRule, MessageStream, message::Type, zvariant::OwnedValue};
+
+mod native;
+pub use native::{NativeObserver, observe_native_target};
 
 pub const PLAYER_PATH: &str = "/org/mpris/MediaPlayer2";
 pub const PLAYER_INTERFACE: &str = "org.mpris.MediaPlayer2.Player";
@@ -330,74 +333,6 @@ pub async fn watch(
         }
         tokio::time::sleep(Duration::from_secs(3)).await;
     }
-}
-
-/// A dedicated connection observes only zero-argument native PlayPause calls
-/// from GNOME's media-key service. No key events, titles or media URLs are read.
-/// Monitoring permission is optional; state tracking works without it.
-pub struct NativeObserver {
-    messages: MessageStream,
-    _connection: Connection,
-}
-
-impl NativeObserver {
-    pub async fn new(connection: Connection) -> Result<Self> {
-        let rule = MatchRule::builder()
-            .msg_type(Type::MethodCall)
-            .sender("org.gnome.SettingsDaemon.MediaKeys")?
-            .path(PLAYER_PATH)?
-            .interface(PLAYER_INTERFACE)?
-            .member("PlayPause")?
-            .build();
-        let messages = MessageStream::from(&connection);
-        zbus::fdo::MonitoringProxy::new(&connection)
-            .await?
-            .become_monitor(&[rule], 0)
-            .await?;
-        Ok(Self {
-            messages,
-            _connection: connection,
-        })
-    }
-    pub async fn run(self, targets: mpsc::Sender<String>) -> Result<()> {
-        self.run_with_hint(targets, None).await
-    }
-    pub async fn run_with_hint(
-        mut self,
-        targets: mpsc::Sender<String>,
-        hints: Option<watch::Sender<Option<crate::media_focus::NativeHint>>>,
-    ) -> Result<()> {
-        while let Some(message) = self.messages.next().await {
-            let message = message?;
-            let header = message.header();
-            if header.message_type() != Type::MethodCall
-                || header.interface().map(|i| i.as_str()) != Some(PLAYER_INTERFACE)
-                || header.member().map(|m| m.as_str()) != Some("PlayPause")
-            {
-                continue;
-            }
-            if let Some(destination) = header.destination() {
-                if let Some(hints) = &hints {
-                    hints.send_replace(Some(crate::media_focus::NativeHint {
-                        at: std::time::Instant::now(),
-                        destination: destination.to_string(),
-                    }));
-                }
-                let _ = targets.try_send(destination.to_string());
-            }
-            if targets.is_closed() {
-                return Ok(());
-            }
-        }
-        bail!("Native media target observation ended")
-    }
-}
-
-pub async fn observe_native_target(
-    connection: Connection,
-    targets: mpsc::Sender<String>,
-) -> Result<()> {
-    NativeObserver::new(connection).await?.run(targets).await
 }
 
 #[cfg(test)]

@@ -1,14 +1,14 @@
 # Command Dial window switching
 
-SIE 0.13.1 supports the top-left Command Dial beside Escape on the full-size
+SIE 0.15.0 supports the top-left Command Dial beside Escape on the full-size
 Razer BlackWidow V4 Pro (`1532:028d`, OpenRazer matrix 8 × 23).
 
 | Action | Behavior | Dial color |
 | --- | --- | --- |
-| Rotate without opening the picker | Activate the next/previous eligible window on the current workspace | Green during activation, with a short 150 ms visible completion indication |
-| Press | Open GNOME's native Alt+Tab application strip across workspaces | Orange |
-| Rotate with the strip open | Select the next/previous application without activating it | Orange |
-| Press again or Enter | Activate the selected existing window and its workspace | White |
+| Rotate while idle | Open GNOME's native Alt+Tab strip for the current workspace and select in the rotation direction | Green until confirmation or cancellation |
+| Press while idle | Open GNOME's native Alt+Tab application strip across workspaces | Orange |
+| Rotate with either strip open | Select the next/previous application without activating it | Green locally; orange globally |
+| Press with either strip open, or Enter | Activate the selected existing window; global selection can change workspace | White |
 | Escape, click outside, or eight seconds of inactivity | Cancel without activating a selection | White |
 
 Idle is white. Lighting off takes precedence and keeps the dial black while
@@ -16,44 +16,53 @@ controls remain usable. Recording rainbow, finger zones, workspace and media
 indicators share the existing single Rust renderer and retain their behavior.
 Quit, disconnected dial input and picker errors clear switching feedback.
 
-The global strip is the actual GNOME `AppSwitcherPopup`, with the same icons,
-application grouping, initial next-application selection and window thumbnails
-as Alt+Tab. Native keyboard and mouse navigation remain available. The dial
-advances applications; GNOME's thumbnail navigation can select another window
-of an application. Browser tabs are not separate switcher entries. There is no
-additional application window or custom GTK imitation.
+Both strips use the actual GNOME `AppSwitcherPopup`, with the same icons,
+application grouping and window thumbnails as Alt+Tab. Local rotation opens the
+strip without immediately changing the active application, making LibreWolf,
+Edge and Chrome recognizable before confirmation. Its first detent is counted
+exactly once in either direction. Native keyboard and mouse navigation remain
+available. The dial advances applications; GNOME's thumbnail navigation can
+select another window of an application. Browser tabs are not separate entries.
+There is no additional application window or custom GTK imitation.
 
-Local rotation cycles concrete normal/dialog windows on the current workspace.
-Desktop/dock/menu windows are excluded; at most 128 eligible windows are used.
-Local cycling uses stable window-ID order rather than focus order, avoiding
-bouncing between the two most recently used windows. A local target must still
-exist on the original current workspace when activated. No workspace is created.
+The local strip freezes the current workspace and filters both the application
+icons and each icon's cached window/thumbnail list before showing it. An
+application with windows on several workspaces can only select its local windows.
+It uses GNOME's native application order; repeated detents move selection without
+changing focus order. Switching workspace, moving a listed window to another
+workspace or closing one cancels the local strip. Every confirmation path (dial,
+Enter or mouse) also validates that the selected window still exists on the
+original current workspace. No workspace is created.
 
 ## Existing desktop integration
 
-Rust owns device handling, local window policy and lighting feedback. Window Calls
-provides `List` and `Activate` on `org.gnome.Shell.Extensions.Windows`; the
-installed Olbrasoft tracker provides `CurrentWorkspace`.
+Rust owns device handling, picker lifecycle and lighting feedback. The Shell
+adapter enforces workspace scope within the native popup. Existing Window Calls
+`List`/`Activate` and Olbrasoft workspace tracking remain in use by SIE's other
+features, including clickable agent notifications.
 
 The bundled `sie-switcher@olbrasoft.cz` extension is a narrow native-UI adapter
 for GNOME 48. Existing Window Calls, Desktop State Tracker and Computer Use
 interfaces do not expose the switcher lifecycle; opening synthetic Alt+Tab also
 does not change their focused-window value when the strip is opened or canceled.
 The adapter therefore creates one native popup directly in no-modifier mode.
-It changes timeout/navigation methods only on that instance, never on Shell
+It changes scope, timeout and navigation methods only on that instance, never on Shell
 prototypes. No additional daemon is installed. GNOME handles application
 selection and activation, Escape, mouse cancellation and popup destruction.
 
 The session-bus interface `cz.olbrasoft.SIE.Switcher`, object
-`/cz/olbrasoft/SIE/Switcher`, offers `Version`, `Open`, `Move`, `Finish` and
-`Active`. SIE 0.13.1 requires protocol version 2, which includes fresh-timestamp
-confirmation. An older already-loaded adapter is reported as requiring a new
-login rather than being treated as ready just because its bus name exists.
+`/cz/olbrasoft/SIE/Switcher`, offers `Version`, `Open`, `OpenLocal(delta)`, `Move`,
+`Finish` and `Active`. SIE 0.15.0 requires protocol version 3 for local previews;
+this retains version 2's fresh-timestamp confirmation. An older already-loaded
+adapter is reported as requiring a new login rather than being treated as ready
+just because its bus name exists. A loaded version 2 adapter can still serve
+global selection until the next login, but local rotation never falls back to
+immediate activation. Version 1 is refused for both modes.
 Each popup belongs to its caller's unique bus name and generation token, so
 another caller or stale token cannot move/confirm it. Caller disappearance or
 extension disable cancels. Like the native keybinding, opening requires the
 normal unlocked desktop; locking cancels any owned popup. The extension resets its eight-second cancellation
-timer during activity; Rust checks popup state every 100 ms while global mode
+timer during activity; Rust checks popup state every 100 ms while either mode
 is active to restore white after native dismissal. Dial disconnect and SIE
 shutdown request cancellation too. Communication errors clear feedback, while
 the Shell-side timer bounds a popup whose caller can no longer reach it.
@@ -70,8 +79,9 @@ and [application activation guard](https://github.com/GNOME/gnome-shell/blob/48.
 
 GNOME's `org.gnome.shell.app-switcher current-workspace-only` setting must be
 false for global application switching; that is the workstation's existing
-value. The adapter refuses workspace-only mode rather than silently offering
-an incomplete global list. It does not modify this preference or keybindings.
+value. The adapter refuses workspace-only mode for the global strip rather than
+silently offering an incomplete global list. Local selection remains available
+with either preference value. It does not modify this preference or keybindings.
 
 SIE does not hold virtual Alt or another modifier or inspect ordinary typing.
 It does not ask an application to open a replacement window. The adapter uses
@@ -84,8 +94,9 @@ Other Shell versions require validation before expanding that support.
 other enabled extensions. GNOME 48 discovers new local extensions at session
 startup, so the first installation requires a logout and login. The installer
 does not restart Shell or log the user out. The tray reports “odhlaste se a
-znovu přihlaste” until the adapter's bus name is available. Existing local
-cycling, dictation, lighting and media behavior remain usable in that state.
+znovu přihlaste” until protocol version 3 is loaded. Dictation, lighting and
+media behavior remain usable in that state; a loaded protocol version 2 adapter
+also retains global selection. Local rotation waits for the updated adapter.
 If SIE is not configured to start at login, run `sie start` after logging in.
 Updates to already loaded Shell JavaScript also take effect at the next login.
 
@@ -140,14 +151,17 @@ installer reports when this one-time rule is missing.
 Automated tests use synthetic events/frames and private D-Bus services only.
 They cover capability rejection, both rotation directions and high-resolution
 deduplication, release-only clicks and keymap restoration, workspace filtering,
-stable cycling and wraparound, activation guards, feedback restoration, and
-the lighting-off override. Private D-Bus tests cover native click/rotate/confirm,
+first-detent direction/count and wraparound, activation guards, feedback
+restoration and the lighting-off override. Private D-Bus tests cover native click/rotate/confirm,
 native dismissal, dial disconnect, shutdown, service errors and missing adapter
 without injecting keyboard events or opening a GUI. Node tests use fake native
-popups/timers to cover eight-second cancellation, activity reset, foreign/stale
-tokens and owner disappearance. Neither suite touches real input devices.
+popups/timers to cover native icon and cached-window filtering, same-app windows
+on different workspaces, all confirmation guards, eight-second cancellation,
+activity reset, foreign/stale tokens and owner disappearance. Neither suite
+touches real input devices.
 
-Physical acceptance must separately check clockwise/counterclockwise cycling
-with several windows on one workspace, click/rotate/click across workspaces,
-Escape/idle cancellation, green/orange/white visibility, the right volume
+Physical acceptance must separately check clockwise/counterclockwise local
+preview selection with several browsers on one workspace, local click confirmation,
+click/rotate/click across workspaces, Escape/idle cancellation,
+green/orange/white visibility, the right volume
 roller, and controls with lighting off. No camera is used.

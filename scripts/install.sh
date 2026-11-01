@@ -21,6 +21,10 @@ if [[ -f "$question_observer" ]]; then
     install -m755 "$project_root/scripts/codex-question-notify.py" "$question_observer"
     printf '%s\n' 'Question observer updated. Restart codex-question-notify.service to enable desktop actions.'
 fi
+notify_hook="${CODEX_HOME:-$HOME/.codex}/codex-notify.sh"
+if [[ -f "$notify_hook" ]]; then
+    install -m755 "$project_root/scripts/codex-notify.sh" "$notify_hook"
+fi
 python3 "$project_root/scripts/install-browser-bridge.py"
 python3 "$project_root/scripts/install-native-switcher.py"
 install -Dm644 "$project_root/packaging/sie.service" "$config_dir/systemd/user/sie.service"

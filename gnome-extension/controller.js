@@ -13,13 +13,15 @@ export class Controller {
         this._timer = null;
     }
 
-    open(owner) {
+    open(owner, {local = false, delta = 0} = {}) {
         if (this._popup && this._owner !== owner)
             throw new Error('The native switcher belongs to another client');
+        if (local && (!Number.isInteger(delta) || delta === 0 || Math.abs(delta) > 16))
+            throw new Error('Invalid initial dial step count');
         this.close(false);
-        if (this._workspaceOnly())
+        if (!local && this._workspaceOnly())
             throw new Error('GNOME app-switcher current-workspace-only must be false');
-        const popup = this._createPopup();
+        const popup = this._createPopup({local, delta});
         this._token = (this._token + 1) >>> 0 || 1;
         this._popup = popup;
         this._owner = owner;

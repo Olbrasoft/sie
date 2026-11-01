@@ -11,7 +11,7 @@ root = Path(__file__).resolve().parent.parent
 uuid = "sie-switcher@olbrasoft.cz"
 destination = Path(os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local/share"))) / "gnome-shell/extensions" / uuid
 destination.mkdir(parents=True, exist_ok=True)
-for name in ["extension.js", "controller.js", "confirmation.js", "metadata.json"]:
+for name in ["extension.js", "controller.js", "confirmation.js", "scope.js", "metadata.json"]:
     shutil.copyfile(root / "gnome-extension" / name, destination / name)
 shutil.copyfile(root / "LICENSE", destination / "LICENSE")
 

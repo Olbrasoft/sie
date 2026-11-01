@@ -1,4 +1,7 @@
-use ksni::{MenuItem, Tray, menu::StandardItem};
+use ksni::{
+    MenuItem, Tray,
+    menu::{CheckmarkItem, StandardItem, SubMenu},
+};
 use tokio::sync::mpsc;
 
 use crate::{
@@ -26,6 +29,8 @@ pub enum Action {
     Dictation(DictationCommand),
     About,
     Quit,
+    ToggleNotifications,
+    StopSpeech,
 }
 
 pub struct AppTray {
@@ -38,7 +43,9 @@ pub struct AppTray {
     pub media_status: String,
     pub focus_status: Option<String>,
     pub switcher_status: Option<String>,
+    pub notification_status: Option<crate::notifications::Status>,
     pub dictation_status: DictationStatus,
+    pub model_status: crate::models::Status,
     pub dictation_controls_available: bool,
 }
 
@@ -145,6 +152,7 @@ impl Tray for AppTray {
                 ..Default::default()
             }
             .into(),
+            self.model_menu(),
             StandardItem {
                 label: "Zrušit diktování".into(),
                 enabled: self.dictation_controls_available
@@ -180,6 +188,54 @@ impl Tray for AppTray {
             }
             .into(),
         ];
+        if let Some(status) = &self.notification_status {
+            let state = if status.unavailable {
+                "Nedostupné"
+            } else if status.muted {
+                "Ztlumené"
+            } else if status.speaking {
+                "Přehrávám"
+            } else if status.locked {
+                "Čekám na diktování"
+            } else {
+                "Připravené"
+            };
+            let index = menu.len() - 3;
+            menu.splice(
+                index..index,
+                [
+                    MenuItem::Separator,
+                    StandardItem {
+                        label: format!("Hlasová oznámení: {state} · ve frontě {}", status.pending),
+                        enabled: false,
+                        ..Default::default()
+                    }
+                    .into(),
+                    StandardItem {
+                        label: if status.muted {
+                            "❌ Hlasová oznámení — Zapnout"
+                        } else {
+                            "✅ Hlasová oznámení — Vypnout"
+                        }
+                        .into(),
+                        activate: Box::new(|this: &mut Self| {
+                            let _ = this.actions.try_send(Action::ToggleNotifications);
+                        }),
+                        ..Default::default()
+                    }
+                    .into(),
+                    StandardItem {
+                        label: "Zastavit aktuální oznámení".into(),
+                        enabled: status.speaking,
+                        activate: Box::new(|this: &mut Self| {
+                            let _ = this.actions.try_send(Action::StopSpeech);
+                        }),
+                        ..Default::default()
+                    }
+                    .into(),
+                ],
+            );
+        }
         for label in [&self.focus_status, &self.switcher_status]
             .into_iter()
             .flatten()
@@ -195,6 +251,69 @@ impl Tray for AppTray {
             );
         }
         menu
+    }
+}
+
+impl AppTray {
+    fn model_menu(&self) -> MenuItem<Self> {
+        let mut choices: Vec<MenuItem<Self>> = crate::models::WhisperModel::ALL
+            .into_iter()
+            .map(|model| {
+                let available = self.model_status.path(model).is_file();
+                CheckmarkItem {
+                    label: if available {
+                        model.label().into()
+                    } else {
+                        format!("{} (nenainstalováno)", model.label())
+                    },
+                    checked: crate::models::WhisperModel::from_path(&self.model_status.selected)
+                        == Some(model),
+                    enabled: available && !self.model_status.switching,
+                    activate: Box::new(move |this: &mut Self| {
+                        let _ = this
+                            .actions
+                            .try_send(Action::Dictation(DictationCommand::SelectModel(model)));
+                    }),
+                    ..Default::default()
+                }
+                .into()
+            })
+            .collect();
+        let note = if self.model_status.switching {
+            Some("Uvolňuji předchozí model…".into())
+        } else if let Some(model) = self.model_status.pending {
+            Some(format!("Po dokončení diktování: {}", model.label()))
+        } else if self.model_status.error {
+            Some("Změna modelu se nezdařila; předchozí výběr zůstává".into())
+        } else {
+            None
+        };
+        if let Some(label) = note {
+            choices.push(MenuItem::Separator);
+            choices.push(
+                StandardItem {
+                    label,
+                    enabled: false,
+                    ..Default::default()
+                }
+                .into(),
+            );
+        }
+        SubMenu {
+            label: format!(
+                "Model přepisu: {}{}",
+                self.model_status.label(),
+                if self.model_status.pending.is_some() {
+                    " (čeká na změnu)"
+                } else {
+                    ""
+                }
+            ),
+            enabled: self.dictation_controls_available,
+            submenu: choices,
+            ..Default::default()
+        }
+        .into()
     }
 }
 
@@ -253,7 +372,11 @@ mod tests {
             media_status: "Média nedostupná".into(),
             focus_status: None,
             switcher_status: None,
+            notification_status: None,
             dictation_status: DictationStatus::new(false, Phase::Disabled),
+            model_status: crate::models::Status::new(
+                crate::config::DictationConfig::default().model_path,
+            ),
             dictation_controls_available: true,
         };
         let menu = tray.menu();
@@ -264,6 +387,83 @@ mod tests {
         let quit = item(&menu, "Ukončit");
         (quit.activate)(&mut tray);
         assert_eq!(rx.recv().await, Some(Action::Quit));
+    }
+
+    #[tokio::test]
+    async fn model_dropdown_marks_only_the_selected_model_and_defers_checkmark_changes() {
+        use crate::models::{Status, WhisperModel};
+        let dir = tempfile::tempdir().unwrap();
+        for model in WhisperModel::ALL {
+            std::fs::write(dir.path().join(model.file_name()), []).unwrap();
+        }
+        let (tx, mut rx) = mpsc::channel(4);
+        let mut tray = AppTray {
+            actions: tx,
+            lighting_status: String::new(),
+            mouse_lighting_status: String::new(),
+            lighting_mode: LightingMode::On,
+            lighting_controls_available: true,
+            workspace_status: String::new(),
+            media_status: String::new(),
+            focus_status: None,
+            switcher_status: None,
+            notification_status: None,
+            dictation_status: DictationStatus::new(true, Phase::Recording),
+            model_status: Status::new(dir.path().join(WhisperModel::LargeV3.file_name())),
+            dictation_controls_available: true,
+        };
+        let dropdown = |tray: &AppTray| match tray.model_menu() {
+            MenuItem::SubMenu(menu) => menu,
+            _ => panic!("Models must be a native dropdown"),
+        };
+        let menu = dropdown(&tray);
+        assert!(menu.enabled);
+        let choices: Vec<_> = menu
+            .submenu
+            .iter()
+            .filter_map(|item| match item {
+                MenuItem::Checkmark(choice) => Some(choice),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(choices.len(), WhisperModel::ALL.len());
+        assert!(choices[0].checked);
+        assert!(!choices[1].checked);
+        assert!(choices.iter().all(|choice| choice.enabled));
+        (choices[1].activate)(&mut tray);
+        assert_eq!(
+            rx.recv().await,
+            Some(Action::Dictation(DictationCommand::SelectModel(
+                WhisperModel::LargeV3Turbo
+            )))
+        );
+        tray.model_status.request(WhisperModel::LargeV3Turbo);
+        let menu = dropdown(&tray);
+        assert!(menu.label.contains("čeká na změnu"));
+        assert!(matches!(&menu.submenu[0], MenuItem::Checkmark(choice) if choice.checked));
+        assert!(matches!(&menu.submenu[1], MenuItem::Checkmark(choice) if !choice.checked));
+        assert!(
+            item(&menu.submenu, "Po dokončení diktování")
+                .label
+                .contains("Turbo")
+        );
+        let path = tray.model_status.begin_switch(false, false, false).unwrap();
+        assert!(
+            dropdown(&tray)
+                .submenu
+                .iter()
+                .all(|item| !matches!(item, MenuItem::Checkmark(choice) if choice.enabled))
+        );
+        tray.model_status.complete(path, true);
+        let menu = dropdown(&tray);
+        assert!(matches!(&menu.submenu[0], MenuItem::Checkmark(choice) if !choice.checked));
+        assert!(matches!(&menu.submenu[1], MenuItem::Checkmark(choice) if choice.checked));
+        std::fs::remove_file(dir.path().join(WhisperModel::LargeV3.file_name())).unwrap();
+        assert!(
+            matches!(&dropdown(&tray).submenu[0], MenuItem::Checkmark(choice) if !choice.enabled && choice.label.contains("nenainstalováno"))
+        );
+        tray.dictation_controls_available = false;
+        assert!(!dropdown(&tray).enabled);
     }
 
     #[tokio::test]
@@ -279,7 +479,11 @@ mod tests {
             media_status: "Média nedostupná".into(),
             focus_status: None,
             switcher_status: None,
+            notification_status: None,
             dictation_status: DictationStatus::new(false, Phase::Disabled),
+            model_status: crate::models::Status::new(
+                crate::config::DictationConfig::default().model_path,
+            ),
             dictation_controls_available: true,
         };
         let menu = tray.menu();
@@ -323,7 +527,11 @@ mod tests {
             media_status: "Média nedostupná".into(),
             focus_status: None,
             switcher_status: None,
+            notification_status: None,
             dictation_status: DictationStatus::new(true, Phase::Recording),
+            model_status: crate::models::Status::new(
+                crate::config::DictationConfig::default().model_path,
+            ),
             dictation_controls_available: true,
         };
         let menu = tray.menu();

@@ -3,6 +3,37 @@
 Validated on 2026-10-23 with GNOME Shell 48.7 on Wayland, OpenRazer 3.12.4,
 the connected Razer BlackWidow V4 Pro (`1532:028d`), and Rust 1.99.0.
 
+## Adaptive recording cue in version 0.17.2
+
+- Formatting, locked Clippy with warnings denied and all-target checks passed on
+  stable Rust and Rust 1.89.0, with 145 ordinary Rust tests. CUDA release built.
+- Isolated fake-player tests verify the first/idle 300 ms prefix, the unchanged
+  recent PCM asset, activity after other cues, failed-player behavior, and joining
+  an interrupted owned player. Signal tests compare every original PCM sample.
+- The ViewSonic keep-awake rule was already active and its ALSA PCM remained
+  RUNNING during the investigation. This state alone did not establish acoustic
+  reliability. Repeated physical starts after at least 20 seconds of quiet remain
+  separate acceptance in issue #105; no diagnostic microphone or camera is used.
+
+## Responsibility refactoring in version 0.17.1
+
+- The required formatting, locked Clippy with warnings denied and all-target
+  checks passed on stable Rust and the declared Rust 1.89 minimum. The suite has
+  140 ordinary Rust tests. New regressions cover cancellation ownership/stale
+  completions, fallback/timeouts, worker cleanup and independent lighting fields.
+- The private D-Bus target retains all 26 behavior checks and is split by domain.
+  Media and agent-notification suites share the same private bus owner; no test
+  connects to the user's desktop or real hardware.
+- The opt-in PostgreSQL correction-history test and two notification tests passed
+  against `test_sie_dictation`. They use isolated schemas, fake credentials,
+  blocked network and stub synthesis processes, never the production SIE data.
+- All 20 browser/GNOME JavaScript tests and nine Python observer/import tests
+  passed. The extension and script implementations were retained after review.
+- The CUDA release built for the workstation's RTX 3060. Physical acceptance is
+  separate from these isolated checks and is tracked in the deployment issue.
+  See [architecture and ownership](architecture.md) for module boundaries,
+  retained compatibility and the rationale for the patterns used.
+
 ## Combined lighting in versions 0.9.0 and 0.9.1
 
 - The workstation mouse is a Logitech G203 LIGHTSYNC (`046d:c092`) with HID++ RGB
@@ -266,3 +297,29 @@ microphone is used by default CI tests.
 - CI database authentication uses an encrypted repository secret; the replacement
   PR contains no hardcoded database password. The earlier public test password was
   flagged by GitGuardian; no production credential was involved.
+
+## Persistent Whisper model dropdown in version 0.18.0
+
+Issue #108 adds a native tray submenu with checked Large-v3 / Large-v3 Turbo
+choices. Formatting, Clippy with warnings denied and all 155 isolated Rust
+tests passed on stable and Rust 1.89. Ten new tests cover selection during busy
+sessions, canceled jobs, exclusive engine ownership, lazy replacement, failed
+persistence, comments, private file permissions, explicit configuration paths,
+missing models, menu callbacks and selection while dictation is disabled. Four
+opt-in database/model tests remain ignored in the default suite. The CUDA
+release build for architecture 86 passed.
+
+Manual checks on 2026-11-01 used the running SIE 0.18.0 and RTX 3060 8 GB. The
+user selected Turbo, dictated, selected Large-v3 and dictated again; both texts
+were delivered. Read-only observations of the same SIE process showed Turbo
+using 1668 MiB, then 118 MiB after selection of Large-v3 (before inference),
+then 3070 MiB after the first Large-v3 transcription. The residual GPU allocation was 118 MiB; model allocations were released
+before the next model loaded. Native logs independently showed release of the
+cached context and the 4-layer / 32-layer models loading on their first use.
+
+The actual D-Bus menu reported a submenu, both checkmark choices and only
+Large-v3 selected afterward. The saved configuration matched its predeployment
+settings, including the restored Large-v3 path, and retained mode 0600. No
+diagnostic microphone or camera capture was used. Selection during a live
+recording/transcription is covered by isolated tests; it was not physically
+exercised. Restart loading of the saved path is covered by configuration tests.

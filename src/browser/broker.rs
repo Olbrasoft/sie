@@ -11,14 +11,11 @@ use std::{
     },
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
-use tokio::{
-    io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt},
-    sync::{mpsc, oneshot},
-};
+use tokio::sync::{mpsc, oneshot};
 
 pub const PATH: &str = "/cz/olbrasoft/SystemInterfaceExtensions/Browser";
 pub const INTERFACE: &str = "cz.olbrasoft.SystemInterfaceExtensions.Browser";
-const MAX_FRAME: usize = 65536;
+use super::wire::MAX_FRAME;
 struct Session {
     pid: u32,
     host_pid: u32,
@@ -249,119 +246,9 @@ pub async fn export(connection: &zbus::Connection, broker: Arc<Broker>) -> Resul
     Ok(())
 }
 
-pub async fn read_frame<R: AsyncRead + Unpin>(reader: &mut R) -> Result<Option<Value>> {
-    let mut size = [0; 4];
-    if reader.read(&mut size[..1]).await? == 0 {
-        return Ok(None);
-    }
-    reader
-        .read_exact(&mut size[1..])
-        .await
-        .context("Incomplete native frame")?;
-    let size = u32::from_ne_bytes(size) as usize;
-    ensure!(size > 0 && size <= MAX_FRAME, "Invalid native frame size");
-    let mut bytes = vec![0; size];
-    reader.read_exact(&mut bytes).await?;
-    Ok(Some(serde_json::from_slice(&bytes)?))
-}
-pub async fn write_frame<W: AsyncWrite + Unpin>(writer: &mut W, value: &Value) -> Result<()> {
-    let bytes = serde_json::to_vec(value)?;
-    ensure!(bytes.len() <= MAX_FRAME, "Native frame too large");
-    writer
-        .write_all(&(bytes.len() as u32).to_ne_bytes())
-        .await?;
-    writer.write_all(&bytes).await?;
-    writer.flush().await?;
-    Ok(())
-}
-
-pub async fn host() -> Result<()> {
-    let pid = nix::unistd::getppid().as_raw() as u32;
-    let connection = zbus::connection::Builder::session()?
-        .method_timeout(Duration::from_secs(25))
-        .build()
-        .await?;
-    let proxy = zbus::Proxy::new(&connection, crate::BUS_NAME, PATH, INTERFACE).await?;
-    let session = Arc::new(AtomicU64::new(0));
-    let current = session.clone();
-    let poll = proxy.clone();
-    let (tx, mut commands) = mpsc::channel(8);
-    let worker = tokio::spawn(async move {
-        loop {
-            if let Ok(id) = poll
-                .call::<_, _, u64>("Register", &(pid, std::process::id()))
-                .await
-            {
-                current.store(id, Ordering::SeqCst);
-                while let Ok(command) = poll.call::<_, _, String>("Next", &(id,)).await {
-                    if !command.is_empty() && tx.send(command).await.is_err() {
-                        return;
-                    }
-                }
-            }
-            tokio::time::sleep(Duration::from_millis(500)).await;
-        }
-    });
-    let (frames, mut incoming) = mpsc::channel(8);
-    let reader = tokio::spawn(async move {
-        let mut stdin = tokio::io::stdin();
-        loop {
-            match read_frame(&mut stdin).await {
-                Ok(Some(frame)) => {
-                    if frames.send(Ok(frame)).await.is_err() {
-                        break;
-                    }
-                }
-                Ok(None) => break,
-                Err(error) => {
-                    let _ = frames.send(Err(error)).await;
-                    break;
-                }
-            }
-        }
-    });
-    let mut stdout = tokio::io::stdout();
-    let result:Result<()>=async{
-        loop{tokio::select!{
-            message=incoming.recv()=>{
-                let Some(message)=message else{break;};
-                let message=message?;
-                if let Some(id)=message.get("request_id").and_then(Value::as_u64){
-                    let payload=serde_json::to_string(&message)?;
-                    let _=proxy.call::<_,_,()>("Reply",&(session.load(Ordering::SeqCst),id,payload)).await;
-                }
-            },
-            Some(command)=commands.recv()=>write_frame(&mut stdout,&serde_json::from_str(&command)?).await?,
-        }}
-        Ok(())
-    }.await;
-    reader.abort();
-    let _ = reader.await;
-    worker.abort();
-    let _ = worker.await;
-    let _ = proxy
-        .call::<_, _, ()>("Disconnect", &(session.load(Ordering::SeqCst),))
-        .await;
-    result
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[tokio::test]
-    async fn native_frames_preserve_unicode_and_reject_incomplete_or_oversized_data() {
-        let value = json!({"title":"Příliš žluťoučký kůň"});
-        let mut bytes = Vec::new();
-        write_frame(&mut bytes, &value).await.unwrap();
-        let mut reader = bytes.as_slice();
-        assert_eq!(read_frame(&mut reader).await.unwrap(), Some(value));
-        assert!(read_frame(&mut reader).await.unwrap().is_none());
-        let mut partial = &[1u8, 0][..];
-        assert!(read_frame(&mut partial).await.is_err());
-        let size = (MAX_FRAME as u32 + 1).to_ne_bytes();
-        let mut oversized = size.as_slice();
-        assert!(read_frame(&mut oversized).await.is_err());
-    }
     #[tokio::test]
     async fn broker_correlates_local_requests_and_rejects_other_sessions() {
         let broker = Arc::new(Broker::default());

@@ -17,7 +17,9 @@ pub mod lighting;
 pub mod macros;
 pub mod media;
 pub mod media_focus;
+pub mod models;
 pub mod mouse_lighting;
+pub mod notifications;
 pub mod openrazer;
 mod sounds;
 pub mod speech;
@@ -44,3 +46,7 @@ pub async fn claim_instance(connection: &zbus::Connection) -> anyhow::Result<()>
     );
     Ok(())
 }
+
+#[cfg(test)]
+#[path = "../tests/support/bus.rs"]
+mod test_bus;
