@@ -38,7 +38,8 @@ GNOME/Wayland proof of concept for the **Razer BlackWidow V4 Pro** (`1532:028d`)
   same strip across workspaces (orange), then rotate and press again to activate.
   Escape or eight seconds of inactivity cancels; idle is white. See
   [Command Dial setup and behavior](docs/command-dial.md).
-- Local Czech dictation uses Whisper large-v3-turbo, with CUDA or CPU inference.
+- Local Czech dictation offers Whisper Large-v3 and Large-v3 Turbo in a tray
+  dropdown, with CUDA or CPU inference and a persistent model selection.
   The **bottom side button** starts recording, then stops and transcribes.
   **Pause** or **Escape** cancels recording or transcription without delivery;
   the **middle side button** is deliberately inactive;

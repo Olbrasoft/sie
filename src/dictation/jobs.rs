@@ -89,6 +89,17 @@ impl Jobs {
     pub fn has_pending(&self) -> bool {
         !self.tasks.is_empty()
     }
+    pub async fn select_model(
+        &mut self,
+        model: &std::path::Path,
+        config_path: &std::path::Path,
+    ) -> Result<()> {
+        anyhow::ensure!(
+            !self.is_active() && !self.has_pending(),
+            "Dictation jobs are still pending"
+        );
+        self.pipeline.select_model(model, config_path).await
+    }
     pub fn request_submit(&mut self) {
         if let Some(job) = &mut self.active {
             job.request_submit();
@@ -211,6 +222,35 @@ mod tests {
         let bus = crate::test_bus::Bus::new();
         let jobs = Jobs::new(DictationConfig::default(), bus.connection().await);
         (bus, jobs)
+    }
+    #[tokio::test]
+    async fn canceled_pending_jobs_must_drain_before_model_selection() {
+        let (_bus, mut jobs) = fixture().await;
+        let dir = tempfile::tempdir().unwrap();
+        let model = dir.path().join("model.bin");
+        let config = dir.path().join("config.toml");
+        std::fs::write(&model, []).unwrap();
+        let (finish, wait) = tokio::sync::oneshot::channel();
+        jobs.tasks.spawn(async move {
+            let _ = wait.await;
+            (
+                1,
+                Ok(Completed {
+                    characters: 0,
+                    receipt: None,
+                }),
+            )
+        });
+        jobs.active = Some(ActiveJob::new(1, Arc::new(AtomicBool::new(false)), false));
+        jobs.cancel();
+        assert!(!jobs.is_active());
+        assert!(jobs.has_pending());
+        assert!(jobs.select_model(&model, &config).await.is_err());
+        assert!(!config.exists());
+        finish.send(()).unwrap();
+        let result = jobs.next().await.unwrap();
+        assert!(matches!(jobs.completed(result), Completion::Stale));
+        jobs.select_model(&model, &config).await.unwrap();
     }
     #[tokio::test]
     async fn stale_or_canceled_completions_cannot_clear_a_new_job_or_carry_submission() {

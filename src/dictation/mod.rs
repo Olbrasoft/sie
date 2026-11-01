@@ -11,6 +11,7 @@ pub enum Command {
     FinishAndSubmit,
     Cancel,
     SetEnabled(bool),
+    SelectModel(crate::models::WhisperModel),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

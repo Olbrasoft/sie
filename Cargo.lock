@@ -1700,7 +1700,7 @@ checksum = "f8fadd59c855ef2080decdef8ff161eb6661b86933c9d82e5ba29dc602a55aba"
 
 [[package]]
 name = "sie"
-version = "0.17.2"
+version = "0.18.0"
 dependencies = [
  "anyhow",
  "axum",
@@ -1719,6 +1719,7 @@ dependencies = [
  "tokio",
  "tokio-postgres",
  "toml",
+ "toml_edit",
  "tracing",
  "tracing-subscriber",
  "whisper-rs",
@@ -2018,6 +2019,7 @@ dependencies = [
  "indexmap",
  "toml_datetime 1.1.2+spec-1.1.0",
  "toml_parser",
+ "toml_writer",
  "winnow 1.0.4",
 ]
 
