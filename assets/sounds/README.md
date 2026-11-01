@@ -35,3 +35,8 @@ with wave.open("assets/sounds/recording-start.wav", "wb") as output:
 The cut removes only the initial quiet section; the retained PCM samples are
 unchanged. At a -50 dB threshold, the first audible frame moves from 289.7 ms to
 9.7 ms. An isolated Rust test guards the onset and duration of the embedded WAV.
+
+Since SIE 0.17.2 the fast WAV remains the only recording-cue asset. After cue
+inactivity SIE generates a 300 ms PCM-silence prefix in memory and plays it in the
+same stream. Recent starts use the unmodified WAV. This does not duplicate or
+change the original melody samples.

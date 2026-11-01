@@ -123,6 +123,36 @@ running, instead of becoming suspended. Repeat recording starts separated by
 quiet intervals and confirm each cue through the physical monitor speakers;
 automated Rust tests do not use desktop audio or a microphone.
 
+### Adaptive recording-cue priming
+
+Since 0.17.2, the first recording-start cue and the first one after at least ten
+seconds without dictation-cue output receive 300 ms of leading PCM silence. SIE
+builds that variant in memory from the same embedded WAV, sends silence and melody
+through one `pw-play` stream, and retains every original sample. No second asset,
+separate silence player, continuous keepalive or new service is used.
+
+Recent cue output keeps the fast unpadded WAV with its original approximately
+10 ms onset. Recording, typing and cancellation streams all refresh recent
+activity when they finish or are interrupted after receiving audio. Known failed
+playback does not mark the output warm. Replacing a cue first aborts and joins
+its owned player before selecting the next variant, so an interrupted typing
+stream is accounted for and cannot overlap a later cue. Microphone capture starts
+before feedback and does not wait for the 300 ms of silence.
+
+This is a conservative cue-activity heuristic, not a physical amplifier sensor:
+other applications, F8 voice and spoken notifications are not polled on each key
+press. They may already have warmed the monitor, but a cold cue still receives
+the short prefix when SIE's own dictation cues have been idle. The first cue after
+an application restart also receives the prefix.
+
+During the October 31 investigation, the installed suspend rule was active,
+`node.pause-on-idle` was false, and the HDMI ALSA PCM remained RUNNING while the
+PipeWire node was idle. The untrimmed MP3 contained about 280 ms of digital silence;
+the optimized WAV lasted about 274 ms. No player errors accompanied the reported
+missed sounds. These observations do not prove which hardware/stream stage lost
+the onset; physical repeated/idle acceptance is required separately from process
+success and routing metadata. The existing WirePlumber policy remains unchanged.
+
 ## Media volume while recording
 
 Since 0.10.0, an optional `duck_sink` names the one playback output to attenuate

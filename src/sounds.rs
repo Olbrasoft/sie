@@ -1,8 +1,49 @@
 //! Embedded nonverbal feedback, played by the existing PipeWire client.
-use std::process::Stdio;
+use std::{
+    borrow::Cow,
+    io::Cursor,
+    process::Stdio,
+    sync::{Arc, Mutex},
+    time::{Duration, Instant},
+};
 use tokio::{io::AsyncWriteExt, process::Command, task::JoinHandle};
 
 use crate::dictation::Phase;
+
+const CUE_IDLE_THRESHOLD: Duration = Duration::from_secs(10);
+const RECORDING_WARMUP: Duration = Duration::from_millis(300);
+
+#[derive(Clone, Default)]
+struct CueActivity(Arc<Mutex<Option<Instant>>>);
+
+impl CueActivity {
+    fn warmup(&self, cue: Cue, now: Instant) -> Duration {
+        let last = *self.0.lock().unwrap_or_else(|error| error.into_inner());
+        if cue == Cue::Recording
+            && last.is_none_or(|at| now.saturating_duration_since(at) >= CUE_IDLE_THRESHOLD)
+        {
+            RECORDING_WARMUP
+        } else {
+            Duration::ZERO
+        }
+    }
+}
+
+struct ActiveOutput {
+    activity: CueActivity,
+    fed: bool,
+}
+impl Drop for ActiveOutput {
+    fn drop(&mut self) {
+        if self.fed {
+            *self
+                .activity
+                .0
+                .lock()
+                .unwrap_or_else(|error| error.into_inner()) = Some(Instant::now());
+        }
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Cue {
@@ -38,6 +79,7 @@ pub(crate) struct Feedback {
     sink: Option<String>,
     phase: Phase,
     playback: Option<JoinHandle<()>>,
+    activity: CueActivity,
 }
 
 impl Feedback {
@@ -47,24 +89,29 @@ impl Feedback {
             sink,
             phase,
             playback: None,
+            activity: CueActivity::default(),
         }
     }
 
-    pub fn transition(&mut self, after: Phase, cancelled: bool) {
+    pub async fn transition(&mut self, after: Phase, cancelled: bool) {
         let cue = cue_for_transition(self.phase, after, cancelled);
         if (self.phase != after || cancelled)
             && let Some(task) = self.playback.take()
         {
             task.abort();
+            // Finish dropping the previous player and its activity guard before
+            // deciding whether the replacement cue needs output priming.
+            let _ = task.await;
         }
         self.phase = after;
         if self.enabled
             && let Some(cue) = cue
         {
             let sink = self.sink.clone();
+            let activity = self.activity.clone();
             self.playback = Some(tokio::spawn(async move {
                 loop {
-                    if let Err(error) = play(cue, sink.as_deref()).await {
+                    if let Err(error) = play(cue, sink.as_deref(), &activity).await {
                         tracing::warn!(%error, "Dictation sound playback unavailable");
                         break;
                     }
@@ -91,99 +138,85 @@ fn playback_command(sink: Option<&str>) -> Command {
     if let Some(sink) = sink {
         command.args(["--target", sink]);
     }
-    command
-        .arg("-")
-        .stdin(Stdio::piped())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .kill_on_drop(true);
+    command.arg("-");
     command
 }
 
-async fn play(cue: Cue, sink: Option<&str>) -> anyhow::Result<()> {
-    let mut child = playback_command(sink).spawn()?;
+fn cue_audio(cue: Cue, warmup: Duration) -> anyhow::Result<Cow<'static, [u8]>> {
+    if cue != Cue::Recording || warmup.is_zero() {
+        return Ok(Cow::Borrowed(cue.bytes()));
+    }
+    let mut original = hound::WavReader::new(Cursor::new(cue.bytes()))?;
+    let spec = original.spec();
+    anyhow::ensure!(
+        spec.sample_format == hound::SampleFormat::Int && spec.bits_per_sample == 16,
+        "Recording cue must be 16-bit PCM"
+    );
+    let silent_frames = u128::from(spec.sample_rate) * warmup.as_millis() / 1000;
+    let mut buffer = Cursor::new(Vec::new());
+    let mut writer = hound::WavWriter::new(&mut buffer, spec)?;
+    for _ in 0..silent_frames * u128::from(spec.channels) {
+        writer.write_sample(0_i16)?;
+    }
+    for sample in original.samples::<i16>() {
+        writer.write_sample(sample?)?;
+    }
+    writer.finalize()?;
+    Ok(Cow::Owned(buffer.into_inner()))
+}
+
+async fn play(cue: Cue, sink: Option<&str>, activity: &CueActivity) -> anyhow::Result<()> {
+    play_with_command(cue, playback_command(sink), activity).await
+}
+
+async fn play_with_command(
+    cue: Cue,
+    mut command: Command,
+    activity: &CueActivity,
+) -> anyhow::Result<()> {
+    let warmup = activity.warmup(cue, Instant::now());
+    let bytes = cue_audio(cue, warmup)?;
+    if !warmup.is_zero() {
+        tracing::info!(
+            warmup_ms = warmup.as_millis(),
+            "Priming recording cue after cue inactivity"
+        );
+    }
+    let mut child = command
+        .stdin(Stdio::piped())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .kill_on_drop(true)
+        .spawn()?;
+    let mut active = ActiveOutput {
+        activity: activity.clone(),
+        fed: false,
+    };
     let mut stdin = child
         .stdin
         .take()
         .ok_or_else(|| anyhow::anyhow!("Sound stdin unavailable"))?;
-    stdin.write_all(cue.bytes()).await?;
-    stdin.shutdown().await?;
-    drop(stdin);
-    anyhow::ensure!(
-        child.wait().await?.success(),
-        "PipeWire sound player failed"
-    );
-    Ok(())
+    let result = async {
+        // Mark a stream active after its first chunk, even if a longer cue is
+        // interrupted while the remaining bytes are still being written.
+        let first = bytes.len().min(4096);
+        stdin.write_all(&bytes[..first]).await?;
+        active.fed = true;
+        stdin.write_all(&bytes[first..]).await?;
+        stdin.shutdown().await?;
+        drop(stdin);
+        anyhow::ensure!(
+            child.wait().await?.success(),
+            "PipeWire sound player failed"
+        );
+        anyhow::Ok(())
+    }
+    .await;
+    if result.is_err() {
+        active.fed = false;
+    }
+    result
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn recording_cue_has_an_immediate_audible_onset() {
-        let mut reader = hound::WavReader::new(std::io::Cursor::new(Cue::Recording.bytes()))
-            .expect("Recording cue must be decoded PCM audio");
-        let spec = reader.spec();
-        assert_eq!(spec.sample_format, hound::SampleFormat::Int);
-        assert_eq!(spec.bits_per_sample, 16);
-        assert_eq!(spec.channels, 2);
-        let onset = reader
-            .samples::<i16>()
-            .position(|sample| sample.unwrap().unsigned_abs() > 104)
-            .expect("Recording cue must contain audible audio");
-        let onset_frame = onset / usize::from(spec.channels);
-        assert!(onset_frame * 1000 <= spec.sample_rate as usize * 15);
-        let duration_ms = u64::from(reader.duration()) * 1000 / u64::from(spec.sample_rate);
-        assert!((200..400).contains(&duration_ms));
-    }
-
-    #[test]
-    fn playback_requests_low_latency_and_preserves_output_selection() {
-        for sink in [None, Some("test.monitor.stereo")] {
-            let command = playback_command(sink);
-            let mut expected = vec!["--latency", "20ms"];
-            if let Some(sink) = sink {
-                expected.extend(["--target", sink]);
-            }
-            expected.push("-");
-            assert_eq!(command.as_std().get_program(), "pw-play");
-            assert_eq!(command.as_std().get_args().collect::<Vec<_>>(), expected);
-        }
-    }
-
-    #[test]
-    fn cues_follow_real_state_changes_and_idle_cancel_is_silent() {
-        assert_eq!(
-            cue_for_transition(Phase::Idle, Phase::Recording, false),
-            Some(Cue::Recording)
-        );
-        assert_eq!(
-            cue_for_transition(Phase::Recording, Phase::Transcribing, false),
-            Some(Cue::Transcribing)
-        );
-        for phase in [Phase::Recording, Phase::Transcribing] {
-            assert_eq!(
-                cue_for_transition(phase, Phase::Idle, true),
-                Some(Cue::Cancel)
-            );
-        }
-        for after in [Phase::Idle, Phase::Disabled, Phase::Error] {
-            assert_eq!(cue_for_transition(Phase::Idle, after, false), None);
-        }
-        assert_eq!(cue_for_transition(Phase::Idle, Phase::Idle, true), None);
-        assert_eq!(
-            cue_for_transition(Phase::Recording, Phase::Recording, false),
-            None
-        );
-    }
-
-    #[tokio::test]
-    async fn disabled_feedback_never_starts_an_audio_process() {
-        let mut feedback = Feedback::new(false, None, Phase::Idle);
-        feedback.transition(Phase::Recording, false);
-        feedback.transition(Phase::Transcribing, false);
-        feedback.transition(Phase::Idle, true);
-        assert!(feedback.playback.is_none());
-    }
-}
+mod tests;

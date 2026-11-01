@@ -82,7 +82,7 @@ pub async fn run(
                 }
                 if command == Command::Cancel || !enabled {
                     ducking.set_recording(false);
-                    feedback.transition(if enabled { Phase::Idle } else { Phase::Disabled }, true);
+                    feedback.transition(if enabled { Phase::Idle } else { Phase::Disabled }, true).await;
                     if let Some((recording, _)) = recording.take() { recording.cancel().await; }
                     jobs.cancel();
                     deadline = None;
@@ -91,7 +91,7 @@ pub async fn run(
                     continue;
                 }
                 if matches!(command, Command::SetEnabled(true)) {
-                    feedback.transition(Phase::Idle, false);
+                    feedback.transition(Phase::Idle, false).await;
                     status.send_replace(Status::new(true, Phase::Idle));
                     continue;
                 }
@@ -105,7 +105,7 @@ pub async fn run(
                     ducking.set_recording(false);
                     deadline = None;
                     if let Err(error)=finish(capture,target,command==Command::FinishAndSubmit,&mut jobs,&mut feedback,&status).await {
-                        speech_lock.release().await;publish_error(&status,&mut feedback,enabled,error);
+                        speech_lock.release().await;publish_error(&status,&mut feedback,enabled,error).await;
                     }
                 } else {
                     let result = async {
@@ -124,10 +124,10 @@ pub async fn run(
                             recording = Some(session);
                             ducking.set_recording(true);
                             deadline = Some(Instant::now() + Duration::from_secs(config.max_duration_seconds));
-                            feedback.transition(Phase::Recording, false);
+                            feedback.transition(Phase::Recording, false).await;
                             status.send_replace(Status::new(true, Phase::Recording));
                         }
-                        Err(error) => { ducking.set_recording(false); speech_lock.release().await; publish_error(&status, &mut feedback, enabled, error); },
+                        Err(error) => { ducking.set_recording(false); speech_lock.release().await; publish_error(&status, &mut feedback, enabled, error).await; },
                     }
                 }
             },
@@ -140,7 +140,7 @@ pub async fn run(
                     ducking.set_recording(false);
                     deadline = None;
                     if let Err(error)=finish(capture,target,false,&mut jobs,&mut feedback,&status).await {
-                        speech_lock.release().await;publish_error(&status,&mut feedback,enabled,error);
+                        speech_lock.release().await;publish_error(&status,&mut feedback,enabled,error).await;
                     }
                 }
             },
@@ -148,11 +148,11 @@ pub async fn run(
                 match jobs.completed(result) {
                     Completion::Pending | Completion::Stale=>{},
                     Completion::Finished(result)=>{
-                        feedback.transition(Phase::Idle,false);
+                        feedback.transition(Phase::Idle,false).await;
                         speech_lock.release().await;
                         match result {
                             Ok(completed)=>{tracing::info!(characters=completed.characters,"Local dictation completed");status.send_replace(Status::new(enabled,Phase::Idle));},
-                            Err(error)=>{ducking.set_recording(false);publish_error(&status,&mut feedback,enabled,error);},
+                            Err(error)=>{ducking.set_recording(false);publish_error(&status,&mut feedback,enabled,error).await;},
                         }
                     }
                 }
@@ -172,13 +172,13 @@ pub async fn run(
     jobs.shutdown().await;
 }
 
-fn publish_error(
+async fn publish_error(
     status: &watch::Sender<Status>,
     feedback: &mut Feedback,
     enabled: bool,
     error: anyhow::Error,
 ) {
-    feedback.transition(Phase::Error, false);
+    feedback.transition(Phase::Error, false).await;
     tracing::warn!("Dictation failed: {error:#}");
     let reason = error.to_string();
     status.send_replace(Status {
@@ -212,7 +212,7 @@ async fn finish(
 ) -> Result<()> {
     let (pcm, duration) = capture.stop().await?;
     jobs.start(pcm, duration, target, submit);
-    feedback.transition(Phase::Transcribing, false);
+    feedback.transition(Phase::Transcribing, false).await;
     status.send_replace(Status::new(true, Phase::Transcribing));
     Ok(())
 }
